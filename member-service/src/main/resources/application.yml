@@ -1,0 +1,17 @@
+server:
+  port: 9002
+
+spring:
+  application:
+    name: member-service
+
+  config:
+    import: optional:classpath:application-secret.yml
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/comatching_member?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true

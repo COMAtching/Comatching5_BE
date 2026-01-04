@@ -1,0 +1,15 @@
+server:
+  port: 9003
+
+spring:
+  application:
+    name: chat-service
+
+  config:
+    import: optional:classpath:application-secret.yml
+
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: comatching_chat
