@@ -43,5 +43,5 @@ bin/
 
 .idea
 docker-compose.yml
-/data
+/database
 application-secret.yml

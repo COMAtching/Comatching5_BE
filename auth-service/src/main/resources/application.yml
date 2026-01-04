@@ -1,3 +1,14 @@
+server:
+  port: 9000
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        secure: false
+
 spring:
   application:
     name: auth-service
@@ -7,6 +18,13 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3307/comatching_auth?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariPool-${spring.application.name}
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      validation-timeout: 5000
 
   jpa:
     hibernate:
@@ -34,14 +52,3 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: auth-group
-
-server:
-  port: 9000
-  servlet:
-    session:
-      timeout: 30m
-      cookie:
-        name: JSESSIONID
-        path: /
-        http-only: true
-        secure: false
