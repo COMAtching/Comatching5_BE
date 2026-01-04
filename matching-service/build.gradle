@@ -1,0 +1,33 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot'
+	id 'io.spring.dependency-management'
+}
+
+description = 'matching-service'
+
+dependencies {
+	// 1. Web (MVC)
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	// 2. Database (JPA, MySQL)
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// 3. Kafka (매칭 신청 시 비동기 처리용)
+	implementation 'org.springframework.kafka:spring-kafka'
+
+	// 4. Redis (매칭 대기열 캐싱용 - 선택사항이지만 일단 추가 추천)
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// 5. Common Module (공통 DTO, 예외처리 사용)
+	implementation project(':common-module')
+
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

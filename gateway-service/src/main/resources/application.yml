@@ -28,7 +28,21 @@ spring:
             - id: auth-service-swagger
               uri: http://localhost:9000
               predicates:
-                - Path=/v3/api-docs/**, /swagger-ui/**
+                - Path=/auth-doc/**
+              filters:
+                - RewritePath=/auth-doc/(?<segment>.*), /$\{segment}
+
+            - id: matching-service
+              uri: http://localhost:9001
+              predicates:
+                - Path=/matching/**
+
+            - id: matching-service-swagger
+              uri: http://localhost:9001
+              predicates:
+                - Path=/matching-doc/**
+              filters:
+                - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
 
 logging:
   level:
