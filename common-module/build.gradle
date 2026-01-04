@@ -1,0 +1,17 @@
+plugins {
+	id 'java-library'
+}
+
+description = 'common-module'
+
+bootJar { enabled = false }
+jar { enabled = true }
+
+dependencies {
+	// 1. Web (GlobalExceptionHandler 등을 위해 필요)
+	api 'org.springframework.boot:spring-boot-starter-web'
+	api 'org.springframework.boot:spring-boot-starter-validation'
+
+	// 2. JSON 처리 (ObjectMapper 등)
+	api 'com.fasterxml.jackson.core:jackson-databind'
+}
