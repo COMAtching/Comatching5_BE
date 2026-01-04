@@ -5,6 +5,9 @@ spring:
   application:
     name: gateway-service
 
+  config:
+    import: optional:classpath:application-secret.yml
+
   cloud:
     gateway:
       server:
