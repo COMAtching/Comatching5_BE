@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # 1. CORS 설정
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins: "http://localhost:3000"
+                allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+                allowedHeaders: "*"
+                allowCredentials: true
+
+          # 2. 라우팅 규칙
+          routes:
+            - id: auth-service
+              uri: http://localhost:9000
+              predicates:
+                - Path=/auth/**, /login/**, /oauth2/**
+
+            - id: auth-service-swagger
+              uri: http://localhost:9000
+              predicates:
+                - Path=/v3/api-docs/**, /swagger-ui/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

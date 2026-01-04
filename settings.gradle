@@ -2,3 +2,4 @@ rootProject.name = 'backend'
 
 include 'auth-service'
 include 'common-module'
+include 'gateway-service'
