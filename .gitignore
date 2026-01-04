@@ -41,6 +41,7 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+.idea
 docker-compose.yml
 /data
 application-secret.yml

@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: auth-service
+  config:
+    import: optional:classpath:application-secret.yml
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/comatching_auth?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  session:
+    store-type: redis
+    data:
+      redis:
+        namespace: spring:session
+        flush-mode: on_save
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: auth-group
+
+server:
+  port: 9000
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        secure: false
