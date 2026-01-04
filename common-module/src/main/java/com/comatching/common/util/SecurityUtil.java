@@ -8,7 +8,8 @@ import com.comatching.common.exception.code.GeneralErrorCode;
 
 public class SecurityUtil {
 
-	private SecurityUtil() {}
+	private SecurityUtil() {
+	}
 
 	/**
 	 * 현재 로그인한 사용자의 ID(PK)

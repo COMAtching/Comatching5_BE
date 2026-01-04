@@ -8,11 +8,13 @@ public class DateUtil {
 	private static final String DEFAULT_PATTERN = "yyyy-MM-dd HH:mm:ss";
 	private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DEFAULT_PATTERN);
 
-	private DateUtil() {}
+	private DateUtil() {
+	}
 
 	// LocalDateTime -> String
 	public static String toString(LocalDateTime date) {
-		if (date == null) return "";
+		if (date == null)
+			return "";
 		return date.format(formatter);
 	}
 

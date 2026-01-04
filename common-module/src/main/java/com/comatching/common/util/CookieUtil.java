@@ -6,7 +6,8 @@ import org.springframework.http.ResponseCookie;
 
 public class CookieUtil {
 
-	private CookieUtil() {}
+	private CookieUtil() {
+	}
 
 	// Access Token 쿠키
 	public static ResponseCookie createAccessTokenCookie(String accessToken) {
@@ -15,7 +16,7 @@ public class CookieUtil {
 			.httpOnly(true)
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(1).toSeconds())
-			.sameSite("Lax")
+			.sameSite("Strict")
 			.build();
 	}
 
@@ -26,7 +27,7 @@ public class CookieUtil {
 			.httpOnly(true)
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(7).toSeconds())
-			.sameSite("Lax")
+			.sameSite("Strict")
 			.build();
 	}
 

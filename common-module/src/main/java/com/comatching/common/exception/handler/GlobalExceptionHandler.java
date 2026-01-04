@@ -44,7 +44,8 @@ public class GlobalExceptionHandler {
 	 * @Valid 유효성 검사 실패 (400)
 	 */
 	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(MethodArgumentNotValidException e) {
+	public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
+		MethodArgumentNotValidException e) {
 		log.warn("[Validation Exception] {}", e.getMessage());
 
 		BindingResult bindingResult = e.getBindingResult();

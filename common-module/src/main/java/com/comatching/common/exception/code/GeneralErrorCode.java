@@ -1,6 +1,7 @@
 package com.comatching.common.exception.code;
 
 import org.springframework.http.HttpStatus;
+
 import lombok.Getter;
 
 @Getter

@@ -1,7 +1,6 @@
 package com.comatching.common.dto.response;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import com.comatching.common.exception.code.ErrorCode;
 import com.fasterxml.jackson.annotation.JsonInclude;

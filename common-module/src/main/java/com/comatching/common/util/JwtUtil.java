@@ -1,18 +1,20 @@
 package com.comatching.common.util;
 
+import java.security.Key;
+import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import java.security.Key;
-import java.util.Date;
 
 @Slf4j
 @Component
@@ -52,8 +54,10 @@ public class JwtUtil {
 			.setExpiration(expiration)
 			.signWith(key, SignatureAlgorithm.HS256);
 
-		if (email != null) builder.claim("email", email);
-		if (role != null) builder.claim("role", role);
+		if (email != null)
+			builder.claim("email", email);
+		if (role != null)
+			builder.claim("role", role);
 
 		return builder.compact();
 	}

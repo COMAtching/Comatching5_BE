@@ -11,7 +11,8 @@ public class JsonUtil {
 	private static final ObjectMapper objectMapper = new ObjectMapper()
 		.registerModule(new JavaTimeModule());
 
-	private JsonUtil() {}
+	private JsonUtil() {
+	}
 
 	// 객체 -> JSON String
 	public static String toJson(Object object) {
