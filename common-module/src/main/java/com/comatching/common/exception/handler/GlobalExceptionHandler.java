@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -86,7 +87,19 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
-	 * [5] 나머지 모든 예외 (500)
+	 * 필수 쿠키 누락 (400)
+	 */
+	@ExceptionHandler(MissingRequestCookieException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingCookieException(MissingRequestCookieException e) {
+		log.warn("[Missing Cookie Exception] Cookie: {}", e.getCookieName());
+
+		return ResponseEntity
+			.status(GeneralErrorCode.MISSING_REQUEST_PARAMETER.getHttpStatus())
+			.body(ApiResponse.errorResponse(GeneralErrorCode.MISSING_REQUEST_PARAMETER));
+	}
+
+	/**
+	 * 나머지 모든 예외 (500)
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {

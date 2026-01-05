@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.comatching.common.domain.enums.UserRole;
+import com.comatching.common.domain.enums.UserStatus;
+
 import io.jsonwebtoken.Claims;
 
 class JwtUtilTest {
@@ -15,18 +18,20 @@ class JwtUtilTest {
 	Long memberId;
 	String email;
 	String role;
+	String status;
 
 	@BeforeEach
 	void setUp() {
 		memberId = 1L;
 		email = "test@test.com";
 		role = "ROLE_USER";
+		status = "ACTIVE";
 	}
 
 	@Test
 	void createAndParseToken() {
 		//when
-		String token = jwtUtil.createAccessToken(memberId, email, role);
+		String token = jwtUtil.createAccessToken(memberId, email, role, status);
 		Claims claims = jwtUtil.parseToken(token);
 
 		//then
@@ -38,7 +43,7 @@ class JwtUtilTest {
 	@Test
 	void validateToken() {
 		//given
-		String token = jwtUtil.createAccessToken(memberId, email, role);
+		String token = jwtUtil.createAccessToken(memberId, email, role, status);
 
 		//when
 		boolean isValid = jwtUtil.validateToken(token);

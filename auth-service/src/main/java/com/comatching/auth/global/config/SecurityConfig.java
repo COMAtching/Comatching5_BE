@@ -1,0 +1,89 @@
+package com.comatching.auth.global.config;
+
+import java.util.List;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.comatching.auth.global.security.filter.CustomJsonUsernamePasswordAuthenticationFilter;
+import com.comatching.auth.global.security.handler.LoginFailureHandler;
+import com.comatching.auth.global.security.handler.LoginSuccessHandler;
+import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
+import com.comatching.common.util.JwtUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.RequiredArgsConstructor;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+	private final JwtUtil jwtUtil;
+	private final ObjectMapper objectMapper;
+	private final UserDetailsService userDetailsService;
+	private final AuthenticationConfiguration authenticationConfiguration;
+	private final RefreshTokenRepository refreshTokenRepository;
+
+	private static final List<String> AUTH_EXCLUDED_PATHS = List.of(
+		"/swagger-ui/**",
+		"/v3/api-docs/**",
+		"/auth/**"
+	);
+
+	@Bean
+	public AuthenticationManager authenticationManager() throws Exception {
+		return authenticationConfiguration.getAuthenticationManager();
+	}
+
+	@Bean
+	public CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordAuthenticationFilter() throws
+		Exception {
+		CustomJsonUsernamePasswordAuthenticationFilter filter = new CustomJsonUsernamePasswordAuthenticationFilter(
+			objectMapper);
+
+		// 매니저 설정
+		filter.setAuthenticationManager(authenticationManager());
+
+		// 핸들러 설정
+		filter.setAuthenticationSuccessHandler(new LoginSuccessHandler(jwtUtil, objectMapper, refreshTokenRepository));
+		filter.setAuthenticationFailureHandler(new LoginFailureHandler(objectMapper));
+
+		return filter;
+	}
+
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		http
+			.csrf(AbstractHttpConfigurer::disable)
+			.formLogin(AbstractHttpConfigurer::disable)
+			.httpBasic(AbstractHttpConfigurer::disable);
+
+		http
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers("/favicon.ico", "/error", "/default-ui.css").permitAll()
+				.requestMatchers(AUTH_EXCLUDED_PATHS.toArray(String[]::new)).permitAll()
+				.requestMatchers("/auth/**").permitAll()
+				.anyRequest().authenticated()
+			);
+
+		http.addFilterAt(customJsonUsernamePasswordAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+		return http.build();
+	}
+
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+}
