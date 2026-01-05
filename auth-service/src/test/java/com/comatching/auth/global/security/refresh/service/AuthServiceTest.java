@@ -2,11 +2,9 @@ package com.comatching.auth.global.security.refresh.service;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
-import static org.mockito.Mockito.*;
 
 import java.util.Optional;
 
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.comatching.auth.domain.dto.TokenResponse;
+import com.comatching.auth.domain.service.AuthService;
 import com.comatching.auth.global.security.refresh.RefreshToken;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.auth.infra.client.MemberServiceClient;
@@ -25,7 +24,7 @@ import com.comatching.common.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 
 @ExtendWith(MockitoExtension.class)
-class RefreshTokenServiceTest {
+class AuthServiceTest {
 
 	@Mock
 	private JwtUtil jwtUtil;
@@ -37,7 +36,7 @@ class RefreshTokenServiceTest {
 	private MemberServiceClient memberServiceClient;
 
 	@InjectMocks
-	private RefreshTokenService refreshTokenService;
+	private AuthService authService;
 
 	@Test
 	void reissue_Success() {
@@ -61,7 +60,7 @@ class RefreshTokenServiceTest {
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn("new_refresh");
 
 		//when
-		TokenResponse response = refreshTokenService.reissue(oldRefreshToken);
+		TokenResponse response = authService.reissue(oldRefreshToken);
 
 		//then
 		assertThat(response.accessToken()).isEqualTo("new_access");
@@ -87,7 +86,7 @@ class RefreshTokenServiceTest {
 		given(refreshTokenRepository.findById(memberId)).willReturn(Optional.of(redisToken));
 
 		// when & then
-		assertThatThrownBy(() -> refreshTokenService.reissue(stolenToken))
+		assertThatThrownBy(() -> authService.reissue(stolenToken))
 			.isInstanceOf(BusinessException.class)
 			.hasMessageContaining("유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요.");
 
@@ -106,7 +105,7 @@ class RefreshTokenServiceTest {
 		given(refreshTokenRepository.existsById(memberId)).willReturn(true);
 
 		//when
-		refreshTokenService.logout(token);
+		authService.logout(token);
 
 		//then
 		verify(refreshTokenRepository).deleteById(memberId);
@@ -121,7 +120,7 @@ class RefreshTokenServiceTest {
 			.willThrow(new BusinessException(GeneralErrorCode.UNAUTHORIZED, "Invalid Token"));
 
 		// when
-		refreshTokenService.logout(invalidToken);
+		authService.logout(invalidToken);
 
 		// then
 		verify(refreshTokenRepository, never()).deleteById(anyLong());
