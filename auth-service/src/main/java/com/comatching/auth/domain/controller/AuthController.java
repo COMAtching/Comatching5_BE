@@ -1,4 +1,4 @@
-package com.comatching.auth.global.security.refresh.controller;
+package com.comatching.auth.domain.controller;
 
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.auth.domain.dto.TokenResponse;
-import com.comatching.auth.global.security.refresh.service.RefreshTokenService;
+import com.comatching.auth.domain.service.AuthService;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.util.CookieUtil;
 
@@ -18,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-public class RefreshTokenController {
+public class AuthController {
 
-	private final RefreshTokenService refreshTokenService;
+	private final AuthService authService;
 
 	@PostMapping("/reissue")
 	public ResponseEntity<ApiResponse<Void>> reissue(
@@ -28,7 +28,7 @@ public class RefreshTokenController {
 		HttpServletResponse response
 	) {
 
-		TokenResponse tokenResponse = refreshTokenService.reissue(refreshToken);
+		TokenResponse tokenResponse = authService.reissue(refreshToken);
 
 		ResponseCookie accessCookie = CookieUtil.createAccessTokenCookie(tokenResponse.accessToken());
 		ResponseCookie refreshCookie = CookieUtil.createRefreshTokenCookie(tokenResponse.refreshToken());
@@ -44,7 +44,7 @@ public class RefreshTokenController {
 		@CookieValue(name = "refreshToken", required = false) String refreshToken,
 		HttpServletResponse response) {
 
-		refreshTokenService.logout(refreshToken);
+		authService.logout(refreshToken);
 
 		ResponseCookie accessCookie = CookieUtil.createExpiredCookie("accessToken");
 		ResponseCookie refreshCookie = CookieUtil.createExpiredCookie("refreshToken");

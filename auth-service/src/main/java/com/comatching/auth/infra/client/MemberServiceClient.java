@@ -2,9 +2,12 @@ package com.comatching.auth.infra.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.comatching.common.dto.auth.MemberLoginDto;
+import com.comatching.common.dto.auth.SocialLoginRequestDto;
 
 // url: 로컬 테스트용 (배포시 제거)
 @FeignClient(name = "member-service", url = "${member-service.url:}")
@@ -16,4 +19,7 @@ public interface MemberServiceClient {
 
 	@GetMapping("/api/internal/members/login-info")
 	MemberLoginDto getMemberById(@RequestParam("id") Long id);
+
+	@PostMapping("/api/v1/members/social-login")
+	MemberLoginDto socialLogin(@RequestBody SocialLoginRequestDto request);
 }
