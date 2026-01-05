@@ -18,6 +18,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.comatching.auth.global.security.filter.CustomJsonUsernamePasswordAuthenticationFilter;
 import com.comatching.auth.global.security.handler.LoginFailureHandler;
 import com.comatching.auth.global.security.handler.LoginSuccessHandler;
+import com.comatching.auth.global.security.oauth2.handler.CustomOAuth2FailureHandler;
+import com.comatching.auth.global.security.oauth2.handler.CustomOAuth2SuccessHandler;
+import com.comatching.auth.global.security.oauth2.service.CustomOAuth2UserService;
+import com.comatching.auth.global.security.oauth2.service.CustomOidcUserService;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.common.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +38,10 @@ public class SecurityConfig {
 	private final UserDetailsService userDetailsService;
 	private final AuthenticationConfiguration authenticationConfiguration;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final CustomOAuth2UserService customOAuth2UserService;
+	private final CustomOidcUserService customOidcUserService;
+	private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
+	private final CustomOAuth2FailureHandler customOAuth2FailureHandler;
 
 	private static final List<String> AUTH_EXCLUDED_PATHS = List.of(
 		"/swagger-ui/**",
@@ -70,6 +78,18 @@ public class SecurityConfig {
 			.httpBasic(AbstractHttpConfigurer::disable);
 
 		http
+			.addFilterAt(customJsonUsernamePasswordAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+
+		http
+			.oauth2Login(oauth2 -> oauth2
+				.userInfoEndpoint(userInfo -> userInfo
+					.userService(customOAuth2UserService)
+					.oidcUserService(customOidcUserService))
+				.successHandler(customOAuth2SuccessHandler)
+				.failureHandler(customOAuth2FailureHandler)
+			);
+
+		http
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/favicon.ico", "/error", "/default-ui.css").permitAll()
 				.requestMatchers(AUTH_EXCLUDED_PATHS.toArray(String[]::new)).permitAll()
@@ -77,7 +97,6 @@ public class SecurityConfig {
 				.anyRequest().authenticated()
 			);
 
-		http.addFilterAt(customJsonUsernamePasswordAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
