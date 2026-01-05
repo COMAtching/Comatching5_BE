@@ -30,4 +30,7 @@ dependencies {
 	// security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	testImplementation 'org.springframework.security:spring-security-test'
+
+	// aws s3
+	api 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.0.2'
 }
