@@ -6,24 +6,35 @@ plugins {
 
 description = 'auth-service'
 
+ext {
+	set('springCloudVersion', "2025.0.1")
+}
+
 dependencies {
 
 	implementation project(':common-module')
 
-	// 1. Web & Security
+	// Web & Security
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-	// 2. Data (JPA, Redis, MySQL)
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	implementation 'org.springframework.session:spring-session-data-redis'
-	runtimeOnly 'com.mysql:mysql-connector-j'
+	// Service Communication
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
-	// 3. Kafka
+	// Data (Redis)
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Kafka
 	implementation 'org.springframework.kafka:spring-kafka'
 
-	// 4. Test
+	// Test
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
 }

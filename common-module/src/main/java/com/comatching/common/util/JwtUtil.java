@@ -6,6 +6,8 @@ import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.comatching.common.domain.enums.UserRole;
+import com.comatching.common.domain.enums.UserStatus;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 
@@ -34,17 +36,19 @@ public class JwtUtil {
 	}
 
 	// Access Token 생성
-	public String createAccessToken(Long memberId, String email, String role) {
-		return createToken(memberId, email, role, accessTokenValidity);
+	public String createAccessToken(Long memberId, String email, String role, String status) {
+		UserRole userRole = UserRole.valueOf(role);
+		UserStatus userStatus = UserStatus.valueOf(status);
+		return createToken(memberId, email, userRole, userStatus, accessTokenValidity);
 	}
 
 	// Refresh Token 생성
 	public String createRefreshToken(Long memberId) {
-		return createToken(memberId, null, null, refreshTokenValidity);
+		return createToken(memberId, null, null, null, refreshTokenValidity);
 	}
 
 	// 내부 토큰 생성 로직
-	private String createToken(Long memberId, String email, String role, long validity) {
+	private String createToken(Long memberId, String email, UserRole role, UserStatus status, long validity) {
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + validity);
 
@@ -58,6 +62,8 @@ public class JwtUtil {
 			builder.claim("email", email);
 		if (role != null)
 			builder.claim("role", role);
+		if (status != null)
+			builder.claim("status", status);
 
 		return builder.compact();
 	}

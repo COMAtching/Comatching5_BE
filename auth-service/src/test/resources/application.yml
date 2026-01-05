@@ -1,0 +1,20 @@
+jwt:
+  secret: "vms_test_secret_key_random_string_more_than_32_characters"
+  access-token:
+    expiration: 3600000
+  refresh-token:
+    expiration: 604800000
+
+member-service:
+  url: http://localhost:9002
+
+spring:
+  cloud:
+    aws:
+      credentials:
+        access-key: TESTTESTTESTTESTTEST
+        secret-key: TESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: test-bucket
