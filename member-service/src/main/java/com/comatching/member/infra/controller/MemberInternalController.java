@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.member.domain.service.MemberService;
@@ -24,6 +25,11 @@ public class MemberInternalController {
 	@PostMapping("/social")
 	public MemberLoginDto socialLogin(@RequestBody SocialLoginRequestDto request) {
 		return memberService.socialLogin(request);
+	}
+
+	@PostMapping("/signup")
+	public void createMember(@RequestBody MemberCreateRequest request) {
+		memberService.createMember(request);
 	}
 
 	@GetMapping("/{memberId}")

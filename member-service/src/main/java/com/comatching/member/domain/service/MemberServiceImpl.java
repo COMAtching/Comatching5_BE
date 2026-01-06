@@ -5,10 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
+import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.global.exception.MemberErrorCode;
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MemberServiceImpl implements MemberService{
+public class MemberServiceImpl implements MemberService {
 
 	private final MemberRepository memberRepository;
 
@@ -30,6 +30,17 @@ public class MemberServiceImpl implements MemberService{
 			.orElseGet(() -> registerSocialMember(request));
 
 		return toLoginDto(member);
+	}
+
+	@Override
+	@Transactional
+	public void createMember(MemberCreateRequest request) {
+
+		if (memberRepository.existsByEmail(request.email())) {
+			throw new BusinessException(MemberErrorCode.DUPLICATE_EMAIL);
+		}
+
+		registerMember(request);
 	}
 
 	@Override
@@ -52,13 +63,27 @@ public class MemberServiceImpl implements MemberService{
 	private Member registerSocialMember(SocialLoginRequestDto request) {
 		Member newMember = Member.builder()
 			.email(request.email())
+			.password(null)
 			.socialType(request.provider())
 			.socialId(request.providerId())
-			.role(MemberRole.ROLE_USER)
-			.status(MemberStatus.PENDING)
+			.role(MemberRole.ROLE_GUEST)
+			.status(MemberStatus.ACTIVE)
 			.build();
 
 		return memberRepository.save(newMember);
+	}
+
+	private void registerMember(MemberCreateRequest request) {
+		Member member = Member.builder()
+			.email(request.email())
+			.password(request.password())
+			.role(MemberRole.ROLE_GUEST)
+			.status(MemberStatus.ACTIVE)
+			.socialType(null)
+			.socialId(null)
+			.build();
+
+		memberRepository.save(member);
 	}
 
 	private MemberLoginDto toLoginDto(Member member) {

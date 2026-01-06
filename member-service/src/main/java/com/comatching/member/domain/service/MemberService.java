@@ -1,11 +1,14 @@
 package com.comatching.member.domain.service;
 
+import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 
 public interface MemberService {
 
 	MemberLoginDto socialLogin(SocialLoginRequestDto request);
+
+	void createMember(MemberCreateRequest request);
 
 	MemberLoginDto getMemberById(Long memberId);
 

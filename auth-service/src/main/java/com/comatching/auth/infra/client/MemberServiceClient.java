@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
+import com.comatching.common.dto.auth.MemberCreateRequest;
+import com.comatching.common.dto.member.ProfileCreateRequest;
+import com.comatching.common.dto.member.ProfileResponse;
 
 @FeignClient(name = "member-service", path = "/api/internal/members", url = "${member-service.url}")
 public interface MemberServiceClient {
@@ -21,4 +24,10 @@ public interface MemberServiceClient {
 
 	@PostMapping("/social")
 	MemberLoginDto socialLogin(@RequestBody SocialLoginRequestDto request);
+
+	@PostMapping("/signup")
+	void createMember(@RequestBody MemberCreateRequest request);
+
+	@PostMapping("/profile")
+	ProfileResponse createProfile(@RequestBody ProfileCreateRequest request);
 }

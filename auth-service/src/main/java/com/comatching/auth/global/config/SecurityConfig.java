@@ -46,7 +46,7 @@ public class SecurityConfig {
 	private static final List<String> AUTH_EXCLUDED_PATHS = List.of(
 		"/auth-doc/**",
 		"/v3/api-docs/**",
-		"/auth/**"
+		"/api/auth/**"
 	);
 
 	@Bean

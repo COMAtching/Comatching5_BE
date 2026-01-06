@@ -1,4 +1,4 @@
-package com.comatching.auth.domain.service;
+package com.comatching.auth.domain.service.auth;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class AuthService {
+public class AuthServiceImpl implements AuthService{
 
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final MemberServiceClient memberServiceClient;
 
+	@Override
 	public TokenResponse reissue(String refreshToken) {
 
 		// JWT 유효성 검사
@@ -59,6 +60,7 @@ public class AuthService {
 		return new TokenResponse(newAccessToken, newRefreshToken);
 	}
 
+	@Override
 	public void logout(String refreshToken) {
 		if (refreshToken == null) {
 			return;
