@@ -31,7 +31,6 @@ public class SocialLoginService {
 		// Member Service로 보낼 DTO 생성
 		SocialLoginRequestDto loginRequest = new SocialLoginRequestDto(
 			userInfo.getEmail(),
-			userInfo.getNickname(),
 			SocialType.from(registrationId),
 			userInfo.getProviderId()
 		);

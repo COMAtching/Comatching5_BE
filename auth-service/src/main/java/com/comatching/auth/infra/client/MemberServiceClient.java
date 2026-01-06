@@ -2,6 +2,7 @@ package com.comatching.auth.infra.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -9,17 +10,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 
-// url: 로컬 테스트용 (배포시 제거)
-@FeignClient(name = "member-service", url = "${member-service.url:}")
+@FeignClient(name = "member-service", path = "/api/internal/members", url = "${member-service.url}")
 public interface MemberServiceClient {
 
-	// Member 서비스의 엔드포인트와 일치시켜야 함
-	@GetMapping("/api/internal/members/login-info")
+	@GetMapping
 	MemberLoginDto getMemberByEmail(@RequestParam("email") String email);
 
-	@GetMapping("/api/internal/members/login-info")
-	MemberLoginDto getMemberById(@RequestParam("id") Long id);
+	@GetMapping("/{memberId}")
+	MemberLoginDto getMemberById(@PathVariable("memberId") Long id);
 
-	@PostMapping("/api/v1/members/social-login")
+	@PostMapping("/social")
 	MemberLoginDto socialLogin(@RequestBody SocialLoginRequestDto request);
 }

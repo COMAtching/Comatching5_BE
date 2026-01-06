@@ -1,5 +1,5 @@
 package com.comatching.common.domain.enums;
 
-public enum UserStatus {
+public enum MemberStatus {
 	ACTIVE, BANNED, PENDING, DELETED
 }
