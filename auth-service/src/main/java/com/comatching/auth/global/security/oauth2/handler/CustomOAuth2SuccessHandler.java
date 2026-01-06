@@ -31,16 +31,19 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 	private String clientUrl;
 
 	@Override
-	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
+	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 		Authentication authentication) throws IOException, ServletException {
 
 		// UserPrincipal(CustomOAuth2User) 추출
 		CustomOAuth2User userPrincipal = (CustomOAuth2User)authentication.getPrincipal();
+
 		Long memberId = userPrincipal.getId();
-		String role = userPrincipal.getAuthorities().iterator().next().getAuthority();
+		String email = userPrincipal.getEmail();
+		String role = userPrincipal.getRole();
+		String status = userPrincipal.getStatus();
 
 		// 토큰 발급
-		String accessToken = jwtUtil.createAccessToken(memberId, userPrincipal.getEmail(), role, userPrincipal.getStatus());
+		String accessToken = jwtUtil.createAccessToken(memberId, email, role, status);
 		String refreshToken = jwtUtil.createRefreshToken(memberId);
 
 		// Refresh Token Redis 저장

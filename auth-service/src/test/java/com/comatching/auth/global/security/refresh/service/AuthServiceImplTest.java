@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.comatching.auth.domain.dto.TokenResponse;
-import com.comatching.auth.domain.service.AuthService;
+import com.comatching.auth.domain.service.auth.AuthServiceImpl;
 import com.comatching.auth.global.security.refresh.RefreshToken;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.auth.infra.client.MemberServiceClient;
@@ -24,7 +24,7 @@ import com.comatching.common.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+class AuthServiceImplTest {
 
 	@Mock
 	private JwtUtil jwtUtil;
@@ -36,7 +36,7 @@ class AuthServiceTest {
 	private MemberServiceClient memberServiceClient;
 
 	@InjectMocks
-	private AuthService authService;
+	private AuthServiceImpl authServiceImpl;
 
 	@Test
 	void reissue_Success() {
@@ -60,7 +60,7 @@ class AuthServiceTest {
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn("new_refresh");
 
 		//when
-		TokenResponse response = authService.reissue(oldRefreshToken);
+		TokenResponse response = authServiceImpl.reissue(oldRefreshToken);
 
 		//then
 		assertThat(response.accessToken()).isEqualTo("new_access");
@@ -86,7 +86,7 @@ class AuthServiceTest {
 		given(refreshTokenRepository.findById(memberId)).willReturn(Optional.of(redisToken));
 
 		// when & then
-		assertThatThrownBy(() -> authService.reissue(stolenToken))
+		assertThatThrownBy(() -> authServiceImpl.reissue(stolenToken))
 			.isInstanceOf(BusinessException.class)
 			.hasMessageContaining("유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요.");
 
@@ -105,7 +105,7 @@ class AuthServiceTest {
 		given(refreshTokenRepository.existsById(memberId)).willReturn(true);
 
 		//when
-		authService.logout(token);
+		authServiceImpl.logout(token);
 
 		//then
 		verify(refreshTokenRepository).deleteById(memberId);
@@ -120,7 +120,7 @@ class AuthServiceTest {
 			.willThrow(new BusinessException(GeneralErrorCode.UNAUTHORIZED, "Invalid Token"));
 
 		// when
-		authService.logout(invalidToken);
+		authServiceImpl.logout(invalidToken);
 
 		// then
 		verify(refreshTokenRepository, never()).deleteById(anyLong());

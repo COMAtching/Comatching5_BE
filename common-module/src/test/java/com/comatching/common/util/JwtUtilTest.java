@@ -5,9 +5,6 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.comatching.common.domain.enums.UserRole;
-import com.comatching.common.domain.enums.UserStatus;
-
 import io.jsonwebtoken.Claims;
 
 class JwtUtilTest {

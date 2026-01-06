@@ -26,7 +26,7 @@ spring:
             - id: auth-service
               uri: http://localhost:9000
               predicates:
-                - Path=/auth/**, /login/**, /oauth2/**
+                - Path=/api/auth/**, /api/login/**, /api/oauth2/**
 
             - id: auth-service-swagger
               uri: http://localhost:9000
@@ -38,7 +38,7 @@ spring:
             - id: matching-service
               uri: http://localhost:9001
               predicates:
-                - Path=/matching/**
+                - Path=/api/matching/**
 
             - id: matching-service-swagger
               uri: http://localhost:9001
@@ -50,7 +50,7 @@ spring:
             - id: member-service
               uri: http://localhost:9002
               predicates:
-                - Path=/member/**, /users/**
+                - Path=/api/member/**, /api/users/**
 
             - id: member-service-swagger
               uri: http://localhost:9002
@@ -62,7 +62,7 @@ spring:
             - id: chat-service
               uri: http://localhost:9003
               predicates:
-                - Path=/chat/**, /ws/**
+                - Path=/api/chat/**, /ws/**
 
             - id: chat-service-swagger
               uri: http://localhost:9003
@@ -74,7 +74,7 @@ spring:
             - id: payment-service
               uri: http://localhost:9004
               predicates:
-                - Path=/payment/**
+                - Path=/api/payment/**
 
             - id: payment-service-swagger
               uri: http://localhost:9004
