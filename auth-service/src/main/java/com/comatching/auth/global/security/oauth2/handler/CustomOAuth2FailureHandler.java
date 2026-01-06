@@ -20,7 +20,6 @@ public class CustomOAuth2FailureHandler extends SimpleUrlAuthenticationFailureHa
 	@Override
 	public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
 		AuthenticationException exception) throws IOException, ServletException {
-		super.onAuthenticationFailure(request, response, exception);
 
 		getRedirectStrategy().sendRedirect(request, response,clientUrl + "/oauth2/callback/failure");
 	}

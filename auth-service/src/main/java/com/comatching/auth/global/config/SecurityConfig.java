@@ -44,7 +44,7 @@ public class SecurityConfig {
 	private final CustomOAuth2FailureHandler customOAuth2FailureHandler;
 
 	private static final List<String> AUTH_EXCLUDED_PATHS = List.of(
-		"/swagger-ui/**",
+		"/auth-doc/**",
 		"/v3/api-docs/**",
 		"/auth/**"
 	);
