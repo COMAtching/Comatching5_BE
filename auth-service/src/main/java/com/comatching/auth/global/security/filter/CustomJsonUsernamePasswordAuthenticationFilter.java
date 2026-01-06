@@ -22,7 +22,7 @@ public class CustomJsonUsernamePasswordAuthenticationFilter extends AbstractAuth
 	private final ObjectMapper objectMapper;
 
 	public CustomJsonUsernamePasswordAuthenticationFilter(ObjectMapper objectMapper) {
-		super("/auth/login");
+		super("/api/auth/login");
 		this.objectMapper = objectMapper;
 	}
 

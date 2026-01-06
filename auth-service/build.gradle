@@ -28,6 +28,11 @@ dependencies {
 	// Kafka
 	implementation 'org.springframework.kafka:spring-kafka'
 
+	// mail
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
 	// Test
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
