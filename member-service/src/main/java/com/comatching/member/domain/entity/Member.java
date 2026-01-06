@@ -4,14 +4,17 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.SocialType;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -45,10 +48,13 @@ public class Member {
 	private String socialId;
 
 	@Enumerated(EnumType.STRING)
-	private MemberRole role = MemberRole.ROLE_USER;
+	private MemberRole role;
 
 	@Enumerated(EnumType.STRING)
-	private MemberStatus status = MemberStatus.PENDING;
+	private MemberStatus status = MemberStatus.ACTIVE;
+
+	@OneToOne(mappedBy = "member", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+	private Profile profile;
 
 	@Builder
 	public Member(String email, String password, SocialType socialType,
@@ -59,5 +65,9 @@ public class Member {
 		this.socialId = socialId;
 		this.role = role;
 		this.status = status;
+	}
+
+	public void upgradeRoleToUser() {
+		this.role = MemberRole.ROLE_USER;
 	}
 }

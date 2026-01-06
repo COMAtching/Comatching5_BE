@@ -13,11 +13,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import com.comatching.auth.domain.controller.AuthController;
+import com.comatching.auth.infra.controller.AuthController;
 import com.comatching.auth.domain.dto.TokenResponse;
 import com.comatching.auth.global.config.SecurityConfig;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
-import com.comatching.auth.domain.service.AuthService;
+import com.comatching.auth.domain.service.auth.AuthServiceImpl;
 import com.comatching.auth.global.security.service.CustomUserDetailsService;
 import com.comatching.auth.infra.client.MemberServiceClient;
 import com.comatching.common.service.S3Service;
@@ -33,7 +33,7 @@ class AuthReissueFlowTest {
 	private MockMvc mockMvc;
 
 	@MockitoBean
-	private AuthService authService;
+	private AuthServiceImpl authServiceImpl;
 
 	@MockitoBean
 	private CustomUserDetailsService customUserDetailsService;
@@ -53,7 +53,7 @@ class AuthReissueFlowTest {
 		String oldRefreshToken = "old_refresh_token";
 		TokenResponse mockResponse = new TokenResponse("new_access", "new_refresh");
 
-		given(authService.reissue(oldRefreshToken)).willReturn(mockResponse);
+		given(authServiceImpl.reissue(oldRefreshToken)).willReturn(mockResponse);
 
 		//when
 		ResultActions result = mockMvc.perform(post("/auth/reissue")
