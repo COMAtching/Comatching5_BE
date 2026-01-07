@@ -24,6 +24,7 @@ import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.entity.Profile;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
+import com.comatching.member.domain.service.profile.ProfileServiceImpl;
 import com.comatching.member.global.exception.MemberErrorCode;
 
 @ExtendWith(MockitoExtension.class)
