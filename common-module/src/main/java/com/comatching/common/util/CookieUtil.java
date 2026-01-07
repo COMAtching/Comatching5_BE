@@ -23,7 +23,7 @@ public class CookieUtil {
 	// Refresh Token 쿠키
 	public static ResponseCookie createRefreshTokenCookie(String refreshToken) {
 		return ResponseCookie.from("refreshToken", refreshToken)
-			.path("/auth/reissue")
+			.path("/api/auth")
 			.httpOnly(true)
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(7).toSeconds())
@@ -34,7 +34,7 @@ public class CookieUtil {
 	// 로그아웃 시 쿠키 삭제
 	public static ResponseCookie createExpiredCookie(String cookieName) {
 		return ResponseCookie.from(cookieName, "")
-			.path("/")
+			.path(cookieName.equals("accessToken") ? "/" :"/api/auth")
 			.httpOnly(true)
 			.maxAge(0) // 즉시 만료
 			.build();

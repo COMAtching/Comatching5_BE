@@ -23,10 +23,15 @@ spring:
 
           # 2. 라우팅 규칙
           routes:
-            - id: auth-service
+            - id: auth-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/**
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**
+
+            - id: auth-service-protected
+              uri: http://localhost:9000
+              predicates:
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue
               filters:
                 - AuthorizationHeaderFilter
 
