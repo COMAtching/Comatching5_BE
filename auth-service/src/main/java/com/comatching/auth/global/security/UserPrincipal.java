@@ -8,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.auth.MemberLoginDto;
 
 import lombok.RequiredArgsConstructor;
@@ -19,12 +20,14 @@ public class UserPrincipal implements UserDetails {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		if ("ACTIVE".equals(memberDto.status())) {
+
+		MemberStatus status = MemberStatus.valueOf(memberDto.status());
+
+		if (status == MemberStatus.ACTIVE || status == MemberStatus.PENDING) {
 			return Collections.singletonList(new SimpleGrantedAuthority(memberDto.role()));
-		} else if ("BANNED".equals(memberDto.status())) {
-			return List.of(new SimpleGrantedAuthority("ROLE_BANNED"));
 		}
-		return List.of();
+
+		return List.of(new SimpleGrantedAuthority("ROLE_NO_AUTH"));
 	}
 
 	@Override
@@ -50,22 +53,24 @@ public class UserPrincipal implements UserDetails {
 	}
 
 	@Override
-	public boolean isAccountNonExpired() {
-		return UserDetails.super.isAccountNonExpired();
-	}
-
-	@Override
 	public boolean isAccountNonLocked() {
-		return UserDetails.super.isAccountNonLocked();
-	}
-
-	@Override
-	public boolean isCredentialsNonExpired() {
-		return UserDetails.super.isCredentialsNonExpired();
+		MemberStatus status = MemberStatus.valueOf(memberDto.status());
+		return status != MemberStatus.SUSPENDED && status != MemberStatus.BANNED;
 	}
 
 	@Override
 	public boolean isEnabled() {
-		return UserDetails.super.isEnabled();
+		MemberStatus status = MemberStatus.valueOf(memberDto.status());
+		return status != MemberStatus.WITHDRAWN && status != MemberStatus.DORMANT;
+	}
+
+	@Override
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+
+	@Override
+	public boolean isCredentialsNonExpired() {
+		return true;
 	}
 }

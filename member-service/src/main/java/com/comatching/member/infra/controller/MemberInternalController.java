@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
-import com.comatching.member.domain.service.MemberService;
+import com.comatching.member.domain.service.member.internal.InternalMemberService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,25 +20,25 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MemberInternalController {
 
-	private final MemberService memberService;
+	private final InternalMemberService internalMemberService;
 
 	@PostMapping("/social")
 	public MemberLoginDto socialLogin(@RequestBody SocialLoginRequestDto request) {
-		return memberService.socialLogin(request);
+		return internalMemberService.socialLogin(request);
 	}
 
 	@PostMapping("/signup")
 	public void createMember(@RequestBody MemberCreateRequest request) {
-		memberService.createMember(request);
+		internalMemberService.createMember(request);
 	}
 
 	@GetMapping("/{memberId}")
 	public MemberLoginDto getMemberById(@PathVariable Long memberId) {
-		return memberService.getMemberById(memberId);
+		return internalMemberService.getMemberById(memberId);
 	}
 
 	@GetMapping
 	public MemberLoginDto getMemberByEmail(@RequestParam String email) {
-		return memberService.getMemberByEmail(email);
+		return internalMemberService.getMemberByEmail(email);
 	}
 }
