@@ -5,7 +5,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.member.ProfileCreateRequest;
@@ -43,8 +46,11 @@ class ProfileServiceImplTest {
 	void createProfile_success() {
 		// given
 		Long memberId = 1L;
+		Set<Hobby> hobbies = new HashSet<>();
+		hobbies.add(Hobby.GAME);
 		ProfileCreateRequest request = new ProfileCreateRequest(
-			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null
+			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6),
+			"mbti", "intro", "imgUrl", null, null, hobbies , null
 		);
 
 		Member member = Member.builder()
@@ -78,8 +84,11 @@ class ProfileServiceImplTest {
 	void createProfile_fail_memberNotFound() {
 		// given
 		Long memberId = 999L;
+		Set<Hobby> hobbies = new HashSet<>();
+		hobbies.add(Hobby.GAME);
 		ProfileCreateRequest request = new ProfileCreateRequest(
-			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null
+			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6),
+			"mbti", "intro", "imgUrl", null, null, hobbies , null
 		);
 
 		given(memberRepository.findById(memberId)).willReturn(Optional.empty());
@@ -97,8 +106,11 @@ class ProfileServiceImplTest {
 	void createProfile_fail_profileAlreadyExists() {
 		// given
 		Long memberId = 1L;
+		Set<Hobby> hobbies = new HashSet<>();
+		hobbies.add(Hobby.GAME);
 		ProfileCreateRequest request = new ProfileCreateRequest(
-			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null
+			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6),
+			"mbti", "intro", "imgUrl", null, null, hobbies , null
 		);
 
 		Member member = Member.builder().build();
