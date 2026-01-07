@@ -7,6 +7,7 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.global.exception.MemberErrorCode;
+import com.comatching.member.infra.kafka.MemberEventProducer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberWithdrawServiceImpl implements MemberWithdrawService {
 
 	private final MemberRepository memberRepository;
+	private final MemberEventProducer memberEventProducer;
 
 	@Override
 	public void withdrawMember(Long memberId) {
@@ -23,6 +25,7 @@ public class MemberWithdrawServiceImpl implements MemberWithdrawService {
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new BusinessException(MemberErrorCode.USER_NOT_EXIST));
 
+		memberEventProducer.sendWithdrawEvent(memberId, member.getEmail());
 		member.withdraw();
 
 	}
