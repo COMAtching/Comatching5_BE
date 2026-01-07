@@ -21,6 +21,7 @@ import com.comatching.auth.infra.client.MemberServiceClient;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.auth.SignupRequest;
+import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
@@ -101,7 +102,9 @@ class SignupServiceImplTest {
 			null, null
 		);
 
-		given(memberServiceClient.createProfile(request)).willReturn(mockProfileResponse);
+		MemberInfo memberInfo = new MemberInfo(memberId, "test@test.com", "ROLE_GUEST");
+
+		given(memberServiceClient.createProfile(memberId, request)).willReturn(mockProfileResponse);
 
 		String accessToken = "mock-access-token";
 		String refreshToken = "mock-refresh-token";
@@ -109,7 +112,7 @@ class SignupServiceImplTest {
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn(refreshToken);
 
 		// when
-		ProfileResponse result = signupService.completeSignup(request, response);
+		ProfileResponse result = signupService.completeSignup(memberInfo, request, response);
 
 		// then
 		assertThat(result.memberId()).isEqualTo(memberId);

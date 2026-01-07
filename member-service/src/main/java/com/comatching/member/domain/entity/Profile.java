@@ -40,6 +40,7 @@ public class Profile {
 
 	private String profileImageUrl;
 
+	@Enumerated(EnumType.STRING)
 	private SocialAccountType socialAccountType;
 
 	private String socialAccountId;

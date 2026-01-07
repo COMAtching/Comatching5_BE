@@ -15,6 +15,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,7 +31,10 @@ public class JwtUtil {
 		@Value("${jwt.secret}") String secret,
 		@Value("${jwt.access-token.expiration}") long accessTokenValidity,
 		@Value("${jwt.refresh-token.expiration}") long refreshTokenValidity) {
-		this.key = Keys.hmacShaKeyFor(secret.getBytes());
+
+		byte[] keyBytes = Decoders.BASE64.decode(secret);
+		this.key = Keys.hmacShaKeyFor(keyBytes);
+
 		this.accessTokenValidity = accessTokenValidity;
 		this.refreshTokenValidity = refreshTokenValidity;
 	}
