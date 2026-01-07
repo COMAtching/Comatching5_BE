@@ -17,9 +17,7 @@ import com.comatching.common.exception.BusinessException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
@@ -40,7 +38,6 @@ public class EmailServiceImpl implements EmailService {
 	public void sendAuthCode(String email) {
 
 		String authCode = createCode();
-		log.info("create authcode={}", authCode);
 
 		redisTemplate.opsForValue().set(
 			AUTH_CODE_PREFIX + email,
@@ -62,8 +59,6 @@ public class EmailServiceImpl implements EmailService {
 
 		String key = AUTH_CODE_PREFIX + email;
 		String storedCode = redisTemplate.opsForValue().get(AUTH_CODE_PREFIX + email);
-
-		log.info("storedCode={}", storedCode);
 
 		if (storedCode == null || !storedCode.equals(code)) {
 			throw new BusinessException(AuthErrorCode.INVALID_AUTH_CODE);

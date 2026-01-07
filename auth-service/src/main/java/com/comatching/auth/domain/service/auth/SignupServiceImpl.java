@@ -14,6 +14,7 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.SignupRequest;
+import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
@@ -54,10 +55,10 @@ public class SignupServiceImpl implements SignupService {
 
 	@Override
 	@Transactional
-	public ProfileResponse completeSignup(ProfileCreateRequest request, HttpServletResponse response) {
+	public ProfileResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request, HttpServletResponse response) {
 
 		// Member Service에 프로필 생성 요청
-		ProfileResponse profileResponse = memberServiceClient.createProfile(request);
+		ProfileResponse profileResponse = memberServiceClient.createProfile(memberInfo.memberId(), request);
 
 		Long memberId = profileResponse.memberId();
 		String email = profileResponse.email();

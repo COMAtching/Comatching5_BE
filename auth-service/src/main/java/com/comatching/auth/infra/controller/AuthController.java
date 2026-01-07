@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.auth.domain.dto.TokenResponse;
 import com.comatching.auth.domain.service.auth.AuthService;
 import com.comatching.auth.domain.service.auth.SignupService;
+import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.dto.auth.SignupRequest;
+import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.response.ApiResponse;
@@ -36,10 +38,11 @@ public class AuthController {
 
 	@PostMapping("/signup/profile")
 	public ResponseEntity<ProfileResponse> completeSignup(
+		@CurrentMember MemberInfo memberInfo,
 		@RequestBody ProfileCreateRequest request,
 		HttpServletResponse response
 	) {
-		ProfileResponse result = signupService.completeSignup(request, response);
+		ProfileResponse result = signupService.completeSignup(memberInfo, request, response);
 		return ResponseEntity.ok(result);
 	}
 
