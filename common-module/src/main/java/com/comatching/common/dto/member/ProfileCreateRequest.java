@@ -17,7 +17,7 @@ public record ProfileCreateRequest(
 	LocalDate birthDate,
 	String mbti,
 	String intro,
-	String profileImageUrl,
+	String profileImageKey,
 	SocialAccountType socialType,
 	String socialAccountId,
 	Set<Hobby> hobbies,

@@ -10,6 +10,7 @@ import com.comatching.auth.global.exception.AuthErrorCode;
 import com.comatching.auth.global.security.refresh.RefreshToken;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.auth.infra.client.MemberServiceClient;
+import com.comatching.auth.infra.kafka.MemberEventProducer;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.auth.MemberCreateRequest;
@@ -23,7 +24,9 @@ import com.comatching.common.util.JwtUtil;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SignupServiceImpl implements SignupService {
@@ -33,6 +36,7 @@ public class SignupServiceImpl implements SignupService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final MemberEventProducer memberEventProducer;
 
 	@Override
 	public void signup(SignupRequest request) {
@@ -78,6 +82,8 @@ public class SignupServiceImpl implements SignupService {
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
+
+		memberEventProducer.sendSignupEvent(profileResponse);
 
 		return profileResponse;
 	}

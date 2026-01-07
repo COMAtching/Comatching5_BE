@@ -82,7 +82,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.birthDate(request.birthDate())
 			.mbti(request.mbti())
 			.intro(request.intro())
-			.profileImageUrl(request.profileImageUrl())
+			.profileImageUrl(request.profileImageKey())
 			.socialAccountType(request.socialType())
 			.socialAccountId(request.socialAccountId())
 			.hobbies(request.hobbies())
