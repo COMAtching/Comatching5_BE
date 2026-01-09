@@ -17,6 +17,7 @@ public enum AuthErrorCode implements ErrorCode {
 	ACCOUNT_EXPIRED("AUTH-006", HttpStatus.FORBIDDEN, "계정 유효기간이 만료되었습니다."),
 	CREDENTIALS_EXPIRED("AUTH-007", HttpStatus.FORBIDDEN, "비밀번호 유효기간이 만료되었습니다."),
 	LOGIN_FAILED("AUTH-008", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 일치하지 않습니다."),
+	PASSWORD_NOT_MATCH("AUTH-009", HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
 	;
 
 	private final String code;

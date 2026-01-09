@@ -31,7 +31,7 @@ spring:
             - id: auth-service-protected
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**
               filters:
                 - AuthorizationHeaderFilter
 
