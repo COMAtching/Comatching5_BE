@@ -3,6 +3,7 @@ package com.comatching.auth.infra.controller;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -108,6 +109,23 @@ public class AuthController {
 		@RequestBody @Valid ChangePasswordRequest request
 	) {
 		authService.changePassword(memberInfo.memberId(), request);
+		return ResponseEntity.ok(ApiResponse.ok());
+	}
+
+	@RequireRole(MemberRole.ROLE_USER)
+	@DeleteMapping("/withdraw")
+	public ResponseEntity<ApiResponse<Void>> withdraw(
+		@CurrentMember MemberInfo memberInfo,
+		HttpServletResponse response
+	) {
+		authService.withdraw(memberInfo.memberId());
+
+		ResponseCookie accessCookie = CookieUtil.createExpiredCookie("accessToken");
+		ResponseCookie refreshCookie = CookieUtil.createExpiredCookie("refreshToken");
+
+		response.addHeader("Set-Cookie", accessCookie.toString());
+		response.addHeader("Set-Cookie", refreshCookie.toString());
+
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

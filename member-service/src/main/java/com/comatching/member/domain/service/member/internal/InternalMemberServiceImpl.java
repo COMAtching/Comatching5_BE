@@ -102,6 +102,8 @@ public class InternalMemberServiceImpl implements InternalMemberService {
 			.password(member.getPassword())
 			.role(member.getRole().name())
 			.status(member.getStatus().name())
+			.socialType(member.getSocialType())
+			.socialId(member.getSocialId())
 			.build();
 	}
 }

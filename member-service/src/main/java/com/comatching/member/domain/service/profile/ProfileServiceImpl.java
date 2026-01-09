@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.dto.event.MemberUpdateEvent;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -16,6 +17,7 @@ import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
 import com.comatching.member.global.exception.MemberErrorCode;
+import com.comatching.member.infra.kafka.MemberEventProducer;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +28,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	private final MemberRepository memberRepository;
 	private final ProfileRepository profileRepository;
+	private final MemberEventProducer memberEventProducer;
 
 	@Override
 	public ProfileResponse createProfile(Long memberId, ProfileCreateRequest request) {
@@ -40,6 +43,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		ProfileResponse profileResponse = saveProfile(request, member);
 
 		member.upgradeRoleToUser();
+
+		memberEventProducer.sendSignupEvent(profileResponse);
 
 		return profileResponse;
 	}
@@ -70,6 +75,17 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.hobbies(),
 			getProfileIntros(request.intros())
 		);
+
+		Member member = profile.getMember();
+
+		MemberUpdateEvent event = MemberUpdateEvent.builder()
+			.memberId(member.getId())
+			.nickname(profile.getNickname())
+			.profileImageUrl(profile.getProfileImageUrl())
+			.status(member.getStatus())
+			.build();
+
+		memberEventProducer.sendUpdateEvent(event);
 
 		return toProfileResponse(profile);
 	}
