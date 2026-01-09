@@ -4,6 +4,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import com.comatching.common.dto.event.MemberAuthEvent;
+import com.comatching.common.dto.event.MemberWithdrawnEvent;
 import com.comatching.notification.domain.service.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -18,20 +19,35 @@ public class NotificationConsumer {
 	private final EmailService emailService;
 	private final ObjectMapper objectMapper;
 
-	@KafkaListener(topics = "member-auth", groupId = "notification-group")
-	public void consumeMemberAuthEvent(String message) {
+	/**
+	 * 회원가입 이벤트 구독 (member-signup)
+	 */
+	@KafkaListener(topics = "member-signup", groupId = "notification-signup-group")
+	public void consumeSignup(String message) {
 		try {
 			MemberAuthEvent event = objectMapper.readValue(message, MemberAuthEvent.class);
-			log.info("Kafka Event Received: type={}, memberId={}", event.type(), event.memberId());
+			log.info("[Notification] Signup Event Received: memberId={}", event.memberId());
 
-			switch (event.type()) {
-				case SIGNUP -> emailService.sendWelcomeEmail(event.email(), event.nickname());
-				case WITHDRAWAL -> emailService.sendWithdrawalEmail(event.email());
-				default -> log.warn("Unsupported event type: {}", event.type());
-			}
+			emailService.sendWelcomeEmail(event.email(), event.nickname());
 
 		} catch (Exception e) {
-			log.error("Error processing message: {}", message, e);
+			log.error("Failed to process signup event: {}", message, e);
+		}
+	}
+
+	/**
+	 * 2. 회원탈퇴 이벤트 구독 (member-withdraw)
+	 */
+	@KafkaListener(topics = "member-withdraw", groupId = "notification-withdraw-group")
+	public void consumeWithdrawal(String message) {
+		try {
+			MemberWithdrawnEvent event = objectMapper.readValue(message, MemberWithdrawnEvent.class);
+			log.info("[Notification] Withdrawal Event Received: memberId={}", event.memberId());
+
+			emailService.sendWithdrawalEmail(event.email());
+
+		} catch (Exception e) {
+			log.error("Failed to process withdrawal event: {}", message, e);
 		}
 	}
 }

@@ -13,4 +13,6 @@ public interface AuthService {
 	void resetPassword(ResetPasswordRequest request);
 
 	void changePassword(Long memberId, ChangePasswordRequest request);
+
+	void withdraw(Long memberId);
 }

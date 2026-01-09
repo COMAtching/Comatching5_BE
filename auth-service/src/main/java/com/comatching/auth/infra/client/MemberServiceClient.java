@@ -1,6 +1,7 @@
 package com.comatching.auth.infra.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,4 +42,7 @@ public interface MemberServiceClient {
 
 	@PatchMapping("/password")
 	void updatePassword(@RequestBody MemberPasswordUpdateDto request);
+
+	@DeleteMapping("/{memberId}")
+	void withdrawMember(@PathVariable Long memberId);
 }

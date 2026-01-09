@@ -1,5 +1,7 @@
 package com.comatching.auth.domain.service.auth;
 
+import java.net.URI;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,9 +11,12 @@ import com.comatching.auth.domain.dto.ResetPasswordRequest;
 import com.comatching.auth.domain.dto.TokenResponse;
 import com.comatching.auth.domain.service.mail.EmailService;
 import com.comatching.auth.global.exception.AuthErrorCode;
+import com.comatching.auth.global.security.oauth2.provider.kakao.config.KakaoProperties;
+import com.comatching.auth.global.security.oauth2.provider.kakao.unlink.KakaoAuthClient;
 import com.comatching.auth.global.security.refresh.RefreshToken;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.auth.infra.client.MemberServiceClient;
+import com.comatching.common.domain.enums.SocialType;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.member.MemberPasswordUpdateDto;
 import com.comatching.common.exception.BusinessException;
@@ -33,6 +38,8 @@ public class AuthServiceImpl implements AuthService{
 	private final MemberServiceClient memberServiceClient;
 	private final EmailService emailService;
 	private final PasswordEncoder passwordEncoder;
+	private final KakaoAuthClient kakaoAuthClient;
+	private final KakaoProperties kakaoProperties;
 
 	@Override
 	public TokenResponse reissue(String refreshToken) {
@@ -115,6 +122,28 @@ public class AuthServiceImpl implements AuthService{
 
 		memberServiceClient.updatePassword(
 			new MemberPasswordUpdateDto(memberDto.email(), newEncryptedPassword)
+		);
+	}
+
+	@Override
+	public void withdraw(Long memberId) {
+		MemberLoginDto member = memberServiceClient.getMemberById(memberId);
+
+		if (member.socialType() == SocialType.KAKAO) {
+			unlinkKakao(member.socialId());
+		}
+
+		memberServiceClient.withdrawMember(memberId);
+
+		refreshTokenRepository.deleteById(memberId);
+	}
+
+	private void unlinkKakao(String socialId) {
+		kakaoAuthClient.unlink(
+			URI.create(kakaoProperties.unlinkUrl()),
+			"KakaoAK " + kakaoProperties.adminKey(),
+			kakaoProperties.unlinkTargetIdType(),
+			socialId
 		);
 	}
 }
