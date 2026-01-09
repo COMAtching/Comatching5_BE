@@ -1,10 +1,10 @@
-package com.comatching.member.domain.service;
+package com.comatching.member.domain.service.member.internal;
 
 import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 
-public interface MemberService {
+public interface InternalMemberService {
 
 	MemberLoginDto socialLogin(SocialLoginRequestDto request);
 

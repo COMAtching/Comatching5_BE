@@ -1,5 +1,8 @@
 package com.comatching.member.domain.entity;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.SocialType;
@@ -20,6 +23,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -53,6 +57,9 @@ public class Member {
 	@Enumerated(EnumType.STRING)
 	private MemberStatus status = MemberStatus.ACTIVE;
 
+	private LocalDateTime deletedAt;
+
+	@Setter
 	@OneToOne(mappedBy = "member", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
 	private Profile profile;
 
@@ -69,5 +76,23 @@ public class Member {
 
 	public void upgradeRoleToUser() {
 		this.role = MemberRole.ROLE_USER;
+	}
+
+	public void withdraw() {
+		this.status = MemberStatus.WITHDRAWN;
+		this.deletedAt = LocalDateTime.now();
+
+		// 개인정보 마스킹
+		String uuid = UUID.randomUUID().toString().substring(0, 8);
+		this.email = "withdrawn_" + this.id + "_" + uuid + "@deleted.com";
+
+		this.password = null;
+
+		this.socialType = null;
+		this.socialId = null;
+
+		if (this.profile != null) {
+			this.profile.clearProfileData();
+		}
 	}
 }
