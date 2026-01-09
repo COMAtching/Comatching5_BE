@@ -121,6 +121,8 @@ public class GlobalExceptionHandler {
 			}
 		}
 
+		log.error("[Feign Error] Status: {}, Message: {}", status, e.getMessage());
+
 		return ResponseEntity
 			.status(GeneralErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus())
 			.body(ApiResponse.errorResponse(GeneralErrorCode.INTERNAL_SERVER_ERROR));

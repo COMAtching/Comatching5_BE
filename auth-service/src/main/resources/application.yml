@@ -45,3 +45,8 @@ spring:
           auth: true
           starttls:
             enable: true
+
+  cloud:
+    openfeign:
+      okhttp:
+        enabled: true

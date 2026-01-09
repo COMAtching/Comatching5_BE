@@ -95,4 +95,8 @@ public class Member {
 			this.profile.clearProfileData();
 		}
 	}
+
+	public void changePassword(String newEncodedPassword) {
+		this.password = newEncodedPassword;
+	}
 }

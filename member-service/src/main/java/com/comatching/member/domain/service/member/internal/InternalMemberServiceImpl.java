@@ -60,6 +60,15 @@ public class InternalMemberServiceImpl implements InternalMemberService {
 		return toLoginDto(member);
 	}
 
+	@Override
+	@Transactional
+	public void updatePassword(String email, String encryptedPassword) {
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> new BusinessException(MemberErrorCode.USER_NOT_EXIST));
+
+		member.changePassword(encryptedPassword);
+	}
+
 	private Member registerSocialMember(SocialLoginRequestDto request) {
 		Member newMember = Member.builder()
 			.email(request.email())
@@ -93,6 +102,8 @@ public class InternalMemberServiceImpl implements InternalMemberService {
 			.password(member.getPassword())
 			.role(member.getRole().name())
 			.status(member.getStatus().name())
+			.socialType(member.getSocialType())
+			.socialId(member.getSocialId())
 			.build();
 	}
 }

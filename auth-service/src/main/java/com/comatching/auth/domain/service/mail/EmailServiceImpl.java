@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import com.comatching.auth.domain.enums.EmailType;
 import com.comatching.auth.global.exception.AuthErrorCode;
 import com.comatching.common.exception.BusinessException;
 
@@ -27,8 +28,6 @@ public class EmailServiceImpl implements EmailService {
 	private final SpringTemplateEngine templateEngine;
 	private final SecureRandom secureRandom = new SecureRandom();
 
-	private static final String AUTH_CODE_PREFIX = "AuthCode:";
-	private static final String VERIFIED_PREFIX = "Verified:";
 	private static final String CHARACTERS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 	private static final int CODE_LENGTH = 6;
 	private static final long CODE_EXPIRATION = Duration.ofMinutes(5).toSeconds();
@@ -36,48 +35,29 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public void sendAuthCode(String email) {
-
-		String authCode = createCode();
-
-		redisTemplate.opsForValue().set(
-			AUTH_CODE_PREFIX + email,
-			authCode,
-			CODE_EXPIRATION,
-			TimeUnit.SECONDS
-		);
-
-		try {
-			sendHtmlEmail(email, "Comatching 인증 코드", authCode);
-		} catch (MessagingException e) {
-			throw new BusinessException(AuthErrorCode.SEND_EMAIL_FAILED);
-		}
-
+		sendEmailProcess(email, EmailType.SIGNUP);
 	}
 
 	@Override
 	public void verifyCode(String email, String code) {
-
-		String key = AUTH_CODE_PREFIX + email;
-		String storedCode = redisTemplate.opsForValue().get(AUTH_CODE_PREFIX + email);
-
-		if (storedCode == null || !storedCode.equals(code)) {
-			throw new BusinessException(AuthErrorCode.INVALID_AUTH_CODE);
-		}
-
-		redisTemplate.delete(key);
-		redisTemplate.opsForValue().set(
-			VERIFIED_PREFIX + email,
-			"true",
-			VERIFIED_EXPIRATION,
-			TimeUnit.SECONDS
-		);
+		verifyCodeProcess(email, code, EmailType.SIGNUP);
 	}
 
 	@Override
 	public boolean isVerified(String email) {
 		return Boolean.TRUE.toString().equals(
-			redisTemplate.opsForValue().get(VERIFIED_PREFIX + email)
+			redisTemplate.opsForValue().get(EmailType.SIGNUP.getVerifiedPrefix() + email)
 		);
+	}
+
+	@Override
+	public void sendPasswordResetCode(String email) {
+		sendEmailProcess(email, EmailType.PASSWORD_RESET);
+	}
+
+	@Override
+	public void verifyPasswordResetCode(String email, String code) {
+		verifyCodeProcess(email, code, EmailType.PASSWORD_RESET);
 	}
 
 	private String createCode() {
@@ -91,18 +71,51 @@ public class EmailServiceImpl implements EmailService {
 		return sb.toString();
 	}
 
-	private void sendHtmlEmail(String to, String subject, String authCode) throws MessagingException {
+	private void verifyCodeProcess(String email, String code, EmailType type) {
+		String key = type.getPrefix() + email;
+		String storedCode = redisTemplate.opsForValue().get(key);
 
+		if (storedCode == null || !storedCode.equalsIgnoreCase(code)) {
+			throw new BusinessException(AuthErrorCode.INVALID_AUTH_CODE);
+		}
+
+		redisTemplate.delete(key);
+		redisTemplate.opsForValue().set(
+			type.getVerifiedPrefix() + email,
+			"true",
+			VERIFIED_EXPIRATION,
+			TimeUnit.SECONDS
+		);
+	}
+
+	private void sendEmailProcess(String email, EmailType type) {
+		String code = createCode();
+
+		redisTemplate.opsForValue().set(
+			type.getPrefix() + email,
+			code,
+			CODE_EXPIRATION,
+			TimeUnit.SECONDS
+		);
+
+		try {
+			sendHtmlEmail(email, type, code);
+		} catch (MessagingException e) {
+			throw new BusinessException(AuthErrorCode.SEND_EMAIL_FAILED);
+		}
+	}
+
+	private void sendHtmlEmail(String to, EmailType type, String authCode) throws MessagingException {
 		MimeMessage message = mailSender.createMimeMessage();
 		MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
 		Context context = new Context();
 		context.setVariable("code", authCode);
 
-		String htmlContent = templateEngine.process("auth-code", context);
+		String htmlContent = templateEngine.process(type.getTemplateName(), context);
 
 		helper.setTo(to);
-		helper.setSubject(subject);
+		helper.setSubject(type.getSubject());
 		helper.setText(htmlContent, true);
 
 		mailSender.send(message);
