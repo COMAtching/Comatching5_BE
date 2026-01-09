@@ -40,6 +40,9 @@ dependencies {
 
 	// feign
 	api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+	// kafka
+	api 'org.springframework.kafka:spring-kafka'
 }
 
 dependencyManagement {

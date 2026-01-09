@@ -26,7 +26,7 @@ spring:
             - id: auth-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: auth-service-protected
               uri: http://localhost:9000
@@ -59,7 +59,7 @@ spring:
             - id: member-service
               uri: http://localhost:9002
               predicates:
-                - Path=/api/member/**, /api/internal/members/**
+                - Path=/api/members/**, /api/internal/members/**
               filters:
                 - AuthorizationHeaderFilter
 

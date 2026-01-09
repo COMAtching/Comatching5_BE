@@ -1,4 +1,4 @@
-package com.comatching.member.domain.service;
+package com.comatching.member.domain.service.member.internal;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MemberServiceImpl implements MemberService {
+public class InternalMemberServiceImpl implements InternalMemberService {
 
 	private final MemberRepository memberRepository;
 
