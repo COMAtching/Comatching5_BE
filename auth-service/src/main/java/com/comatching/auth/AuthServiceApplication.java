@@ -14,7 +14,7 @@ import org.springframework.context.annotation.ComponentScan;
 	}
 )
 @ComponentScan(basePackages = {"com.comatching.auth", "com.comatching.common"})
-@EnableFeignClients(basePackages = "com.comatching.auth.infra.client")
+@EnableFeignClients(basePackages = "com.comatching.auth")
 public class AuthServiceApplication {
 
 	public static void main(String[] args) {

@@ -13,4 +13,6 @@ public interface InternalMemberService {
 	MemberLoginDto getMemberById(Long memberId);
 
 	MemberLoginDto getMemberByEmail(String email);
+
+	void updatePassword(String email, String encryptedPassword);
 }
