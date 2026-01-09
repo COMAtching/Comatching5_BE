@@ -28,18 +28,21 @@ public class S3Service {
 	@Value("${spring.cloud.aws.s3.bucket}")
 	private String bucketName;
 
+	@Value("${spring.cloud.aws.region.static}")
+	private String region;
+
 	/**
 	 * Presigned URL 발급 (파일 업로드용)
 	 *
 	 * @param dirName          S3 내 디렉토리 이름
 	 * @param originalFilename 클라이언트가 올릴 원본 파일명
 	 */
-	public S3UploadResponseDto getPresignedPutUrl(String dirName, String originalFilename) {
+	public S3UploadResponseDto getPresignedPutUrl(Long memberId, String dirName, String originalFilename) {
 		// 확장자 검증
 		String extension = validateImageExtension(originalFilename);
 
 		// 유니크한 파일명 생성
-		String imageKey = dirName + "/" + UUID.randomUUID() + "." + extension;
+		String imageKey = dirName + "/" + memberId + "/" + UUID.randomUUID() + "." + extension;
 
 		// Presigned URL 생성 요청 객체 생성
 		PutObjectRequest objectRequest = PutObjectRequest.builder()
@@ -90,5 +93,17 @@ public class S3Service {
 			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 이미지 형식입니다.");
 		}
 		return extension;
+	}
+
+	/**
+	 * S3 파일 키를 이용해 퍼블릭 이미지 URL을 생성합니다.
+	 * @param imageKey DB에 저장된 파일 키 (예: profiles/uuid.jpg)
+	 * @return 접근 가능한 Full URL
+	 */
+	public String getFileUrl(String imageKey) {
+		if (imageKey == null || imageKey.isBlank()) {
+			return null;
+		}
+		return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + imageKey;
 	}
 }
