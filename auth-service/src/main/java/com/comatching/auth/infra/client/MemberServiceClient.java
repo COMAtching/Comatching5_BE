@@ -2,6 +2,7 @@ package com.comatching.auth.infra.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.common.dto.auth.MemberCreateRequest;
+import com.comatching.common.dto.member.MemberPasswordUpdateDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 
@@ -36,4 +38,7 @@ public interface MemberServiceClient {
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestBody ProfileCreateRequest request
 	);
+
+	@PatchMapping("/password")
+	void updatePassword(@RequestBody MemberPasswordUpdateDto request);
 }

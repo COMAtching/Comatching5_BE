@@ -1,6 +1,7 @@
 package com.comatching.member.infra.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.common.dto.auth.MemberCreateRequest;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
+import com.comatching.common.dto.member.MemberPasswordUpdateDto;
 import com.comatching.member.domain.service.member.internal.InternalMemberService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/internal/members")
 @RequiredArgsConstructor
-public class MemberInternalController {
+public class InternalMemberController {
 
 	private final InternalMemberService internalMemberService;
 
@@ -40,5 +42,10 @@ public class MemberInternalController {
 	@GetMapping
 	public MemberLoginDto getMemberByEmail(@RequestParam String email) {
 		return internalMemberService.getMemberByEmail(email);
+	}
+
+	@PatchMapping("/password")
+	public void updatePassword(@RequestBody MemberPasswordUpdateDto request) {
+		internalMemberService.updatePassword(request.email(), request.encryptedPassword());
 	}
 }
