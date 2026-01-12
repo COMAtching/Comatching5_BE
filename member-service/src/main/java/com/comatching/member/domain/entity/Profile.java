@@ -54,6 +54,15 @@ public class Profile {
 
 	private String socialAccountId;
 
+	@Column(nullable = false)
+	private String university;
+
+	@Column(nullable = false)
+	private String major;
+
+	@Column(nullable = false)
+	private boolean isMatchable = true;
+
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(
 		name = "profile_hobbies",
@@ -68,8 +77,8 @@ public class Profile {
 
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
-		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, Set<Hobby> hobbies,
-		List<ProfileIntro> intros) {
+		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
+		String major, Set<Hobby> hobbies, List<ProfileIntro> intros) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -79,11 +88,17 @@ public class Profile {
 		this.profileImageUrl = profileImageUrl;
 		this.socialAccountType = socialAccountType;
 		this.socialAccountId = socialAccountId;
+		this.university = university;
+		this.major = major;
 
 		if (hobbies != null)
 			addHobbies(hobbies);
 		if (intros != null)
 			addIntros(intros);
+	}
+
+	public void updateMatchStatus(boolean isMatchable) {
+		this.isMatchable = isMatchable;
 	}
 
 	public void clearProfileData() {
@@ -93,6 +108,8 @@ public class Profile {
 		this.birthDate = null;
 		this.socialAccountType = null;
 		this.socialAccountId = null;
+		this.university = "(알 수 없음)";
+		this.major = "(알 수 없음)";
 		this.hobbies.clear();
 		this.intros.clear();
 	}
@@ -101,6 +118,7 @@ public class Profile {
 		String nickname, String intro, String mbti,
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
+		String university, String major,
 		Set<Hobby> hobbies, List<ProfileIntro> intros) {
 
 		if (nickname != null)
@@ -115,10 +133,15 @@ public class Profile {
 			this.gender = gender;
 		if (birthDate != null)
 			this.birthDate = birthDate;
+		if (university != null)
+			this.university = university;
+		if (major != null)
+			this.major = major;
 
 		updateSocialInfo(socialAccountType, socialAccountId);
 
-		if (hobbies != null) addHobbies(hobbies);
+		if (hobbies != null)
+			addHobbies(hobbies);
 		addIntros(intros);
 
 	}

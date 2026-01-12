@@ -1,6 +1,9 @@
 server:
   port: 9001
 
+member-service:
+  url: http://localhost:9002
+
 spring:
   application:
     name: matching-service
@@ -21,8 +24,11 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
 
   data:
     redis:
@@ -32,4 +38,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: matching-group
+      group-id: matching-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer

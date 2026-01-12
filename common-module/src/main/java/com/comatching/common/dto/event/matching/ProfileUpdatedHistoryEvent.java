@@ -1,4 +1,4 @@
-package com.comatching.common.dto.member;
+package com.comatching.common.dto.event.matching;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -6,24 +6,24 @@ import java.util.Set;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
-import com.comatching.common.domain.enums.SocialAccountType;
+import com.comatching.common.dto.member.ProfileIntroDto;
 
 import lombok.Builder;
 
 @Builder
-public record ProfileResponse(
+public record ProfileUpdatedHistoryEvent(
 	Long memberId,
-	String email,
+	Long profileId,
 	String nickname,
 	Gender gender,
-	LocalDate birthDate,
 	String mbti,
-	String intro,
-	String profileImageUrl,
-	SocialAccountType socialType,
-	String socialAccountId,
-	String university,
 	String major,
 	Set<Hobby> hobbies,
-	List<ProfileIntroDto> intros
+	String intro,
+	List<ProfileIntroDto> intros,
+	LocalDate birthDate,
+	String profileImageUrl,
+	String socialType,
+	String socialAccountId,
+	boolean isMatchable
 ) {}

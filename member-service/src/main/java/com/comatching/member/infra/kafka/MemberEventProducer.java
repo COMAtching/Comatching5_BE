@@ -5,9 +5,10 @@ import java.time.LocalDateTime;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import com.comatching.common.dto.event.MemberAuthEvent;
-import com.comatching.common.dto.event.MemberUpdateEvent;
-import com.comatching.common.dto.event.MemberWithdrawnEvent;
+import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
+import com.comatching.common.dto.event.member.MemberAuthEvent;
+import com.comatching.common.dto.event.member.MemberUpdateEvent;
+import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,12 +21,14 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class MemberEventProducer {
 
-	private final KafkaTemplate<String, String> kafkaTemplate;
+	private final KafkaTemplate<String, String> stringKafkaTemplate;
+	private final KafkaTemplate<String, Object> jsonKafkaTemplate;
 	private final ObjectMapper objectMapper;
 
 	private static final String TOPIC_SIGNUP = "member-signup";
 	private static final String TOPIC_UPDATE = "member-update";
 	private static final String TOPIC_WITHDRAW = "member-withdraw";
+	private static final String TOPIC_MATCHING_PROFILE_UPDATE = "profile-updates"; // 매칭 서비스용 토픽
 
 	/**
 	 * 회원가입 이벤트 발행
@@ -50,6 +53,10 @@ public class MemberEventProducer {
 		sendToKafka(TOPIC_UPDATE, event);
 	}
 
+	public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
+		jsonKafkaTemplate.send(TOPIC_MATCHING_PROFILE_UPDATE, event);
+	}
+
 	/**
 	 * 회원 탈퇴 이벤트 발행
 	 * - 구독: Chat (참여중인 방 퇴장), Payment (결제내역 보존처리)
@@ -67,7 +74,7 @@ public class MemberEventProducer {
 	private void sendToKafka(String topic, Object event) {
 		try {
 			String message = objectMapper.writeValueAsString(event);
-			kafkaTemplate.send(topic, message);
+			stringKafkaTemplate.send(topic, message);
 			log.info("Sent Kafka Event [Topic: {}]: {}", topic, message);
 		} catch (JsonProcessingException e) {
 			log.error("Failed to serialize event for topic: {}", topic, e);
