@@ -1,4 +1,4 @@
-package com.comatching.common.dto.event;
+package com.comatching.common.dto.event.member;
 
 import lombok.Builder;
 

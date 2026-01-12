@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.comatching.common.dto.event.MemberUpdateEvent;
+import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
+import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -20,6 +21,7 @@ import com.comatching.member.global.exception.MemberErrorCode;
 import com.comatching.member.infra.kafka.MemberEventProducer;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -40,10 +42,12 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			throw new BusinessException(MemberErrorCode.PROFILE_ALREADY_EXISTS);
 		}
 
-		ProfileResponse profileResponse = saveProfile(request, member);
+		Profile profile = saveProfile(request, member);
+		ProfileResponse profileResponse = toProfileResponse(profile);
 
 		member.upgradeRoleToUser();
 
+		publishMatchingEvent(profile, true);
 		memberEventProducer.sendSignupEvent(profileResponse);
 
 		return profileResponse;
@@ -72,9 +76,13 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.birthDate(),
 			request.socialType(),
 			request.socialAccountId(),
+			request.university(),
+			request.major(),
 			request.hobbies(),
 			getProfileIntros(request.intros())
 		);
+
+		publishMatchingEvent(profile, true);
 
 		Member member = profile.getMember();
 
@@ -90,7 +98,22 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return toProfileResponse(profile);
 	}
 
-	private ProfileResponse saveProfile(ProfileCreateRequest request, Member member) {
+	private void publishMatchingEvent(Profile profile, boolean isMatchable) {
+		ProfileUpdatedMatchingEvent event = ProfileUpdatedMatchingEvent.builder()
+			.memberId(profile.getMember().getId())
+			.profileId(profile.getId())
+			.gender(profile.getGender())
+			.mbti(profile.getMbti())
+			.major(profile.getMajor())
+			.hobbies(profile.getHobbies())
+			.birthDate(profile.getBirthDate())
+			.isMatchable(isMatchable)
+			.build();
+
+		memberEventProducer.sendProfileUpdatedMatchingEvent(event);
+	}
+
+	private Profile saveProfile(ProfileCreateRequest request, Member member) {
 		Profile profile = Profile.builder()
 			.member(member)
 			.nickname(request.nickname())
@@ -101,13 +124,15 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.profileImageUrl(request.profileImageKey())
 			.socialAccountType(request.socialType())
 			.socialAccountId(request.socialAccountId())
+			.university(request.university())
+			.major(request.major())
 			.hobbies(request.hobbies())
 			.intros(getProfileIntros(request.intros()))
 			.build();
 
 		Profile savedProfile = profileRepository.save(profile);
 
-		return toProfileResponse(savedProfile);
+		return savedProfile;
 	}
 
 	private static List<ProfileIntro> getProfileIntros(List<ProfileIntroDto> intros) {
@@ -135,20 +160,13 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.profileImageUrl(profile.getProfileImageUrl())
 			.socialType(profile.getSocialAccountType())
 			.socialAccountId(profile.getSocialAccountId())
+			.university(profile.getUniversity())
+			.major(profile.getMajor())
 			.hobbies(profile.getHobbies())
-			.intros(
-				profile.getIntros().stream()
-					.map(this::toIntroDto)
-					.toList()
-			)
+			.intros(profile.getIntros().stream()
+				.map(i -> new ProfileIntroDto(i.getQuestion(), i.getAnswer()))
+				.toList())
 			.build();
 
-	}
-
-	private ProfileIntroDto toIntroDto(ProfileIntro intro) {
-		return new ProfileIntroDto(
-			intro.getQuestion(),
-			intro.getAnswer()
-		);
 	}
 }
