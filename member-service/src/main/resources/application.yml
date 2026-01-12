@@ -1,6 +1,9 @@
 server:
   port: 9002
 
+member-service:
+  url: http://localhost:9002
+
 spring:
   application:
     name: member-service
@@ -20,7 +23,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: false
 
   kafka:

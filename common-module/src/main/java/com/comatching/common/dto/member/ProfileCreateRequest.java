@@ -20,6 +20,8 @@ public record ProfileCreateRequest(
 	String profileImageKey,
 	SocialAccountType socialType,
 	String socialAccountId,
+	String university,
+	String major,
 	Set<Hobby> hobbies,
 	List<ProfileIntroDto> intros
 ) {
