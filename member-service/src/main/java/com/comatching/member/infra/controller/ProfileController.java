@@ -38,6 +38,11 @@ public class ProfileController {
 		return profileCreateService.createProfile(memberId, request);
 	}
 
+	@GetMapping("/internal/members/profile")
+	public ProfileResponse getProfile(@RequestHeader("X-Member-Id") Long memberId) {
+		return profileManageService.getProfile(memberId);
+	}
+
 	@RequireRole(MemberRole.ROLE_USER)
 	@GetMapping("/members/profile")
 	public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(@CurrentMember MemberInfo memberInfo) {

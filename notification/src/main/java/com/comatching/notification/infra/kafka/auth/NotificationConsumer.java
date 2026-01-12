@@ -3,8 +3,8 @@ package com.comatching.notification.infra.kafka.auth;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import com.comatching.common.dto.event.MemberAuthEvent;
-import com.comatching.common.dto.event.MemberWithdrawnEvent;
+import com.comatching.common.dto.event.member.MemberAuthEvent;
+import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.notification.domain.service.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
