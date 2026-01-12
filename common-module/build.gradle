@@ -43,6 +43,9 @@ dependencies {
 
 	// kafka
 	api 'org.springframework.kafka:spring-kafka'
+
+	// redisson
+	api 'org.redisson:redisson-spring-boot-starter:3.27.0'
 }
 
 dependencyManagement {
