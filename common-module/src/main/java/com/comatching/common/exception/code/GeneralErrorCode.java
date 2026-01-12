@@ -15,6 +15,7 @@ public enum GeneralErrorCode implements ErrorCode {
 	TYPE_MISMATCH("GEN-005", HttpStatus.BAD_REQUEST, "파라미터 타입이 일치하지 않습니다."),
 	JSON_PARSE_ERROR("GEN-006", HttpStatus.BAD_REQUEST, "JSON 파싱에 실패했습니다."),
 	FILE_EXPIRED("GEN-103", HttpStatus.BAD_REQUEST, "파일의 유효기간이 만료되었습니다."),
+	TOO_MANY_REQUEST("GEN-104", HttpStatus.BAD_REQUEST, "요청이 너무 많습니다."),
 
 	// 404 Not Found
 	NOT_FOUND("GEN-007", HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),

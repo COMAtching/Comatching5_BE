@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
@@ -36,6 +37,7 @@ public class MatchingServiceImpl implements MatchingService {
 	private final MemberClient memberClient;
 
 	@Override
+	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
 	public MatchingResponse match(Long memberId, MatchingRequest request) {
 
 		ProfileResponse myProfile = memberClient.getProfile(memberId);

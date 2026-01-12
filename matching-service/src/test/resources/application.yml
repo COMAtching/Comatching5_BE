@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: matching-service-test
+
+  # 👇 [추가] H2 데이터베이스 설정
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # 👇 [추가] JPA 설정 (테스트 때만 테이블 자동 생성)
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop # 테스트 시작 시 생성, 종료 시 삭제
+    show-sql: false # 쿼리 나가는거 보고 싶으면 true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # (기존 설정 유지)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: matching-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  cloud:
+    aws:
+      credentials:
+        access-key: SDFDSFSFDSFDSF
+        secret-key: SDFDFADASFSGVDDSGDGS
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: DSFDSFSDF
+
+# (기존 설정 유지)
+jwt:
+  secret: "thisdisddummydsecretdkeydfordtestdenvironmentdoverd256dbits"
+  access-token:
+    expiration: 3600000
+  refresh-token:
+    expiration: 1209600000
+
+# (기존 설정 유지)
+member-service:
+  url: "http://localhost:8080"
