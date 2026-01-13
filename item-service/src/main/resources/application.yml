@@ -1,23 +1,18 @@
 server:
-  port: 9001
+  port: 9005
 
 member-service:
   url: http://localhost:9002
 
-item-service:
-  url: http://localhost:9005
-
-
 spring:
   application:
-    name: matching-service
+    name: item-service
 
   config:
     import: optional:classpath:application-secret.yml
 
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_matching?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3307/comatching_item?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
@@ -30,19 +25,14 @@ spring:
     hibernate:
       ddl-auto: create
     show-sql: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 100
-
-  data:
-    redis:
-      host: localhost
-      port: 6380
 
   kafka:
     bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
-      group-id: matching-service-group
-      auto-offset-reset: latest
+      group-id: item-group
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
