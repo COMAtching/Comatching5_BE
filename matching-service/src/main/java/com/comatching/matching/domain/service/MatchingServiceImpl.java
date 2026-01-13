@@ -1,6 +1,7 @@
 package com.comatching.matching.domain.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -13,8 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.ItemRoute;
+import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.dto.MatchingResponse;
@@ -24,10 +29,13 @@ import com.comatching.matching.domain.enums.AgeOption;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
 import com.comatching.matching.domain.repository.history.MatchingHistoryRepository;
 import com.comatching.matching.global.exception.MatchingErrorCode;
+import com.comatching.matching.infra.ItemClient;
 import com.comatching.matching.infra.client.MemberClient;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MatchingServiceImpl implements MatchingService {
@@ -35,6 +43,7 @@ public class MatchingServiceImpl implements MatchingService {
 	private final MatchingCandidateRepository candidateRepository;
 	private final MatchingHistoryRepository historyRepository;
 	private final MemberClient memberClient;
+	private final ItemClient itemClient;
 
 	@Override
 	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
@@ -42,11 +51,38 @@ public class MatchingServiceImpl implements MatchingService {
 
 		ProfileResponse myProfile = memberClient.getProfile(memberId);
 
-		MatchingCandidate matchedCandidate = processMatching(memberId, myProfile, request);
+		try {
+			itemClient.useItem(memberId, ItemType.MATCHING_TICKET, 1);
+		} catch (Exception e) {
+			throw new BusinessException(MatchingErrorCode.NOT_ENOUGH_TICKET);
+		}
+
+		MatchingCandidate matchedCandidate;
+		try {
+			matchedCandidate = processMatching(memberId, myProfile, request);
+		} catch (Exception e) {
+			refundItem(memberId);
+			throw e;
+		}
 
 		ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
 
 		return MatchingResponse.of(matchedCandidate, partnerProfile);
+	}
+
+	private void refundItem(Long memberId) {
+		try {
+			AddItemRequest refundReq = new AddItemRequest(
+				ItemType.MATCHING_TICKET,
+				1,
+				ItemRoute.REFUND,
+				30
+			);
+			itemClient.addItem(memberId, refundReq);
+		} catch (Exception e) {
+			log.error("매칭 실패 후 아이템 환불 실패! memberId={}", memberId, e);
+			throw new BusinessException(GeneralErrorCode.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 	@Override
