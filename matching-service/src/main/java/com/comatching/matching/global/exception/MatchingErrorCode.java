@@ -9,6 +9,7 @@ import lombok.Getter;
 @Getter
 public enum MatchingErrorCode implements ErrorCode {
 	NO_MATCHING_CANDIDATE("MATCH-001", HttpStatus.INTERNAL_SERVER_ERROR, "매칭 후보가 없습니다."),
+	NOT_ENOUGH_TICKET("MATCH-002", HttpStatus.INTERNAL_SERVER_ERROR, "뽑기권이 부족합니다."),
 	;
 
 	private final String code;
