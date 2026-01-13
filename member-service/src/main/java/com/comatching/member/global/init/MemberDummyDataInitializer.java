@@ -67,7 +67,7 @@ public class MemberDummyDataInitializer {
 		);
 
 		// 2. [랜덤 유저] 생성
-		for (int i = 1; i <= 1; i++) {
+		for (int i = 1; i <= 30; i++) {
 			Gender gender = (i % 2 == 0) ? Gender.FEMALE : Gender.MALE;
 			String mbti = mbtis.get(random.nextInt(mbtis.size()));
 			String major = majors.get(random.nextInt(majors.size()));
