@@ -21,5 +21,6 @@ public record ProfileUpdateRequest(
 	String university,
 	String major,
 	Set<Hobby> hobbies,
-	List<ProfileIntroDto> intros
+	List<ProfileIntroDto> intros,
+	Boolean isMatchable
 ) {}

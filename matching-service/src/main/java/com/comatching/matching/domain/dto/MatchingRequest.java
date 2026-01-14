@@ -8,7 +8,7 @@ public record MatchingRequest(
 	AgeOption ageOption,
 	String mbtiOption,
 	Hobby.Category hobbyOption,
-	boolean sameMajorOption
-
+	boolean sameMajorOption,
+	String importantOption
 ) {
 }
