@@ -17,6 +17,6 @@ public record ProfileUpdatedMatchingEvent(
 	String major,
 	Set<Hobby> hobbies,
 	LocalDate birthDate,
-	boolean isMatchable
+	Boolean isMatchable
 ) {
 }

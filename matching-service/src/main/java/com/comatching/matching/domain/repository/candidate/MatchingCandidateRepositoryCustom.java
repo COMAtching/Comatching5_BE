@@ -13,7 +13,6 @@ public interface MatchingCandidateRepositoryCustom {
 	List<MatchingCandidate> findPotentialCandidates(
 		Gender targetGender,
 		String excludeMajor,
-		List<Long> excludeMemberIds,
-		long limitCount
+		List<Long> excludeMemberIds
 	);
 }

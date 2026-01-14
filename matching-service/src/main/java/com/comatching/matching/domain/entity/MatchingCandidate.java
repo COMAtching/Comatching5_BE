@@ -55,18 +55,33 @@ public class MatchingCandidate {
 	@Enumerated(EnumType.STRING)
 	private Set<Hobby.Category> hobbyCategories = new HashSet<>();
 
-	public void syncProfile(Long profileId, Gender gender, String mbti, String major, Set<Hobby> hobbies, LocalDate birthDate, boolean isMatchable) {
-		this.profileId = profileId;
-		this.gender = gender;
-		this.mbti = mbti;
-		this.major = major;
-		this.age = birthDate.until(LocalDate.now()).getYears() + 1;
-		this.isMatchable = isMatchable;
-		this.hobbyCategories.clear();
+	public void syncProfile(Long profileId, Gender gender, String mbti, String major, Set<Hobby> hobbies, LocalDate birthDate, Boolean isMatchable) {
+		if (profileId != null) {
+			this.profileId = profileId;
+		}
+		if (gender != null) {
+			this.gender = gender;
+		}
+		if (mbti != null) {
+			this.mbti = mbti;
+		}
+		if (major != null) {
+			this.major = major;
+		}
+		if (birthDate != null) {
+			this.age = birthDate.until(LocalDate.now()).getYears() + 1;
+		}
+		if (isMatchable != null) {
+			this.isMatchable = isMatchable;
+		}
+
 		if (hobbies != null) {
-			this.hobbyCategories = hobbies.stream()
-				.map(Hobby::getCategory)
-				.collect(Collectors.toSet());
+			this.hobbyCategories.clear();
+			this.hobbyCategories.addAll(
+				hobbies.stream()
+					.map(Hobby::getCategory)
+					.collect(Collectors.toSet())
+			);
 		}
 	}
 

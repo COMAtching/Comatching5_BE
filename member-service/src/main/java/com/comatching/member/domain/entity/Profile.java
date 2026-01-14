@@ -116,7 +116,7 @@ public class Profile {
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
 		String university, String major,
-		Set<Hobby> hobbies, List<ProfileIntro> intros) {
+		Set<Hobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
 
 		if (nickname != null)
 			this.nickname = nickname;
@@ -134,6 +134,8 @@ public class Profile {
 			this.university = university;
 		if (major != null)
 			this.major = major;
+		if (isMatchable != null)
+			this.isMatchable = isMatchable;
 
 		updateSocialInfo(socialAccountType, socialAccountId);
 
@@ -141,10 +143,11 @@ public class Profile {
 			addHobbies(hobbies);
 		addIntros(intros);
 
+
 	}
 
 	public void addHobbies(Set<Hobby> newHobbies) {
-		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 5) {
+		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 10 || newHobbies.size() < 1) {
 			throw new BusinessException(MemberErrorCode.INVALID_HOBBY_COUNT);
 		}
 

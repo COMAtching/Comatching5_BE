@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,10 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.member.ProfileResponse;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.matching.domain.dto.MatchingHistoryResponse;
@@ -87,36 +92,119 @@ public class MatchingServiceImpl implements MatchingService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public Page<MatchingHistoryResponse> getMyMatchingHistory(Long memberId, Pageable pageable) {
-		return historyRepository.findByMemberIdOrderByMatchedAtDesc(memberId, pageable)
-			.map(MatchingHistoryResponse::from);
+	public PagingResponse<MatchingHistoryResponse> getMyMatchingHistory(
+		Long memberId,
+		LocalDateTime startDate,
+		LocalDateTime endDate,
+		Pageable pageable) {
+
+		Page<MatchingHistory> histories = historyRepository.searchHistory(memberId, startDate, endDate, pageable);
+
+		if (histories.isEmpty()) {
+			return PagingResponse.from(Page.empty(pageable));
+		}
+
+		List<Long> partnerIds = histories.stream()
+			.map(MatchingHistory::getPartnerId)
+			.distinct()
+			.toList();
+
+		List<ProfileResponse> profiles = memberClient.getProfiles(partnerIds);
+
+		Map<Long, ProfileResponse> profileMap = profiles.stream()
+			.collect(Collectors.toMap(ProfileResponse::memberId, p -> p));
+
+		Page<MatchingHistoryResponse> resultPage = histories.map(history -> {
+			ProfileResponse partnerProfile = profileMap.get(history.getPartnerId());
+			return MatchingHistoryResponse.of(history, partnerProfile);
+		});
+
+		return PagingResponse.from(resultPage);
 	}
 
-	@Transactional
-	protected MatchingCandidate processMatching(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
-		List<Long> excludedIds = historyRepository.findPartnerIdsByMemberId(memberId);
-		if (excludedIds == null)
-			excludedIds = new ArrayList<>();
+	private MatchingCandidate processMatching(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
 
-		Gender targetGender = myProfile.gender().equals(Gender.MALE) ? Gender.FEMALE : Gender.MALE;
+		List<Long> excludeMemberIds = historyRepository.findPartnerIdsByMemberId(memberId);
 		String excludeMajor = request.sameMajorOption() ? myProfile.major() : null;
+		Gender targetGender = (myProfile.gender() == Gender.MALE) ? Gender.FEMALE : Gender.MALE;
+		List<MatchingCandidate> candidates = candidateRepository.findPotentialCandidates(
+			targetGender,
+			excludeMajor,
+			excludeMemberIds
+		);
 		int myAge = myProfile.birthDate().until(LocalDate.now()).getYears() + 1;
 
-		List<MatchingCandidate> candidates = candidateRepository.findPotentialCandidates(
-			targetGender, excludeMajor, excludedIds, 100
-		);
+		List<MatchingCandidate> bestCandidates = new ArrayList<>();
+		int maxScore = -1;
 
-		if (candidates.isEmpty()) {
+		for (MatchingCandidate candidate : candidates) {
+
+			if (!isImportantConditionMet(candidate, request, myAge)) {
+				continue;
+			}
+
+			int score = calculateScore(candidate, request, myAge);
+
+			if (score > maxScore) {
+				maxScore = score;
+				bestCandidates.clear();
+				bestCandidates.add(candidate);
+			} else if (score == maxScore) {
+				bestCandidates.add(candidate);
+			}
+		}
+
+		if (bestCandidates.isEmpty()) {
 			throw new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE);
 		}
 
-		Collections.shuffle(candidates);
+		int randomIndex = (int) (Math.random() * bestCandidates.size());
+		MatchingCandidate finalPartner = bestCandidates.get(randomIndex);
 
-		MatchingCandidate bestCandidate = candidates.stream()
-			.max(Comparator.comparingInt(c -> calculateScore(c, request, myAge)))
-			.orElseThrow(() -> new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+		saveMatchingHistory(memberId, finalPartner);
 
-		return saveMatchingHistory(memberId, bestCandidate);
+		return finalPartner;
+	}
+
+	private boolean isImportantConditionMet(MatchingCandidate candidate, MatchingRequest request, int myAge) {
+		String important = request.importantOption();
+
+		if (important == null || important.isBlank()) {
+			return true;
+		}
+
+		return switch (important) {
+			case "ageOption" -> checkAge(candidate.getAge(), myAge, request.ageOption());
+			case "mbtiOption" -> checkMbtiStrict(request.mbtiOption(), candidate.getMbti());
+			case "hobbyOption" -> checkHobbyStrict(request.hobbyOption(), candidate.getHobbyCategories());
+			default -> true;
+		};
+	}
+
+	private boolean checkMbtiStrict(String reqMbti, String candMbti) {
+		if (reqMbti == null || reqMbti.isBlank()) {
+			return true;
+		}
+		if (candMbti == null) {
+			return false;
+		}
+
+		String request = reqMbti.toUpperCase();
+		String candidate = candMbti.toUpperCase();
+
+		for (char c : request.toCharArray()) {
+			if (candidate.indexOf(c) == -1) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean checkHobbyStrict(Hobby.Category reqHobby, Set<Hobby.Category> candHobbies) {
+		if (reqHobby == null) {
+			return true;
+		}
+		return candHobbies.contains(reqHobby);
 	}
 
 	private int calculateScore(MatchingCandidate candidate, MatchingRequest request, int myAge) {

@@ -21,8 +21,7 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 	public List<MatchingCandidate> findPotentialCandidates(
 		Gender targetGender,
 		String excludeMajor,
-		List<Long> excludeMemberIds,
-		long limitCount
+		List<Long> excludeMemberIds
 	) {
 
 		return queryFactory
@@ -33,8 +32,6 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 				neMajor(excludeMajor),
 				notInMemberIds(excludeMemberIds)
 			)
-			.orderBy(Expressions.numberTemplate(Double.class, "function('rand')").asc())
-			.limit(limitCount)
 			.fetch();
 	}
 

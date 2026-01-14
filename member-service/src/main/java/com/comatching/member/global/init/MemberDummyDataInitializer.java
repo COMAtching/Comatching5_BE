@@ -2,6 +2,7 @@ package com.comatching.member.global.init;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.SocialAccountType;
@@ -23,6 +25,7 @@ import com.comatching.common.domain.enums.SocialType;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.entity.Profile;
+import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
 import com.comatching.member.infra.kafka.MemberEventProducer;
@@ -67,7 +70,7 @@ public class MemberDummyDataInitializer {
 		);
 
 		// 2. [랜덤 유저] 생성
-		for (int i = 1; i <= 30; i++) {
+		for (int i = 1; i <= 10; i++) {
 			Gender gender = (i % 2 == 0) ? Gender.FEMALE : Gender.MALE;
 			String mbti = mbtis.get(random.nextInt(mbtis.size()));
 			String major = majors.get(random.nextInt(majors.size()));
@@ -111,6 +114,8 @@ public class MemberDummyDataInitializer {
 			.build();
 		memberRepository.save(member);
 
+		List<ProfileIntro> intros = createRandomIntros(gender);
+
 		// 2. Profile 생성
 		Profile profile = com.comatching.member.domain.entity.Profile.builder()
 			.member(member)
@@ -125,12 +130,47 @@ public class MemberDummyDataInitializer {
 			.socialAccountType(SocialAccountType.INSTAGRAM)
 			.socialAccountId("insta_" + nickname)
 			.hobbies(hobbies)
-			.intros(new ArrayList<>())
+			.intros(intros)
 			.build();
+
+		for (ProfileIntro intro : intros) {
+			intro.assignProfile(profile);
+		}
+
 		profileRepository.save(profile);
 
 		// 3. [핵심] Kafka 이벤트 발행 -> Matching Service가 받아서 Candidate 생성
 		sendEventToMatchingService(profile);
+	}
+
+	private List<ProfileIntro> createRandomIntros(Gender gender) {
+		Random random = new Random();
+		List<ProfileIntro> allIntros = new ArrayList<>();
+
+		// 후보 1: 키
+		int height = (gender == Gender.MALE)
+			? 170 + random.nextInt(15)
+			: 155 + random.nextInt(15);
+		allIntros.add(new ProfileIntro(IntroQuestion.HEIGHT, height + "cm"));
+
+		// 후보 2: 직업
+		List<String> jobs = List.of("대학생", "취준생", "개발자", "디자이너", "프리랜서");
+		allIntros.add(new ProfileIntro(IntroQuestion.JOB, jobs.get(random.nextInt(jobs.size()))));
+
+		// 후보 3: 흡연 여부
+		allIntros.add(new ProfileIntro(IntroQuestion.SMOKING_HABIT, random.nextBoolean() ? "흡연" : "비흡연"));
+
+		// 후보 4: 음주 습관
+		List<String> drinking = List.of("전혀 안 함", "가끔 마심", "즐기는 편", "술고래");
+		allIntros.add(new ProfileIntro(IntroQuestion.DRINKING_HABIT, drinking.get(random.nextInt(drinking.size()))));
+
+		// 후보 5: 좋아하는 음식
+		List<String> foods = List.of("한식", "일식", "양식", "중식", "분식", "마라탕");
+		allIntros.add(new ProfileIntro(IntroQuestion.FAVORITE_FOOD, foods.get(random.nextInt(foods.size()))));
+
+		// [핵심] 셔플 후 앞에서부터 3개만 자르기 (최대 3개 제한 준수)
+		Collections.shuffle(allIntros);
+		return new ArrayList<>(allIntros.subList(0, 3));
 	}
 
 	private void sendEventToMatchingService(Profile profile) {
