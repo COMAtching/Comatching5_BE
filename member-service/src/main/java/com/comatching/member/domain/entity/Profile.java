@@ -102,16 +102,13 @@ public class Profile {
 	}
 
 	public void clearProfileData() {
-		this.nickname = "(알 수 없음)";
+		this.nickname = "탈퇴한 사용자";
 		this.intro = null;
 		this.profileImageUrl = null;
 		this.birthDate = null;
 		this.socialAccountType = null;
 		this.socialAccountId = null;
-		this.university = "(알 수 없음)";
 		this.major = "(알 수 없음)";
-		this.hobbies.clear();
-		this.intros.clear();
 	}
 
 	public void update(
