@@ -13,6 +13,7 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.item.AddItemRequest;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.item.domain.dto.ItemHistoryResponse;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.item.domain.dto.ItemResponse;
@@ -50,23 +51,23 @@ public class ItemController {
 	}
 
 	@GetMapping("/items")
-	public ResponseEntity<ApiResponse<Page<ItemResponse>>> getMyItems(
+	public ResponseEntity<ApiResponse<PagingResponse<ItemResponse>>> getMyItems(
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestParam(required = false) ItemType type,
 		@PageableDefault(size = 10, sort = "expiredAt", direction = Sort.Direction.ASC) Pageable pageable
 	) {
-		Page<ItemResponse> result = itemService.getMyItems(memberId, type, pageable);
+		PagingResponse<ItemResponse> result = itemService.getMyItems(memberId, type, pageable);
 		return ResponseEntity.ok(ApiResponse.ok(result));
 	}
 
 	@GetMapping("/items/history")
-	public ResponseEntity<ApiResponse<Page<ItemHistoryResponse>>> getMyHistory(
+	public ResponseEntity<ApiResponse<PagingResponse<ItemHistoryResponse>>> getMyHistory(
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestParam(required = false) ItemType type,
 		@RequestParam(required = false) ItemHistoryType historyType,
 		@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		Page<ItemHistoryResponse> result = itemHistoryService.searchMyHistory(memberId, type, historyType, pageable);
+		PagingResponse<ItemHistoryResponse> result = itemHistoryService.searchMyHistory(memberId, type, historyType, pageable);
 		return ResponseEntity.ok(ApiResponse.ok(result));
 	}
 }
