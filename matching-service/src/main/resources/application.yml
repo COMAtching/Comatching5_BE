@@ -5,7 +5,7 @@ member-service:
   url: http://localhost:9002
 
 item-service:
-  url: http://localhost:9005
+  url: http://localhost:9006
 
 
 spring:

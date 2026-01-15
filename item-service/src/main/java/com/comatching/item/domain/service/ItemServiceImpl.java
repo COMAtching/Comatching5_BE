@@ -3,18 +3,18 @@ package com.comatching.item.domain.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.ItemRoute;
-import com.comatching.common.exception.BusinessException;
+import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.item.AddItemRequest;
+import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.dto.ItemResponse;
 import com.comatching.item.domain.entity.Item;
 import com.comatching.item.domain.enums.ItemHistoryType;
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.item.domain.repository.ItemRepository;
 import com.comatching.item.global.exception.ItemErrorCode;
 
@@ -65,7 +65,9 @@ public class ItemServiceImpl implements ItemService {
 	@Override
 	public void addItem(Long memberId, AddItemRequest request) {
 
-		LocalDateTime expiredAt = request.route().equals(ItemRoute.EVENT) ? LocalDateTime.now().plusDays(request.expiredAt()) : LocalDateTime.of(2099, 12, 31, 23, 59, 59);
+		LocalDateTime expiredAt =
+			request.route().equals(ItemRoute.EVENT) ? LocalDateTime.now().plusDays(request.expiredAt()) :
+				LocalDateTime.of(2099, 12, 31, 23, 59, 59);
 
 		Item item = Item.builder()
 			.memberId(memberId)
@@ -94,8 +96,10 @@ public class ItemServiceImpl implements ItemService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public Page<ItemResponse> getMyItems(Long memberId, ItemType itemType, Pageable pageable) {
-		return itemRepository.findMyUsableItems(memberId, itemType, pageable)
-			.map(ItemResponse::from);
+	public PagingResponse<ItemResponse> getMyItems(Long memberId, ItemType itemType, Pageable pageable) {
+		return PagingResponse.from(
+			itemRepository.findMyUsableItems(memberId, itemType, pageable)
+				.map(ItemResponse::from)
+		);
 	}
 }
