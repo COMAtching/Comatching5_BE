@@ -5,10 +5,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.item.domain.dto.ItemHistoryResponse;
 import com.comatching.item.domain.entity.ItemHistory;
 import com.comatching.item.domain.enums.ItemHistoryType;
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.item.domain.repository.ItemHistoryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class ItemHistoryServiceImpl implements ItemHistoryService{
+public class ItemHistoryServiceImpl implements ItemHistoryService {
 
 	private final ItemHistoryRepository historyRepository;
 
 	@Override
-	public void saveHistory(Long memberId, ItemType itemType, ItemHistoryType historyType, int quantity, String description) {
+	public void saveHistory(Long memberId, ItemType itemType, ItemHistoryType historyType, int quantity,
+		String description) {
 		ItemHistory history = ItemHistory.builder()
 			.memberId(memberId)
 			.itemType(itemType)
@@ -41,9 +43,13 @@ public class ItemHistoryServiceImpl implements ItemHistoryService{
 	}
 
 	@Override
-	public Page<ItemHistoryResponse> searchMyHistory(Long memberId, ItemType itemType, ItemHistoryType historyType,
+	@Transactional(readOnly = true)
+	public PagingResponse<ItemHistoryResponse> searchMyHistory(Long memberId, ItemType itemType,
+		ItemHistoryType historyType,
 		Pageable pageable) {
-		return historyRepository.searchHistory(memberId, itemType, historyType, pageable)
-			.map(ItemHistoryResponse::from);
+		return PagingResponse.from(
+			historyRepository.searchHistory(memberId, itemType, historyType, pageable)
+				.map(ItemHistoryResponse::from)
+		);
 	}
 }

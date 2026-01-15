@@ -15,7 +15,7 @@ public record PagingResponse<T>(
 	public static <T> PagingResponse<T> from(Page<T> page) {
 		return new PagingResponse<>(
 			page.getContent(),
-			page.getNumber() + 1,
+			page.getNumber(),
 			page.getSize(),
 			page.getTotalElements(),
 			page.getTotalPages(),
