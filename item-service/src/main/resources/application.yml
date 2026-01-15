@@ -1,5 +1,5 @@
 server:
-  port: 9005
+  port: 9006
 
 member-service:
   url: http://localhost:9002

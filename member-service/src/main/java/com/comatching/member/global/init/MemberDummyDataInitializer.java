@@ -66,7 +66,7 @@ public class MemberDummyDataInitializer {
 		// 1. [내 계정] 테스트용 내 계정 생성 (로그인용)
 		createMemberAndProfile(
 			"myuser@test.com", "승환", Gender.MALE, "ENFP", "컴퓨터공학과",
-			Set.of(Hobby.CODING, Hobby.SOCCER), LocalDate.of(2000, 1, 1)
+			List.of(Hobby.CODING, Hobby.SOCCER), LocalDate.of(2000, 1, 1)
 		);
 
 		// 2. [랜덤 유저] 생성
@@ -76,7 +76,7 @@ public class MemberDummyDataInitializer {
 			String major = majors.get(random.nextInt(majors.size()));
 
 			// 취미 랜덤
-			Set<Hobby> hobbies = new HashSet<>();
+			List<Hobby> hobbies = new ArrayList<>();
 			hobbies.add(Hobby.values()[random.nextInt(Hobby.values().length)]);
 
 			createMemberAndProfile(
@@ -89,19 +89,19 @@ public class MemberDummyDataInitializer {
 		// - Scenario 1: 완전 일치 (여성, ENFP, 시각디자인과, 헬스)
 		createMemberAndProfile(
 			"target1@test.com", "완벽매칭녀", Gender.FEMALE, "ENFP", "시각디자인과",
-			Set.of(Hobby.GYM), LocalDate.of(2000, 5, 5)
+			List.of(Hobby.GYM), LocalDate.of(2000, 5, 5)
 		);
 
 		// - Scenario 2: 취미만 다름 (여성, ENFP, 경영학과(전공다름), 독서(취미다름))
 		createMemberAndProfile(
 			"target2@test.com", "취미다른녀", Gender.FEMALE, "ENFP", "컴퓨터공학과",
-			Set.of(Hobby.READING), LocalDate.of(2001, 3, 15)
+			List.of(Hobby.READING), LocalDate.of(2001, 3, 15)
 		);
 
 		log.info("✅ [Member] 더미 데이터 생성 완료!");
 	}
 
-	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, Set<Hobby> hobbies, LocalDate birthDate) {
+	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, List<Hobby> hobbies, LocalDate birthDate) {
 
 		// 1. Member 생성 (USER, ACTIVE)
 		Member member = Member.builder()

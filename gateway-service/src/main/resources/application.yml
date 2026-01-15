@@ -99,7 +99,7 @@ spring:
                 - RewritePath=/payment-doc/(?<segment>.*), /$\{segment}
 
             - id: item-service
-              uri: http://localhost:9005
+              uri: http://localhost:9006
               predicates:
                 - Path=/api/items/**, /api/internal/items/**
               filters:

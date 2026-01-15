@@ -24,7 +24,7 @@ public record MatchingResponse(
 	String profileImageUrl,
 	SocialAccountType socialType,
 	String socialAccountId,
-	Set<Hobby> hobbies,
+	List<Hobby> hobbies,
 	List<ProfileIntroDto> intros
 ) {
 	public static MatchingResponse of(MatchingCandidate candidate, ProfileResponse profile) {
