@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.member.ProfileCreateRequest;
@@ -47,7 +48,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		member.upgradeRoleToUser();
 
-		publishMatchingEvent(profile, true);
+		publishMatchingEvent(profile);
 		memberEventProducer.sendSignupEvent(profileResponse);
 
 		return profileResponse;
@@ -60,6 +61,18 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.orElseThrow(() -> new BusinessException(MemberErrorCode.PROFILE_NOT_EXISTS));
 
 		return toProfileResponse(profile);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<ProfileResponse> getProfilesByIds(List<Long> memberIds) {
+		if (memberIds == null || memberIds.isEmpty()) {
+			return List.of();
+		}
+
+		return profileRepository.findAllByMemberIdIn(memberIds).stream()
+			.map(this::toProfileResponse)
+			.toList();
 	}
 
 	@Override
@@ -79,10 +92,11 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.university(),
 			request.major(),
 			request.hobbies(),
-			getProfileIntros(request.intros())
+			getProfileIntros(request.intros()),
+			request.isMatchable()
 		);
 
-		publishMatchingEvent(profile, true);
+		publishMatchingEvent(profile);
 
 		Member member = profile.getMember();
 
@@ -98,7 +112,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return toProfileResponse(profile);
 	}
 
-	private void publishMatchingEvent(Profile profile, boolean isMatchable) {
+	private void publishMatchingEvent(Profile profile) {
 		ProfileUpdatedMatchingEvent event = ProfileUpdatedMatchingEvent.builder()
 			.memberId(profile.getMember().getId())
 			.profileId(profile.getId())
@@ -107,7 +121,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.major(profile.getMajor())
 			.hobbies(profile.getHobbies())
 			.birthDate(profile.getBirthDate())
-			.isMatchable(isMatchable)
+			.isMatchable(profile.isMatchable())
 			.build();
 
 		memberEventProducer.sendProfileUpdatedMatchingEvent(event);
@@ -139,7 +153,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		List<ProfileIntro> newIntros = null;
 		if (intros != null) {
 			newIntros = intros.stream()
-				.map(dto -> new ProfileIntro(dto.question(), dto.answer()))
+				.map(dto -> new ProfileIntro(IntroQuestion.valueOf(dto.question()), dto.answer()))
 				.toList();
 		}
 		return newIntros;
@@ -164,7 +178,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.major(profile.getMajor())
 			.hobbies(profile.getHobbies())
 			.intros(profile.getIntros().stream()
-				.map(i -> new ProfileIntroDto(i.getQuestion(), i.getAnswer()))
+				.map(i -> new ProfileIntroDto(i.getQuestion().getQuestion(), i.getAnswer()))
 				.toList())
 			.build();
 

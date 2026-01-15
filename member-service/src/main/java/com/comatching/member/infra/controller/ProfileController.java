@@ -1,5 +1,7 @@
 package com.comatching.member.infra.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,6 +38,11 @@ public class ProfileController {
 		@RequestBody ProfileCreateRequest request
 	) {
 		return profileCreateService.createProfile(memberId, request);
+	}
+
+	@PostMapping("/internal/members/profiles/bulk")
+	public List<ProfileResponse> getProfilesBulk(@RequestBody List<Long> memberIds) {
+		return profileManageService.getProfilesByIds(memberIds);
 	}
 
 	@GetMapping("/internal/members/profile")

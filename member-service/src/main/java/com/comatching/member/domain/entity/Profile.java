@@ -63,6 +63,8 @@ public class Profile {
 	@Column(nullable = false)
 	private boolean isMatchable = true;
 
+	private int point = 0;
+
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(
 		name = "profile_hobbies",
@@ -70,7 +72,7 @@ public class Profile {
 	)
 	@Enumerated(EnumType.STRING)
 	@Column(name = "hobby")
-	private Set<Hobby> hobbies = new HashSet<>();
+	private List<Hobby> hobbies = new ArrayList<>();
 
 	@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ProfileIntro> intros = new ArrayList<>();
@@ -78,7 +80,7 @@ public class Profile {
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
 		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
-		String major, Set<Hobby> hobbies, List<ProfileIntro> intros) {
+		String major, List<Hobby> hobbies, List<ProfileIntro> intros) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -97,10 +99,6 @@ public class Profile {
 			addIntros(intros);
 	}
 
-	public void updateMatchStatus(boolean isMatchable) {
-		this.isMatchable = isMatchable;
-	}
-
 	public void clearProfileData() {
 		this.nickname = "탈퇴한 사용자";
 		this.intro = null;
@@ -109,6 +107,7 @@ public class Profile {
 		this.socialAccountType = null;
 		this.socialAccountId = null;
 		this.major = "(알 수 없음)";
+		this.point = 0;
 	}
 
 	public void update(
@@ -116,7 +115,7 @@ public class Profile {
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
 		String university, String major,
-		Set<Hobby> hobbies, List<ProfileIntro> intros) {
+		List<Hobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
 
 		if (nickname != null)
 			this.nickname = nickname;
@@ -134,6 +133,8 @@ public class Profile {
 			this.university = university;
 		if (major != null)
 			this.major = major;
+		if (isMatchable != null)
+			this.isMatchable = isMatchable;
 
 		updateSocialInfo(socialAccountType, socialAccountId);
 
@@ -141,10 +142,11 @@ public class Profile {
 			addHobbies(hobbies);
 		addIntros(intros);
 
+
 	}
 
-	public void addHobbies(Set<Hobby> newHobbies) {
-		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 5) {
+	public void addHobbies(List<Hobby> newHobbies) {
+		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 10 || newHobbies.size() < 1) {
 			throw new BusinessException(MemberErrorCode.INVALID_HOBBY_COUNT);
 		}
 
@@ -176,5 +178,13 @@ public class Profile {
 
 		this.socialAccountType = type;
 		this.socialAccountId = id;
+	}
+
+	public void addPoint(int point) {
+		this.point += point;
+	}
+
+	public void minusPoint(int point) {
+		this.point -= point;
 	}
 }

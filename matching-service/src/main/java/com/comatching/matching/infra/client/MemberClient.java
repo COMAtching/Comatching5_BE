@@ -1,5 +1,7 @@
 package com.comatching.matching.infra.client;
 
+import java.util.List;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,4 +18,7 @@ public interface MemberClient {
 	ProfileResponse getProfile(
 		@RequestHeader("X-Member-Id") Long memberId
 	);
+
+	@PostMapping("/profiles/bulk")
+	List<ProfileResponse> getProfiles(@RequestBody List<Long> memberIds);
 }
