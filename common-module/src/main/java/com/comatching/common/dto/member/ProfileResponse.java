@@ -24,6 +24,6 @@ public record ProfileResponse(
 	String socialAccountId,
 	String university,
 	String major,
-	Set<Hobby> hobbies,
+	List<Hobby> hobbies,
 	List<ProfileIntroDto> intros
 ) {}

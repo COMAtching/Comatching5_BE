@@ -3,11 +3,8 @@ package com.comatching.matching.domain.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -158,7 +155,7 @@ public class MatchingServiceImpl implements MatchingService {
 			throw new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE);
 		}
 
-		int randomIndex = (int) (Math.random() * bestCandidates.size());
+		int randomIndex = (int)(Math.random() * bestCandidates.size());
 		MatchingCandidate finalPartner = bestCandidates.get(randomIndex);
 
 		saveMatchingHistory(memberId, finalPartner);
@@ -200,7 +197,7 @@ public class MatchingServiceImpl implements MatchingService {
 		return true;
 	}
 
-	private boolean checkHobbyStrict(Hobby.Category reqHobby, Set<Hobby.Category> candHobbies) {
+	private boolean checkHobbyStrict(Hobby.Category reqHobby, List<Hobby.Category> candHobbies) {
 		if (reqHobby == null) {
 			return true;
 		}
@@ -213,12 +210,12 @@ public class MatchingServiceImpl implements MatchingService {
 		// 1. MBTI 점수
 		score += calculateMbtiScore(request.mbtiOption(), candidate.getMbti());
 
-		// 2. 취미 점수 (20점)
+		// 2. 취미 점수
 		if (request.hobbyOption() != null && candidate.getHobbyCategories().contains(request.hobbyOption())) {
-			score += 20;
+			score += calculateHobbyScore(candidate.getHobbyCategories(), request.hobbyOption());
 		}
 
-		// 3. 나이 점수 (20점)
+		// 3. 나이 점수
 		if (checkAge(candidate.getAge(), myAge, request.ageOption())) {
 			score += 20;
 		}
@@ -244,6 +241,29 @@ public class MatchingServiceImpl implements MatchingService {
 		}
 
 		return matchCount * 10;
+	}
+
+	private int calculateHobbyScore(List<Hobby.Category> candidateHobbies, Hobby.Category targetCategory) {
+
+		if (candidateHobbies == null || candidateHobbies.isEmpty()) {
+			return 0;
+		}
+
+		long matchCount = candidateHobbies.stream()
+			.filter(category -> category == targetCategory)
+			.count();
+
+		if (matchCount == 0) {
+			return 0;
+		}
+
+		if (matchCount >= 3) {
+			return 20;
+		} else if (matchCount == 2) {
+			return 15;
+		} else {
+			return 10;
+		}
 	}
 
 	private boolean checkAge(int candidateAge, int myAge, AgeOption ageOption) {
