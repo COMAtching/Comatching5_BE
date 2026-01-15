@@ -20,7 +20,7 @@ public record ProfileUpdateRequest(
 	String socialAccountId,
 	String university,
 	String major,
-	Set<Hobby> hobbies,
+	List<Hobby> hobbies,
 	List<ProfileIntroDto> intros,
 	Boolean isMatchable
 ) {}

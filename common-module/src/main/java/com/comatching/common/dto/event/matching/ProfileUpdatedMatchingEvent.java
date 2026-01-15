@@ -1,7 +1,7 @@
 package com.comatching.common.dto.event.matching;
 
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
@@ -15,7 +15,7 @@ public record ProfileUpdatedMatchingEvent(
 	Gender gender,
 	String mbti,
 	String major,
-	Set<Hobby> hobbies,
+	List<Hobby> hobbies,
 	LocalDate birthDate,
 	Boolean isMatchable
 ) {

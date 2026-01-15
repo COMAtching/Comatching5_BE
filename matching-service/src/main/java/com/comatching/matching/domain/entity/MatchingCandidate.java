@@ -1,7 +1,8 @@
 package com.comatching.matching.domain.entity;
 
 import java.time.LocalDate;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -53,9 +54,10 @@ public class MatchingCandidate {
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(name = "candidate_hobby_categories", joinColumns = @JoinColumn(name = "member_id"))
 	@Enumerated(EnumType.STRING)
-	private Set<Hobby.Category> hobbyCategories = new HashSet<>();
+	private List<Hobby.Category> hobbyCategories = new ArrayList<>();
 
-	public void syncProfile(Long profileId, Gender gender, String mbti, String major, Set<Hobby> hobbies, LocalDate birthDate, Boolean isMatchable) {
+	public void syncProfile(Long profileId, Gender gender, String mbti, String major, List<Hobby> hobbies,
+		LocalDate birthDate, Boolean isMatchable) {
 		if (profileId != null) {
 			this.profileId = profileId;
 		}
@@ -80,12 +82,13 @@ public class MatchingCandidate {
 			this.hobbyCategories.addAll(
 				hobbies.stream()
 					.map(Hobby::getCategory)
-					.collect(Collectors.toSet())
+					.toList()
 			);
 		}
 	}
 
-	public static MatchingCandidate create(Long memberId, Long profileId, Gender gender, String mbti, String major, Set<Hobby> hobbies, LocalDate birthDate, boolean isMatchable) {
+	public static MatchingCandidate create(Long memberId, Long profileId, Gender gender, String mbti, String major,
+		List<Hobby> hobbies, LocalDate birthDate, boolean isMatchable) {
 		MatchingCandidate candidate = new MatchingCandidate();
 		candidate.memberId = memberId;
 		candidate.syncProfile(profileId, gender, mbti, major, hobbies, birthDate, isMatchable);
