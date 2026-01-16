@@ -117,7 +117,7 @@ public class MemberDummyDataInitializer {
 		List<ProfileIntro> intros = createRandomIntros(gender);
 
 		// 2. Profile 생성
-		Profile profile = com.comatching.member.domain.entity.Profile.builder()
+		Profile profile = Profile.builder()
 			.member(member)
 			.nickname(nickname)
 			.gender(gender)
