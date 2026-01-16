@@ -17,6 +17,7 @@ import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.common.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +28,7 @@ public class ChatServiceImpl implements ChatService {
 
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final S3Service s3Service;
 
 	@Override
 	public ChatMessageResponse markAsRead(String roomId, Long memberId) {
@@ -59,14 +61,20 @@ public class ChatServiceImpl implements ChatService {
 		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
 
-		chatRoom.updateLastMessageInfo(request.content(), now);
+		String previewContent = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
+		chatRoom.updateLastMessageInfo(previewContent, now);
 		chatRoom.updateLastReadAt(request.senderId(), now);
 		chatRoomRepository.save(chatRoom);
+
+		String finalContent = request.content();
+		if (request.type() == MessageType.IMAGE) {
+			finalContent = s3Service.getFileUrl(request.content());
+		}
 
 		ChatMessage chatMessage = ChatMessage.builder()
 			.roomId(request.roomId())
 			.senderId(request.senderId())
-			.content(request.content())
+			.content(finalContent)
 			.type(request.type())
 			.build();
 
@@ -82,7 +90,6 @@ public class ChatServiceImpl implements ChatService {
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
 
 		LocalDateTime otherUserLastReadAt = room.getOtherUserLastReadAt(memberId);
-
 		if (!room.getInitiatorUserId().equals(memberId) && !room.getTargetUserId().equals(memberId)) {
 			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
 		}

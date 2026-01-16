@@ -38,31 +38,25 @@ public class S3Service {
 	 * @param originalFilename 클라이언트가 올릴 원본 파일명
 	 */
 	public S3UploadResponseDto getPresignedPutUrl(Long memberId, String dirName, String originalFilename) {
-		// 확장자 검증
 		String extension = validateImageExtension(originalFilename);
+		String contentType = determineContentType(extension);
 
-		// 유니크한 파일명 생성
 		String imageKey = dirName + "/" + memberId + "/" + UUID.randomUUID() + "." + extension;
 
-		// Presigned URL 생성 요청 객체 생성
-		PutObjectRequest objectRequest = PutObjectRequest.builder()
-			.bucket(bucketName)
-			.key(imageKey)
-			.contentType("image/" + (extension.equals("jpg") ? "jpeg" : extension))
-			.build();
+		return createPresignedUrlResponse(imageKey, contentType);
+	}
 
-		PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
-			.signatureDuration(Duration.ofMinutes(5))
-			.putObjectRequest(objectRequest)
-			.build();
+	/**
+	 * 채팅방 이미지 업로드용
+	 * 경로: chat/{roomId}/{uuid}.{ext}
+	 */
+	public S3UploadResponseDto getPresignedPutUrlForChat(String roomId, String originalFilename) {
+		String extension = validateImageExtension(originalFilename);
+		String contentType = determineContentType(extension);
 
-		// URL 발급
-		String presignedUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
+		String imageKey = "chat/" + roomId + "/" + UUID.randomUUID() + "." + extension;
 
-		return S3UploadResponseDto.builder()
-			.presignedUrl(presignedUrl)
-			.imageKey(imageKey)
-			.build();
+		return createPresignedUrlResponse(imageKey, contentType);
 	}
 
 	/**
@@ -81,6 +75,37 @@ public class S3Service {
 		}
 	}
 
+	private S3UploadResponseDto createPresignedUrlResponse(String imageKey, String contentType) {
+		PutObjectRequest objectRequest = PutObjectRequest.builder()
+			.bucket(bucketName)
+			.key(imageKey)
+			.contentType(contentType)
+			.build();
+
+		PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+			.signatureDuration(Duration.ofMinutes(5))
+			.putObjectRequest(objectRequest)
+			.build();
+
+		String presignedUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
+
+		return S3UploadResponseDto.builder()
+			.presignedUrl(presignedUrl)
+			.imageKey(imageKey)
+			.contentType(contentType)
+			.build();
+	}
+
+	private String determineContentType(String extension) {
+		return switch (extension) {
+			case "jpg", "jpeg" -> "image/jpeg";
+			case "png" -> "image/png";
+			case "gif" -> "image/gif";
+			case "webp" -> "image/webp";
+			default -> "application/octet-stream";
+		};
+	}
+
 	private String validateImageExtension(String filename) {
 		int lastDotIndex = filename.lastIndexOf(".");
 		if (lastDotIndex == -1) {
@@ -97,6 +122,7 @@ public class S3Service {
 
 	/**
 	 * S3 파일 키를 이용해 퍼블릭 이미지 URL을 생성합니다.
+	 *
 	 * @param imageKey DB에 저장된 파일 키 (예: profiles/uuid.jpg)
 	 * @return 접근 가능한 Full URL
 	 */
