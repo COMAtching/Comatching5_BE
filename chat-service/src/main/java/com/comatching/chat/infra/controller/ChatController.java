@@ -3,6 +3,7 @@ package com.comatching.chat.infra.controller;
 import java.util.List;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.chat.domain.dto.ChatMessageRequest;
 import com.comatching.chat.domain.dto.ChatMessageResponse;
 import com.comatching.chat.domain.service.chat.ChatService;
+import com.comatching.chat.domain.service.redis.RedisPublisher;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
@@ -28,8 +30,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ChatController {
 
-	private final SimpMessagingTemplate messagingTemplate;
+	private final RedisPublisher redisPublisher;
 	private final ChatService chatService;
+
+	private final ChannelTopic topic = new ChannelTopic("chatroom");
 
 	@MessageMapping("/chat/message")
 	public void sendMessage(@Payload ChatMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
@@ -53,9 +57,7 @@ public class ChatController {
 
 		ChatMessageResponse response = chatService.processMessage(securedRequest);
 
-		// 경로: /topic/chat.room.{roomId}
-		// 이 경로를 구독(Subscribe)하고 있는 모든 사용자에게 메시지가 전달됩니다.
-		messagingTemplate.convertAndSend("/topic/chat.room." + request.roomId(), response);
+		redisPublisher.publish(topic, response);
 	}
 
 	@GetMapping("/api/chat/rooms/{roomId}/messages")
