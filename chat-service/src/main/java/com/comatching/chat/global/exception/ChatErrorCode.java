@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ChatErrorCode implements ErrorCode {
 
-	NOT_EXIST_CHATROOM("CHAT-001", HttpStatus.NOT_FOUND, "존재하지 않는 채팅방입니다."),
+	CHAT_ERROR("CHAT-000", HttpStatus.INTERNAL_SERVER_ERROR, "채팅 서버 에러."),
+	NOT_EXIST_CHATROOM("CHAT-001", HttpStatus.NOT_FOUND, "존재하지 않는 채팅방입니다.")
 	;
 
 	private final String code;
