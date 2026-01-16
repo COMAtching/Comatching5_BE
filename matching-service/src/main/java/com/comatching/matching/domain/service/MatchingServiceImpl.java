@@ -17,6 +17,7 @@ import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.response.PagingResponse;
@@ -33,6 +34,7 @@ import com.comatching.matching.domain.repository.history.MatchingHistoryReposito
 import com.comatching.matching.global.exception.MatchingErrorCode;
 import com.comatching.matching.infra.ItemClient;
 import com.comatching.matching.infra.client.MemberClient;
+import com.comatching.matching.infra.kafka.MatchingEventProducer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,7 @@ public class MatchingServiceImpl implements MatchingService {
 	private final MatchingHistoryRepository historyRepository;
 	private final MemberClient memberClient;
 	private final ItemClient itemClient;
+	private final MatchingEventProducer matchingEventProducer;
 
 	@Override
 	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
@@ -158,7 +161,15 @@ public class MatchingServiceImpl implements MatchingService {
 		int randomIndex = (int)(Math.random() * bestCandidates.size());
 		MatchingCandidate finalPartner = bestCandidates.get(randomIndex);
 
-		saveMatchingHistory(memberId, finalPartner);
+		MatchingHistory matchingHistory = saveMatchingHistory(memberId, finalPartner);
+
+		MatchingSuccessEvent matchingSuccessEvent = MatchingSuccessEvent.builder()
+			.matchingId(matchingHistory.getId())
+			.initiatorUserId(memberId)
+			.targetUserId(finalPartner.getMemberId())
+			.build();
+
+		matchingEventProducer.sendMatchingSuccess(matchingSuccessEvent);
 
 		return finalPartner;
 	}
@@ -279,13 +290,11 @@ public class MatchingServiceImpl implements MatchingService {
 		};
 	}
 
-	private MatchingCandidate saveMatchingHistory(Long memberId, MatchingCandidate matchedCandidate) {
+	private MatchingHistory saveMatchingHistory(Long memberId, MatchingCandidate matchedCandidate) {
 		MatchingHistory history = MatchingHistory.builder()
 			.memberId(memberId)
 			.partnerId(matchedCandidate.getMemberId())
 			.build();
-		historyRepository.save(history);
-
-		return matchedCandidate;
+		return historyRepository.save(history);
 	}
 }
