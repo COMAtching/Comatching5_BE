@@ -1,12 +1,19 @@
 package com.comatching.chat.global.config;
 
+import java.security.Principal;
+import java.util.Map;
+
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
 
 import com.comatching.chat.global.interceptor.WebSocketHandshakeInterceptor;
+import com.comatching.chat.global.security.StompPrincipal;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,13 +28,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	public void registerStompEndpoints(StompEndpointRegistry registry) {
 		// 연결(Handshake) 엔드포인트 설정
 
-		// 프론트엔드에서 맨 처음 연결할 때 "ws://localhost:9003/ws/chat"으로 요청을 보냄
+		// 프론트엔드에서 맨 처음 연결할 때 "ws://localhost:8080/ws/chat"으로 요청을 보냄
 		registry.addEndpoint("/ws/chat")
-			.setAllowedOrigins("http://localhost:5500") // CORS 설정: 모든 도메인에서 접속 허용
+			.setAllowedOrigins("http://localhost:5500")
 			.addInterceptors(handshakeInterceptor)
+			.setHandshakeHandler(new DefaultHandshakeHandler() {
+				@Override
+				protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler,
+					Map<String, Object> attributes) {
+
+					Long memberId = (Long)attributes.get("memberId");
+					if (memberId == null)
+						return null;
+					return new StompPrincipal(String.valueOf(memberId));
+				}
+			})
 			.withSockJS();
-			// 혹시 브라우저가 WebSocket을 지원하지 않으면(구형 IE 등),
-			// HTTP Polling 방식으로라도 비슷하게 동작하게 해주는 안전장치
+		// 혹시 브라우저가 WebSocket을 지원하지 않으면,
+		// HTTP Polling 방식으로라도 비슷하게 동작하게 해주는 안전장치
 	}
 
 	@Override
