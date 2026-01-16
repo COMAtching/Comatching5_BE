@@ -16,7 +16,7 @@ public class CookieUtil {
 			.httpOnly(true)
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(1).toSeconds())
-			.sameSite("Strict")
+			.sameSite("Lax")
 			.build();
 	}
 
@@ -27,7 +27,7 @@ public class CookieUtil {
 			.httpOnly(true)
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(7).toSeconds())
-			.sameSite("Strict")
+			.sameSite("Lax")
 			.build();
 	}
 

@@ -16,7 +16,7 @@ public class ProfileEventConsumer {
 
 	private final CandidateService candidateService;
 
-	@KafkaListener(topics = "profile-updates", groupId = "matching-service-group", containerFactory = "profileUpdateKafkaListenerContainerFactory")
+	@KafkaListener(topics = "profile-updates", groupId = "matching-service-group")
 	public void consumeProfileUpdate(ProfileUpdatedMatchingEvent event) {
 
 		log.info("Kafka Consume: Profile Update Event Payload = {}", event);

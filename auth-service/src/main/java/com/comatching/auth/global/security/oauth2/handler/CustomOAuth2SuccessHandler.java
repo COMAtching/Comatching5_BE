@@ -27,7 +27,7 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
 
-	@Value("${client.url:http://localhost:3000}")
+	@Value("${client.url}")
 	private String clientUrl;
 
 	@Override
