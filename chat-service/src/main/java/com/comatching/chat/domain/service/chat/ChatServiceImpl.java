@@ -15,6 +15,8 @@ import com.comatching.chat.domain.enums.MessageType;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.global.exception.ChatErrorCode;
+import com.comatching.chat.infra.kafka.ChatEventProducer;
+import com.comatching.common.dto.event.chat.ChatMessageEvent;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.common.service.S3Service;
@@ -29,6 +31,7 @@ public class ChatServiceImpl implements ChatService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final S3Service s3Service;
+	private final ChatEventProducer chatEventProducer;
 
 	@Override
 	public ChatMessageResponse markAsRead(String roomId, Long memberId) {
@@ -58,27 +61,13 @@ public class ChatServiceImpl implements ChatService {
 
 		LocalDateTime now = LocalDateTime.now();
 
-		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
-			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+		ChatRoom chatRoom = updateChatRoomInfo(request, now);
 
-		String previewContent = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
-		chatRoom.updateLastMessageInfo(previewContent, now);
-		chatRoom.updateLastReadAt(request.senderId(), now);
-		chatRoomRepository.save(chatRoom);
+		String finalContent = resolveContent(request);
 
-		String finalContent = request.content();
-		if (request.type() == MessageType.IMAGE) {
-			finalContent = s3Service.getFileUrl(request.content());
-		}
+		ChatMessage savedMessage = saveChatMessage(request, finalContent);
 
-		ChatMessage chatMessage = ChatMessage.builder()
-			.roomId(request.roomId())
-			.senderId(request.senderId())
-			.content(finalContent)
-			.type(request.type())
-			.build();
-
-		ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+		publishNotificationEvent(chatRoom, request, now);
 
 		return ChatMessageResponse.from(savedMessage, 1);
 	}
@@ -100,5 +89,60 @@ public class ChatServiceImpl implements ChatService {
 				return ChatMessageResponse.from(msg, readCount);
 			})
 			.toList();
+	}
+
+	private ChatRoom updateChatRoomInfo(ChatMessageRequest request, LocalDateTime now) {
+		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+
+		String previewContent = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
+
+		chatRoom.updateLastMessageInfo(previewContent, now);
+		chatRoom.updateLastReadAt(request.senderId(), now);
+
+		return chatRoom;
+	}
+
+	private String resolveContent(ChatMessageRequest request) {
+		if (request.type() == MessageType.IMAGE) {
+			return s3Service.getFileUrl(request.content());
+		}
+		return request.content();
+	}
+
+	private ChatMessage saveChatMessage(ChatMessageRequest request, String content) {
+		ChatMessage chatMessage = ChatMessage.builder()
+			.roomId(request.roomId())
+			.senderId(request.senderId())
+			.content(content)
+			.type(request.type())
+			.build();
+		return chatMessageRepository.save(chatMessage);
+	}
+
+	private void publishNotificationEvent(ChatRoom room, ChatMessageRequest request, LocalDateTime now) {
+
+		if (request.type() == MessageType.TALK || request.type() == MessageType.IMAGE) {
+
+			Long senderId = request.senderId();
+			Long receiverId;
+
+			if (senderId.equals(room.getTargetUserId())) {
+				receiverId = room.getInitiatorUserId();
+			} else {
+				receiverId = room.getTargetUserId();
+			}
+
+			String preview = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
+
+			chatEventProducer.send(new ChatMessageEvent(
+				receiverId,
+				request.senderNickname(),
+				request.roomId(),
+				preview,
+				now.toString(),
+				"CHAT"
+			));
+		}
 	}
 }

@@ -94,12 +94,12 @@ class SignupServiceImplTest {
 		// given
 		Long memberId = 1L;
 		ProfileCreateRequest request = new ProfileCreateRequest(
-			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null
+			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null, null, null, null, null
 		);
 
 		ProfileResponse mockProfileResponse = new ProfileResponse(
 			memberId, "test@test.com", "nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl",
-			null, null
+			null, null, null, null, null, null
 		);
 
 		MemberInfo memberInfo = new MemberInfo(memberId, "test@test.com", "ROLE_GUEST");
@@ -108,7 +108,7 @@ class SignupServiceImplTest {
 
 		String accessToken = "mock-access-token";
 		String refreshToken = "mock-refresh-token";
-		given(jwtUtil.createAccessToken(anyLong(), anyString(), anyString(), anyString())).willReturn(accessToken);
+		given(jwtUtil.createAccessToken(anyLong(), anyString(), anyString(), anyString(), anyString())).willReturn(accessToken);
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn(refreshToken);
 
 		// when

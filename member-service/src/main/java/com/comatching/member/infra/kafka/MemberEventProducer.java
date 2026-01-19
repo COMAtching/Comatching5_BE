@@ -75,7 +75,6 @@ public class MemberEventProducer {
 		try {
 			String message = objectMapper.writeValueAsString(event);
 			stringKafkaTemplate.send(topic, message);
-			log.info("Sent Kafka Event [Topic: {}]: {}", topic, message);
 		} catch (JsonProcessingException e) {
 			log.error("Failed to serialize event for topic: {}", topic, e);
 		} catch (Exception e) {

@@ -40,19 +40,19 @@ public class JwtUtil {
 	}
 
 	// Access Token 생성
-	public String createAccessToken(Long memberId, String email, String role, String status) {
+	public String createAccessToken(Long memberId, String email, String role, String status, String nickname) {
 		MemberRole memberRole = MemberRole.valueOf(role);
 		MemberStatus memberStatus = MemberStatus.valueOf(status);
-		return createToken(memberId, email, memberRole, memberStatus, accessTokenValidity);
+		return createToken(memberId, email, memberRole, memberStatus, nickname, accessTokenValidity);
 	}
 
 	// Refresh Token 생성
 	public String createRefreshToken(Long memberId) {
-		return createToken(memberId, null, null, null, refreshTokenValidity);
+		return createToken(memberId, null, null, null, null, refreshTokenValidity);
 	}
 
 	// 내부 토큰 생성 로직
-	private String createToken(Long memberId, String email, MemberRole role, MemberStatus status, long validity) {
+	private String createToken(Long memberId, String email, MemberRole role, MemberStatus status, String nickname, long validity) {
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + validity);
 
@@ -68,6 +68,8 @@ public class JwtUtil {
 			builder.claim("role", role);
 		if (status != null)
 			builder.claim("status", status);
+		if (nickname != null)
+			builder.claim("nickname", nickname);
 
 		return builder.compact();
 	}

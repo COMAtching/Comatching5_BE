@@ -1,5 +1,8 @@
 package com.comatching.gateway.filter;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.exception.code.ErrorCode;
 import com.comatching.common.util.JwtUtil;
@@ -56,13 +59,18 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 			// 사용자 정보 추출 및 헤더 주입
 			try {
 				Claims claims = jwtUtil.parseToken(accessToken);
-				ServerHttpRequest modifiedRequest = request.mutate()
+				ServerHttpRequest.Builder requestBuilder = request.mutate()
 					.header("X-Member-Id", claims.getSubject())
 					.header("X-Member-Email", claims.get("email", String.class))
-					.header("X-Member-Role", claims.get("role", String.class))
-					.build();
+					.header("X-Member-Role", claims.get("role", String.class));
 
-				return chain.filter(exchange.mutate().request(modifiedRequest).build());
+				String nickname = claims.get("nickname", String.class);
+				if (nickname != null && !nickname.isBlank()) {
+					nickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
+					requestBuilder.header("X-Member-Nickname", nickname);
+				}
+
+				return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
 			} catch (Exception e) {
 				log.error("Token parsing error: {}", e.getMessage());
 				return onError(exchange, GatewayErrorCode.TOKEN_INVALID);

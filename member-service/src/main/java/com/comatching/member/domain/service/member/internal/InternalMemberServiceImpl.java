@@ -104,6 +104,7 @@ public class InternalMemberServiceImpl implements InternalMemberService {
 			.status(member.getStatus().name())
 			.socialType(member.getSocialType())
 			.socialId(member.getSocialId())
+			.nickname(member.getProfile().getNickname())
 			.build();
 	}
 }

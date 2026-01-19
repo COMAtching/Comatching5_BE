@@ -41,7 +41,6 @@ public class CandidateServiceImpl implements CandidateService {
 						event.birthDate(),
 						event.isMatchable()
 					);
-					log.info("Updated MatchingCandidate: memberId={}", event.memberId());
 				},
 				() -> {
 					MatchingCandidate newCandidate = MatchingCandidate.create(
@@ -55,7 +54,6 @@ public class CandidateServiceImpl implements CandidateService {
 						event.isMatchable()
 					);
 					candidateRepository.save(newCandidate);
-					log.info("Created New MatchingCandidate: memberId={}", event.memberId());
 				}
 			);
 	}
