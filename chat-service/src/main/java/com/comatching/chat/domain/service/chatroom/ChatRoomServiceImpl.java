@@ -58,4 +58,22 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			})
 			.toList();
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public long getTotalUnreadCount(Long memberId) {
+
+		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId);
+
+		long totalUnread = 0;
+		for (ChatRoom room : myRooms) {
+			LocalDateTime myReadTime = (memberId.equals(room.getInitiatorUserId()))
+				? room.getInitiatorLastReadAt()
+				: room.getTargetLastReadAt();
+
+			totalUnread += chatMessageRepository.countUnreadMessages(room.getId(), myReadTime, memberId);
+		}
+
+		return totalUnread;
+	}
 }

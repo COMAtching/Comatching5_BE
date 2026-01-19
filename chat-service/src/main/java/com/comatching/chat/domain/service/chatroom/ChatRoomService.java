@@ -10,4 +10,6 @@ public interface ChatRoomService {
 	void createChatRoom(MatchingSuccessEvent event);
 
 	List<ChatRoomResponse> getMyChatRooms(Long memberId);
+
+	long getTotalUnreadCount(Long memberId);
 }
