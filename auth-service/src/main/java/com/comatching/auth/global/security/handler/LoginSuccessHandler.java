@@ -35,7 +35,7 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 
 		// 토큰 생성
 		String accessToken = jwtUtil.createAccessToken(principal.getId(), principal.getUsername(), principal.getRole(),
-			principal.getStatus());
+			principal.getStatus(), principal.getNickname());
 		String refreshToken = jwtUtil.createRefreshToken(principal.getId());
 
 		// Redis 저장

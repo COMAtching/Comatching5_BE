@@ -41,9 +41,10 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 		String email = userPrincipal.getEmail();
 		String role = userPrincipal.getRole();
 		String status = userPrincipal.getStatus();
+		String nickname = userPrincipal.getNickname();
 
 		// 토큰 발급
-		String accessToken = jwtUtil.createAccessToken(memberId, email, role, status);
+		String accessToken = jwtUtil.createAccessToken(memberId, email, role, status, nickname);
 		String refreshToken = jwtUtil.createRefreshToken(memberId);
 
 		// Refresh Token Redis 저장

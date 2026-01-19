@@ -18,7 +18,6 @@ public class MatchingEventProducer {
 	private static final String TOPIC = "matching-success-topic";
 
 	public void sendMatchingSuccess(MatchingSuccessEvent event) {
-		log.info("Pub Matching Success Event: {}", event);
 		kafkaTemplate.send(TOPIC, event);
 	}
 }

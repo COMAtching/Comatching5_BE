@@ -1,5 +1,7 @@
 package com.comatching.chat.global.interceptor;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.springframework.http.server.ServerHttpRequest;
@@ -20,16 +22,21 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
 
 		String memberId = request.getHeaders().getFirst("X-Member-Id");
 		String role = request.getHeaders().getFirst("X-Member-Role");
+		String rawNickname = request.getHeaders().getFirst("X-Member-Nickname");
 
 		if (memberId == null) {
-			return true; // 운영 환경에선 여기서 return false;
+			log.error("WebSocket Handshake Failed: No Member ID");
+			return false;
 		}
 
 		// WebSocket 세션 속성(attributes)에 저장
 		attributes.put("memberId", Long.valueOf(memberId));
 		attributes.put("role", role);
+		if (rawNickname != null) {
+			String decodedNickname = URLDecoder.decode(rawNickname, StandardCharsets.UTF_8);
+			attributes.put("nickname", decodedNickname);
+		}
 
-		log.info("WebSocket Handshake - MemberId: {}, Role: {}", memberId, role);
 		return true;
 	}
 

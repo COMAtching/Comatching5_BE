@@ -108,6 +108,13 @@ spring:
                 - Path=/api/items/**, /api/internal/items/**
               filters:
                 - AuthorizationHeaderFilter
+
+            - id: notification-service
+              uri: http://localhost:9005
+              predicates:
+                - Path=/api/fcm/**
+              filters:
+                - AuthorizationHeaderFilter
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 

@@ -62,7 +62,7 @@ public class AuthServiceImpl implements AuthService{
 		MemberLoginDto memberDto = memberServiceClient.getMemberById(memberId);
 
 		String newAccessToken = jwtUtil.createAccessToken(
-			memberId, memberDto.email(), memberDto.role(), memberDto.status()
+			memberId, memberDto.email(), memberDto.role(), memberDto.status(), memberDto.nickname()
 		);
 		String newRefreshToken = jwtUtil.createRefreshToken(memberId);
 
