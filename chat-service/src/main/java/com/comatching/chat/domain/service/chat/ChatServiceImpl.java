@@ -22,7 +22,9 @@ import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.common.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -100,7 +102,7 @@ public class ChatServiceImpl implements ChatService {
 		chatRoom.updateLastMessageInfo(previewContent, now);
 		chatRoom.updateLastReadAt(request.senderId(), now);
 
-		return chatRoom;
+		return chatRoomRepository.save(chatRoom);
 	}
 
 	private String resolveContent(ChatMessageRequest request) {
@@ -124,25 +126,27 @@ public class ChatServiceImpl implements ChatService {
 
 		if (request.type() == MessageType.TALK || request.type() == MessageType.IMAGE) {
 
-			Long senderId = request.senderId();
-			Long receiverId;
+			try {
+				Long targetId = request.senderId().equals(room.getTargetUserId())
+					? room.getInitiatorUserId()
+					: room.getTargetUserId();
 
-			if (senderId.equals(room.getTargetUserId())) {
-				receiverId = room.getInitiatorUserId();
-			} else {
-				receiverId = room.getTargetUserId();
+				String preview = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
+
+				chatEventProducer.send(new ChatMessageEvent(
+					targetId,
+					request.senderNickname(),
+					request.roomId(),
+					preview,
+					now.toString(),
+					"CHAT"
+				));
+
+			} catch (Exception e) {
+				log.error("⚠️ 알림 이벤트 발행 실패 (메시지는 정상 저장됨) - RoomId: {}, Error: {}",
+					request.roomId(), e.getMessage());
+
 			}
-
-			String preview = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
-
-			chatEventProducer.send(new ChatMessageEvent(
-				receiverId,
-				request.senderNickname(),
-				request.roomId(),
-				preview,
-				now.toString(),
-				"CHAT"
-			));
 		}
 	}
 }

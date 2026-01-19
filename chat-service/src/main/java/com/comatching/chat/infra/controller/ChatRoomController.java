@@ -28,4 +28,11 @@ public class ChatRoomController {
 		List<ChatRoomResponse> rooms = chatRoomService.getMyChatRooms(memberInfo.memberId());
 		return ResponseEntity.ok(ApiResponse.ok(rooms));
 	}
+
+	@GetMapping("/unread-count")
+	public ResponseEntity<ApiResponse<Long>> getTotalUnreadCount(@CurrentMember MemberInfo memberInfo) {
+
+		long count = chatRoomService.getTotalUnreadCount(memberInfo.memberId());
+		return ResponseEntity.ok(ApiResponse.ok(count));
+	}
 }
