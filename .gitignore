@@ -46,4 +46,4 @@ bin/
 docker-compose.yml
 /database
 application-secret.yml
-serviceAccountKey.json
+notification/src/main/resources/serviceAccountKey.json
