@@ -3,6 +3,7 @@ package com.comatching.chat.domain.service.chatroom;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Transactional(readOnly = true)
 	public List<ChatRoomResponse> getMyChatRooms(Long memberId) {
 
-		return chatRoomRepository.findMyChatRooms(memberId).stream()
+		Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
+
+		return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
 			.map(room -> {
 				LocalDateTime myLastRead = (memberId.equals(room.getInitiatorUserId()))
 					? room.getInitiatorLastReadAt()
@@ -63,7 +66,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Transactional(readOnly = true)
 	public long getTotalUnreadCount(Long memberId) {
 
-		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId);
+		Sort sort = Sort.unsorted();
+		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId, sort);
 
 		long totalUnread = 0;
 		for (ChatRoom room : myRooms) {
