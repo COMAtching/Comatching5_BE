@@ -16,6 +16,7 @@ class JwtUtilTest {
 	String email;
 	String role;
 	String status;
+	String nickname;
 
 	@BeforeEach
 	void setUp() {
@@ -23,12 +24,13 @@ class JwtUtilTest {
 		email = "test@test.com";
 		role = "ROLE_USER";
 		status = "ACTIVE";
+		nickname = "test";
 	}
 
 	@Test
 	void createAndParseToken() {
 		//when
-		String token = jwtUtil.createAccessToken(memberId, email, role, status);
+		String token = jwtUtil.createAccessToken(memberId, email, role, status, nickname);
 		Claims claims = jwtUtil.parseToken(token);
 
 		//then
@@ -40,7 +42,7 @@ class JwtUtilTest {
 	@Test
 	void validateToken() {
 		//given
-		String token = jwtUtil.createAccessToken(memberId, email, role, status);
+		String token = jwtUtil.createAccessToken(memberId, email, role, status, nickname);
 
 		//when
 		boolean isValid = jwtUtil.validateToken(token);

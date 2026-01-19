@@ -18,7 +18,6 @@ public class MatchingConsumer {
 
 	@KafkaListener(topics = "matching-success-topic", groupId = "chat-service-group")
 	public void consumeMatchingSuccess(MatchingSuccessEvent event) {
-		log.info("Kafka Event Received: {}", event);
 
 		chatRoomService.createChatRoom(event);
 	}

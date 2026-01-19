@@ -23,7 +23,6 @@ public class MatchingMemberEventConsumer {
 		try {
 
 			MemberWithdrawnEvent event = objectMapper.readValue(message, MemberWithdrawnEvent.class);
-			log.info("회원 탈퇴 이벤트 수신: memberId={}", event.memberId());
 
 			candidateService.removeCandidate(event.memberId());
 

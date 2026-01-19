@@ -39,7 +39,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			.build();
 
 		chatRoomRepository.save(newRoom);
-		log.info("ChatRoom Created Successfully! ID: {}", newRoom.getId());
+
 	}
 
 	@Transactional(readOnly = true)

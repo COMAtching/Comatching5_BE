@@ -12,6 +12,7 @@ public record MemberLoginDto(
 	String role,
 	String status,
 	String socialId,
-	SocialType socialType
+	SocialType socialType,
+	String nickname
 ) {
 }

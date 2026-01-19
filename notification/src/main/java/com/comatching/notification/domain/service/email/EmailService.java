@@ -1,4 +1,4 @@
-package com.comatching.notification.domain.service;
+package com.comatching.notification.domain.service.email;
 
 public interface EmailService {
 

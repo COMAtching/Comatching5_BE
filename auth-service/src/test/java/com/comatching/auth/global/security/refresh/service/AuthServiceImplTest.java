@@ -54,9 +54,9 @@ class AuthServiceImplTest {
 			.build();
 		given(refreshTokenRepository.findById(memberId)).willReturn(Optional.of(redisToken));
 
-		MemberLoginDto memberDto = new MemberLoginDto(memberId, "test@comatching.com", "pw", "ROLE_USER", "ACTIVE");
+		MemberLoginDto memberDto = new MemberLoginDto(memberId, "test@comatching.com", "pw", "ROLE_USER", "ACTIVE", null, null, "닉네임");
 		given(memberServiceClient.getMemberById(memberId)).willReturn(memberDto);
-		given(jwtUtil.createAccessToken(anyLong(), anyString(), anyString(), anyString())).willReturn("new_access");
+		given(jwtUtil.createAccessToken(anyLong(), anyString(), anyString(), anyString(), anyString())).willReturn("new_access");
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn("new_refresh");
 
 		//when

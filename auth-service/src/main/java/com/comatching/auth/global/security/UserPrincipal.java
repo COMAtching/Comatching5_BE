@@ -52,6 +52,10 @@ public class UserPrincipal implements UserDetails {
 		return memberDto.role();
 	}
 
+	public String getNickname() {
+		return memberDto.nickname();
+	}
+
 	@Override
 	public boolean isAccountNonLocked() {
 		MemberStatus status = MemberStatus.valueOf(memberDto.status());

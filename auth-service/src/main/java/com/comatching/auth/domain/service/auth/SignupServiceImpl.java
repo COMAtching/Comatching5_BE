@@ -67,8 +67,9 @@ public class SignupServiceImpl implements SignupService {
 		String email = profileResponse.email();
 		String newRole = MemberRole.ROLE_USER.name();
 		String status = MemberStatus.ACTIVE.name();
+		String nickname = profileResponse.nickname();
 
-		String accessToken = jwtUtil.createAccessToken(memberId, email, newRole, status);
+		String accessToken = jwtUtil.createAccessToken(memberId, email, newRole, status, nickname);
 		String refreshToken = jwtUtil.createRefreshToken(memberId);
 
 		refreshTokenRepository.save(RefreshToken.builder()

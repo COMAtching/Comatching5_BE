@@ -1,22 +1,24 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot'
-	id 'io.spring.dependency-management'
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
 }
 
 description = 'notification'
 
 dependencies {
-	implementation(project(':common-module')) {
-		exclude group: 'org.springframework.cloud', module: 'spring-cloud-starter-openfeign'
-		exclude group: 'io.awspring.cloud', module: 'spring-cloud-aws-starter-s3'
-	}
-	implementation 'org.springframework.boot:spring-boot-starter-mail'
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation(project(':common-module')) {
+        exclude group: 'org.springframework.cloud', module: 'spring-cloud-starter-openfeign'
+        exclude group: 'io.awspring.cloud', module: 'spring-cloud-aws-starter-s3'
+    }
+
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }

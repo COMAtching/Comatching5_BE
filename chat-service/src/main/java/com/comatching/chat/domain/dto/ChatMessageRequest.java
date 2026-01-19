@@ -8,6 +8,7 @@ import lombok.Builder;
 public record ChatMessageRequest(
 	String roomId,
 	Long senderId,
+	String senderNickname,
 	String content,
 	MessageType type
 ) {}

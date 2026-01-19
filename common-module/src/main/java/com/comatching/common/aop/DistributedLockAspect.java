@@ -55,8 +55,6 @@ public class DistributedLockAspect {
 				throw new BusinessException(GeneralErrorCode.TOO_MANY_REQUEST);
 			}
 
-			log.info("락 획득 성공 - Key: {}", key);
-
 			return aopForTransaction.proceed(joinPoint);
 		} catch (InterruptedException e) {
 			throw new InterruptedException();
@@ -64,7 +62,6 @@ public class DistributedLockAspect {
 			try {
 				if (rLock.isLocked() && rLock.isHeldByCurrentThread()) {
 					rLock.unlock();
-					log.info("락 해제 성공 - Key: {}", key);
 				}
 			} catch (IllegalMonitorStateException e) {
 				log.error("락 해제 중 오류 발생 - Key: {}", key, e);

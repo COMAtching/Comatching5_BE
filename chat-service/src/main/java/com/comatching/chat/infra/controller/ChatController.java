@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -50,10 +51,12 @@ public class ChatController {
 	}
 
 	@MessageMapping("/chat/message")
-	public void sendMessage(@Payload ChatMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
-		log.info("STOMP Message Received: {}", request);
+	public void sendMessage(
+		@Payload ChatMessageRequest request,
+		SimpMessageHeaderAccessor headerAccessor) {
 
 		Long memberId = (Long)headerAccessor.getSessionAttributes().get("memberId");
+		String nickname = headerAccessor.getSessionAttributes().get("nickname").toString();
 
 		if (memberId == null) {
 			log.error("인증되지 않은 사용자의 접근입니다.");
@@ -63,11 +66,10 @@ public class ChatController {
 		ChatMessageRequest securedRequest = new ChatMessageRequest(
 			request.roomId(),
 			memberId,
+			nickname,
 			request.content(),
 			request.type()
 		);
-
-		log.info("Secure Message Received from User: {}", memberId);
 
 		ChatMessageResponse response = chatService.processMessage(securedRequest);
 
