@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
@@ -22,6 +23,7 @@ public record ProfileCreateRequest(
 	String socialAccountId,
 	String university,
 	String major,
+	ContactFrequency contactFrequency,
 	List<Hobby> hobbies,
 	List<ProfileIntroDto> intros
 ) {

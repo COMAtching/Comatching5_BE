@@ -13,16 +13,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.annotation.DistributedLock;
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.ItemRoute;
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.AddItemRequest;
+import com.comatching.common.dto.item.ItemConsumption;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.matching.domain.component.MatchingItemPolicy;
 import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.dto.MatchingResponse;
@@ -49,6 +51,7 @@ public class MatchingServiceImpl implements MatchingService {
 	private final MemberClient memberClient;
 	private final ItemClient itemClient;
 	private final MatchingEventProducer matchingEventProducer;
+	private final MatchingItemPolicy matchingItemPolicy;
 
 	@Override
 	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
@@ -56,17 +59,28 @@ public class MatchingServiceImpl implements MatchingService {
 
 		ProfileResponse myProfile = memberClient.getProfile(memberId);
 
+		List<ItemConsumption> consumptions = matchingItemPolicy.determine(request);
+		List<ItemConsumption> consumedConsumptions = new ArrayList<>();
+
 		try {
-			itemClient.useItem(memberId, ItemType.MATCHING_TICKET, 1);
+			for (ItemConsumption consumption : consumptions) {
+				itemClient.useItem(
+					memberId,
+					consumption.itemType(),
+					consumption.quantity()
+				);
+				consumedConsumptions.add(consumption);
+			}
 		} catch (Exception e) {
-			throw new BusinessException(MatchingErrorCode.NOT_ENOUGH_TICKET);
+			refundItem(memberId, consumedConsumptions);
+			throw new BusinessException(MatchingErrorCode.NOT_ENOUGH_ITEM);
 		}
 
 		MatchingCandidate matchedCandidate;
 		try {
 			matchedCandidate = processMatching(memberId, myProfile, request);
 		} catch (Exception e) {
-			refundItem(memberId);
+			refundItem(memberId, consumedConsumptions);
 			throw e;
 		}
 
@@ -75,15 +89,17 @@ public class MatchingServiceImpl implements MatchingService {
 		return MatchingResponse.of(matchedCandidate, partnerProfile);
 	}
 
-	private void refundItem(Long memberId) {
+	private void refundItem(Long memberId, List<ItemConsumption> consumptions) {
 		try {
-			AddItemRequest refundReq = new AddItemRequest(
-				ItemType.MATCHING_TICKET,
-				1,
-				ItemRoute.REFUND,
-				30
-			);
-			itemClient.addItem(memberId, refundReq);
+			for (ItemConsumption consumption : consumptions) {
+				AddItemRequest refundReq = new AddItemRequest(
+					consumption.itemType(),
+					consumption.quantity(),
+					ItemRoute.REFUND,
+					30
+				);
+				itemClient.addItem(memberId, refundReq);
+			}
 		} catch (Exception e) {
 			log.error("매칭 실패 후 아이템 환불 실패! memberId={}", memberId, e);
 			throw new BusinessException(GeneralErrorCode.INTERNAL_SERVER_ERROR);
@@ -185,8 +201,20 @@ public class MatchingServiceImpl implements MatchingService {
 			case "ageOption" -> checkAge(candidate.getAge(), myAge, request.ageOption());
 			case "mbtiOption" -> checkMbtiStrict(request.mbtiOption(), candidate.getMbti());
 			case "hobbyOption" -> checkHobbyStrict(request.hobbyOption(), candidate.getHobbyCategories());
+			case "contactOption" -> checkContactStrict(request.contactFrequency(), candidate.getContactFrequency());
 			default -> true;
 		};
+	}
+
+	private boolean checkContactStrict(ContactFrequency reqContact, ContactFrequency candContact) {
+		if (reqContact == null) {
+			return true;
+		}
+		if (candContact == null) {
+			return false;
+		}
+
+		return reqContact.equals(candContact);
 	}
 
 	private boolean checkMbtiStrict(String reqMbti, String candMbti) {
@@ -229,6 +257,10 @@ public class MatchingServiceImpl implements MatchingService {
 		// 3. 나이 점수
 		if (checkAge(candidate.getAge(), myAge, request.ageOption())) {
 			score += 20;
+		}
+
+		if (request.contactFrequency() != null && candidate.getContactFrequency() == request.contactFrequency()) {
+			score += 10;
 		}
 
 		return score;

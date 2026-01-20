@@ -91,6 +91,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.socialAccountId(),
 			request.university(),
 			request.major(),
+			request.contactFrequency(),
 			request.hobbies(),
 			getProfileIntros(request.intros()),
 			request.isMatchable()
@@ -119,6 +120,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.gender(profile.getGender())
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
+			.contactFrequency(profile.getContactFrequency())
 			.hobbies(profile.getHobbies())
 			.birthDate(profile.getBirthDate())
 			.isMatchable(profile.isMatchable())
@@ -140,13 +142,12 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.socialAccountId(request.socialAccountId())
 			.university(request.university())
 			.major(request.major())
+			.contactFrequency(request.contactFrequency())
 			.hobbies(request.hobbies())
 			.intros(getProfileIntros(request.intros()))
 			.build();
 
-		Profile savedProfile = profileRepository.save(profile);
-
-		return savedProfile;
+		return profileRepository.save(profile);
 	}
 
 	private static List<ProfileIntro> getProfileIntros(List<ProfileIntroDto> intros) {
@@ -176,6 +177,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.socialAccountId(profile.getSocialAccountId())
 			.university(profile.getUniversity())
 			.major(profile.getMajor())
+			.contactFrequency(profile.getContactFrequency().getCode())
 			.hobbies(profile.getHobbies())
 			.intros(profile.getIntros().stream()
 				.map(i -> new ProfileIntroDto(i.getQuestion().getQuestion(), i.getAnswer()))

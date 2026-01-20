@@ -23,8 +23,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: false
+      ddl-auto: create
+    show-sql: true
+    properties:
+      default_batch_fetch_size: 100
 
   kafka:
     bootstrap-servers: localhost:9092

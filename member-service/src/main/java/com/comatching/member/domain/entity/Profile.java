@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
@@ -60,6 +61,9 @@ public class Profile {
 	@Column(nullable = false)
 	private String major;
 
+	@Enumerated(EnumType.STRING)
+	private ContactFrequency contactFrequency;
+
 	@Column(nullable = false)
 	private boolean isMatchable = true;
 
@@ -80,7 +84,7 @@ public class Profile {
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
 		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
-		String major, List<Hobby> hobbies, List<ProfileIntro> intros) {
+		String major, ContactFrequency contactFrequency, List<Hobby> hobbies, List<ProfileIntro> intros) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -92,6 +96,7 @@ public class Profile {
 		this.socialAccountId = socialAccountId;
 		this.university = university;
 		this.major = major;
+		this.contactFrequency = contactFrequency;
 
 		if (hobbies != null)
 			addHobbies(hobbies);
@@ -114,7 +119,7 @@ public class Profile {
 		String nickname, String intro, String mbti,
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
-		String university, String major,
+		String university, String major, ContactFrequency contactFrequency,
 		List<Hobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
 
 		if (nickname != null)
@@ -133,6 +138,8 @@ public class Profile {
 			this.university = university;
 		if (major != null)
 			this.major = major;
+		if (contactFrequency != null)
+			this.contactFrequency = contactFrequency;
 		if (isMatchable != null)
 			this.isMatchable = isMatchable;
 

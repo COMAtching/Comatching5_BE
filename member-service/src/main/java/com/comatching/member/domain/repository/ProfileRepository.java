@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.comatching.member.domain.entity.Profile;
@@ -13,5 +15,9 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
 	Optional<Profile> findByMemberId(Long memberId);
 
-	List<Profile> findAllByMemberIdIn(List<Long> memberIds);
+	@Query("SELECT DISTINCT p FROM Profile p " +
+		"JOIN FETCH p.member m " +
+		"LEFT JOIN FETCH p.intros " +
+		"WHERE m.id IN :memberIds")
+	List<Profile> findAllByMemberIdIn(@Param("memberIds") List<Long> memberIds);
 }

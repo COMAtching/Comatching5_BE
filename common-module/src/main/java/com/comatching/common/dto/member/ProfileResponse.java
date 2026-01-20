@@ -2,7 +2,6 @@ package com.comatching.common.dto.member;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
@@ -24,6 +23,8 @@ public record ProfileResponse(
 	String socialAccountId,
 	String university,
 	String major,
+	String contactFrequency,
 	List<Hobby> hobbies,
 	List<ProfileIntroDto> intros
-) {}
+) {
+}
