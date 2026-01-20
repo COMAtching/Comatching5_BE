@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.IntroQuestion;
@@ -65,22 +66,24 @@ public class MemberDummyDataInitializer {
 
 		// 1. [내 계정] 테스트용 내 계정 생성 (로그인용)
 		createMemberAndProfile(
-			"myuser@test.com", "승환", Gender.MALE, "ENFP", "컴퓨터공학과",
+			"myuser@test.com", "승환", Gender.MALE, "ENFP", "컴퓨터공학과", ContactFrequency.FREQUENT,
 			List.of(Hobby.CODING, Hobby.SOCCER), LocalDate.of(2000, 1, 1)
 		);
 
 		// 2. [랜덤 유저] 생성
-		for (int i = 1; i <= 10; i++) {
-			Gender gender = (i % 2 == 0) ? Gender.FEMALE : Gender.MALE;
+		for (int i = 1; i <= 20; i++) {
+			// Gender gender = (i % 2 == 0) ? Gender.FEMALE : Gender.MALE;
+			Gender gender = Gender.FEMALE;
 			String mbti = mbtis.get(random.nextInt(mbtis.size()));
 			String major = majors.get(random.nextInt(majors.size()));
 
 			// 취미 랜덤
 			List<Hobby> hobbies = new ArrayList<>();
 			hobbies.add(Hobby.values()[random.nextInt(Hobby.values().length)]);
+			List<ContactFrequency> contactFrequencies = new ArrayList<>(Set.of(ContactFrequency.values()));
 
 			createMemberAndProfile(
-				"user" + i + "@test.com", "유저" + i, gender, mbti, major,
+				"user" + i + "@test.com", "유저" + i, gender, mbti, major, contactFrequencies.get(random.nextInt(contactFrequencies.size())),
 				hobbies, LocalDate.of(1998 + random.nextInt(6), 1, 1)
 			);
 		}
@@ -88,20 +91,20 @@ public class MemberDummyDataInitializer {
 		// 3. [시나리오 유저] 매칭 테스트를 위한 맞춤형 상대방 생성
 		// - Scenario 1: 완전 일치 (여성, ENFP, 시각디자인과, 헬스)
 		createMemberAndProfile(
-			"target1@test.com", "완벽매칭녀", Gender.FEMALE, "ENFP", "시각디자인과",
+			"target1@test.com", "완벽매칭녀", Gender.FEMALE, "ENFP", "시각디자인과", ContactFrequency.FREQUENT,
 			List.of(Hobby.GYM), LocalDate.of(2000, 5, 5)
 		);
 
 		// - Scenario 2: 취미만 다름 (여성, ENFP, 경영학과(전공다름), 독서(취미다름))
 		createMemberAndProfile(
-			"target2@test.com", "취미다른녀", Gender.FEMALE, "ENFP", "컴퓨터공학과",
+			"target2@test.com", "취미다른녀", Gender.FEMALE, "ENFP", "컴퓨터공학과", ContactFrequency.FREQUENT,
 			List.of(Hobby.READING), LocalDate.of(2001, 3, 15)
 		);
 
 		log.info("✅ [Member] 더미 데이터 생성 완료!");
 	}
 
-	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, List<Hobby> hobbies, LocalDate birthDate) {
+	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, ContactFrequency contactFrequency, List<Hobby> hobbies, LocalDate birthDate) {
 
 		// 1. Member 생성 (USER, ACTIVE)
 		Member member = Member.builder()
@@ -123,6 +126,7 @@ public class MemberDummyDataInitializer {
 			.gender(gender)
 			.mbti(mbti)
 			.major(major)
+			.contactFrequency(contactFrequency)
 			.intro("안녕하세요! " + nickname + "입니다.")
 			.profileImageUrl("https://dummy-image.com/" + nickname)
 			.university("한국대학교")
@@ -180,6 +184,7 @@ public class MemberDummyDataInitializer {
 			.gender(profile.getGender())
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
+			.contactFrequency(profile.getContactFrequency())
 			.hobbies(profile.getHobbies())
 			.birthDate(profile.getBirthDate())
 			.isMatchable(true) // 기본값 true

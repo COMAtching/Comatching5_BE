@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -52,13 +54,13 @@ class MatchingConcurrencyTest {
 		Long memberId = 1L; // 테스트할 유저 ID
 
 		MatchingCandidate partner = MatchingCandidate.create(
-			2L, 20L, Gender.FEMALE, "ISTJ", "디자인학과",
-			new HashSet<>(Collections.singletonList(Hobby.SOCCER)), LocalDate.of(2000, 11, 11), true
+			2L, 20L, Gender.FEMALE, "ISTJ", "디자인학과", ContactFrequency.FREQUENT,
+			new ArrayList<>(Collections.singletonList(Hobby.SOCCER)), LocalDate.of(2000, 11, 11), true
 		);
 		candidateRepository.save(partner);
 
 		MatchingRequest request = new MatchingRequest(
-			null, "IS", Hobby.Category.SPORTS, false
+			null, "IS", Hobby.Category.SPORTS, ContactFrequency.FREQUENT, false, null
 		);
 
 		given(memberClient.getProfile(anyLong()))

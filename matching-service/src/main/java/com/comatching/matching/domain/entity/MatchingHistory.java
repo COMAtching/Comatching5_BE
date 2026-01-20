@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.data.annotation.CreatedDate;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,10 +21,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "matching_history", indexes = {
-	@Index(name = "idx_history_member", columnList = "memberId"),
-	@Index(name = "idx_history_partner", columnList = "partnerId")
-},
+@Table(name = "matching_history",
 	uniqueConstraints = {
 		@UniqueConstraint(
 			name = "uk_history_member_partner",
@@ -43,12 +41,16 @@ public class MatchingHistory {
 	@Column(nullable = false)
 	private Long partnerId;
 
+	@Embedded
+	private MatchingCondition condition;
+
 	@CreatedDate
 	private LocalDateTime matchedAt = LocalDateTime.now();
 
 	@Builder
-	public MatchingHistory(Long memberId, Long partnerId) {
+	public MatchingHistory(Long memberId, Long partnerId, MatchingCondition condition) {
 		this.memberId = memberId;
 		this.partnerId = partnerId;
+		this.condition = condition;
 	}
 }
