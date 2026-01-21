@@ -50,6 +50,7 @@ public class MatchingCandidate {
 
 	private int age;
 
+	@Enumerated(EnumType.STRING)
 	private ContactFrequency contactFrequency;
 
 	@ElementCollection(fetch = FetchType.LAZY)

@@ -26,18 +26,20 @@ public class MatchingCondition {
 	@Enumerated(EnumType.STRING)
 	private Hobby.Category hobbyOption;
 
-	private Boolean sameMajorOption;
+	private boolean sameMajorOption;
 
 	private String mbtiOption;
 
-	@Builder
+	private String importantOption;
 
+	@Builder
 	public MatchingCondition(AgeOption ageOption, ContactFrequency contactFrequency, Hobby.Category hobbyOption,
-		Boolean sameMajorOption, String mbtiOption) {
+		boolean sameMajorOption, String mbtiOption, String importantOption) {
 		this.ageOption = ageOption;
 		this.contactFrequency = contactFrequency;
 		this.hobbyOption = hobbyOption;
 		this.sameMajorOption = sameMajorOption;
 		this.mbtiOption = mbtiOption;
+		this.importantOption = importantOption;
 	}
 }

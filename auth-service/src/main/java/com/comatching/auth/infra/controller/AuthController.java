@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.auth.domain.dto.ChangePasswordRequest;
+import com.comatching.auth.domain.dto.CompleteSignupResponse;
 import com.comatching.auth.domain.dto.PasswordResetCodeRequest;
 import com.comatching.auth.domain.dto.ResetPasswordRequest;
 import com.comatching.auth.domain.dto.TokenResponse;
@@ -47,13 +48,13 @@ public class AuthController {
 	}
 
 	@PostMapping("/signup/profile")
-	public ResponseEntity<ProfileResponse> completeSignup(
+	public ResponseEntity<ApiResponse<CompleteSignupResponse>> completeSignup(
 		@CurrentMember MemberInfo memberInfo,
 		@RequestBody ProfileCreateRequest request,
 		HttpServletResponse response
 	) {
-		ProfileResponse result = signupService.completeSignup(memberInfo, request, response);
-		return ResponseEntity.ok(result);
+		CompleteSignupResponse result = signupService.completeSignup(memberInfo, request, response);
+		return ResponseEntity.ok(ApiResponse.ok(result));
 	}
 
 	@PostMapping("/reissue")

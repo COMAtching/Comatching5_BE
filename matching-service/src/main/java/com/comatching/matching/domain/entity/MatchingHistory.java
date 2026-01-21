@@ -41,6 +41,9 @@ public class MatchingHistory {
 	@Column(nullable = false)
 	private Long partnerId;
 
+	@Column(nullable = false)
+	private boolean favorite;
+
 	@Embedded
 	private MatchingCondition condition;
 
@@ -52,5 +55,10 @@ public class MatchingHistory {
 		this.memberId = memberId;
 		this.partnerId = partnerId;
 		this.condition = condition;
+		this.favorite = false;
+	}
+
+	public void updateFavorite(boolean favorite) {
+		this.favorite = favorite;
 	}
 }

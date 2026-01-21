@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.auth.domain.dto.CompleteSignupResponse;
 import com.comatching.auth.domain.service.mail.EmailService;
 import com.comatching.auth.global.exception.AuthErrorCode;
 import com.comatching.auth.global.security.refresh.RefreshToken;
@@ -57,7 +58,7 @@ public class SignupServiceImpl implements SignupService {
 
 	@Override
 	@Transactional
-	public ProfileResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request,
+	public CompleteSignupResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request,
 		HttpServletResponse response) {
 
 		// Member Service에 프로필 생성 요청
@@ -83,6 +84,9 @@ public class SignupServiceImpl implements SignupService {
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
 
-		return profileResponse;
+		return CompleteSignupResponse.builder()
+			.profile(profileResponse)
+			.isOnboardingFinished(false)
+			.build();
 	}
 }
