@@ -14,7 +14,7 @@ import java.util.Set;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.member.global.exception.MemberErrorCode;
@@ -70,14 +70,8 @@ public class Profile {
 
 	private int point = 0;
 
-	@ElementCollection(fetch = FetchType.LAZY)
-	@CollectionTable(
-		name = "profile_hobbies",
-		joinColumns = @JoinColumn(name = "profile_id")
-	)
-	@Enumerated(EnumType.STRING)
-	@Column(name = "hobby")
-	private List<Hobby> hobbies = new ArrayList<>();
+	@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<ProfileHobby> hobbies = new ArrayList<>();
 
 	@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ProfileIntro> intros = new ArrayList<>();
@@ -85,7 +79,7 @@ public class Profile {
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
 		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
-		String major, ContactFrequency contactFrequency, List<Hobby> hobbies, List<ProfileIntro> intros) {
+		String major, ContactFrequency contactFrequency, List<ProfileHobby> hobbies, List<ProfileIntro> intros) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -121,7 +115,7 @@ public class Profile {
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
 		String university, String major, ContactFrequency contactFrequency,
-		List<Hobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
+		List<ProfileHobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
 
 		if (nickname != null)
 			this.nickname = nickname;
@@ -153,13 +147,22 @@ public class Profile {
 
 	}
 
-	public void addHobbies(List<Hobby> newHobbies) {
+	public void addHobbies(List<ProfileHobby> newHobbies) {
 		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 10 || newHobbies.size() < 1) {
 			throw new BusinessException(MemberErrorCode.INVALID_HOBBY_COUNT);
 		}
 
 		this.hobbies.clear();
-		this.hobbies.addAll(newHobbies);
+		for (ProfileHobby hobby : newHobbies) {
+			this.hobbies.add(hobby);
+			hobby.assignProfile(this);
+		}
+	}
+
+	public List<HobbyCategory> getHobbyCategories() {
+		return this.hobbies.stream()
+			.map(ProfileHobby::getCategory)
+			.toList();
 	}
 
 	public void addIntros(List<ProfileIntro> newIntros) {

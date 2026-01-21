@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
@@ -56,11 +56,11 @@ public class MatchingCandidate {
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(name = "candidate_hobby_categories", joinColumns = @JoinColumn(name = "member_id"))
 	@Enumerated(EnumType.STRING)
-	private List<Hobby.Category> hobbyCategories = new ArrayList<>();
+	private List<HobbyCategory> hobbyCategories = new ArrayList<>();
 
 	public void syncProfile(
 		Long profileId, Gender gender, String mbti, String major, ContactFrequency contactFrequency,
-		List<Hobby> hobbies, LocalDate birthDate, Boolean isMatchable) {
+		List<HobbyCategory> hobbyCategories, LocalDate birthDate, Boolean isMatchable) {
 		if (profileId != null) {
 			this.profileId = profileId;
 		}
@@ -83,21 +83,17 @@ public class MatchingCandidate {
 			this.isMatchable = isMatchable;
 		}
 
-		if (hobbies != null) {
+		if (hobbyCategories != null) {
 			this.hobbyCategories.clear();
-			this.hobbyCategories.addAll(
-				hobbies.stream()
-					.map(Hobby::getCategory)
-					.toList()
-			);
+			this.hobbyCategories.addAll(hobbyCategories);
 		}
 	}
 
 	public static MatchingCandidate create(Long memberId, Long profileId, Gender gender, String mbti, String major,
-		ContactFrequency contactFrequency, List<Hobby> hobbies, LocalDate birthDate, boolean isMatchable) {
+		ContactFrequency contactFrequency, List<HobbyCategory> hobbyCategories, LocalDate birthDate, boolean isMatchable) {
 		MatchingCandidate candidate = new MatchingCandidate();
 		candidate.memberId = memberId;
-		candidate.syncProfile(profileId, gender, mbti, major, contactFrequency, hobbies, birthDate, isMatchable);
+		candidate.syncProfile(profileId, gender, mbti, major, contactFrequency, hobbyCategories, birthDate, isMatchable);
 		return candidate;
 	}
 }

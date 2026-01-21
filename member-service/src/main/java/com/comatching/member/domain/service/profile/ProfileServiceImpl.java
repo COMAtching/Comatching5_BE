@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
+import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -15,6 +16,7 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.member.domain.dto.ProfileUpdateRequest;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.entity.Profile;
+import com.comatching.member.domain.entity.ProfileHobby;
 import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
@@ -92,7 +94,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.university(),
 			request.major(),
 			request.contactFrequency(),
-			request.hobbies(),
+			getProfileHobbies(request.hobbies()),
 			getProfileIntros(request.intros()),
 			request.isMatchable()
 		);
@@ -121,7 +123,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency())
-			.hobbies(profile.getHobbies())
+			.hobbyCategories(profile.getHobbyCategories())
 			.birthDate(profile.getBirthDate())
 			.isMatchable(profile.isMatchable())
 			.build();
@@ -143,11 +145,21 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.university(request.university())
 			.major(request.major())
 			.contactFrequency(request.contactFrequency())
-			.hobbies(request.hobbies())
+			.hobbies(getProfileHobbies(request.hobbies()))
 			.intros(getProfileIntros(request.intros()))
 			.build();
 
 		return profileRepository.save(profile);
+	}
+
+	private static List<ProfileHobby> getProfileHobbies(List<HobbyDto> hobbies) {
+		List<ProfileHobby> newHobbies = null;
+		if (hobbies != null) {
+			newHobbies = hobbies.stream()
+				.map(dto -> new ProfileHobby(dto.category(), dto.name()))
+				.toList();
+		}
+		return newHobbies;
 	}
 
 	private static List<ProfileIntro> getProfileIntros(List<ProfileIntroDto> intros) {
@@ -178,7 +190,9 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.university(profile.getUniversity())
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency().getCode())
-			.hobbies(profile.getHobbies())
+			.hobbies(profile.getHobbies().stream()
+				.map(h -> new HobbyDto(h.getCategory(), h.getName()))
+				.toList())
 			.intros(profile.getIntros().stream()
 				.map(i -> new ProfileIntroDto(i.getQuestion().getQuestion(), i.getAnswer()))
 				.toList())

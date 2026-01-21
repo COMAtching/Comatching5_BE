@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
 
 import lombok.Builder;
@@ -24,7 +23,7 @@ public record ProfileResponse(
 	String university,
 	String major,
 	String contactFrequency,
-	List<Hobby> hobbies,
+	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros
 ) {
 }

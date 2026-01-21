@@ -20,7 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.entity.MatchingCandidate;
@@ -55,12 +55,12 @@ class MatchingConcurrencyTest {
 
 		MatchingCandidate partner = MatchingCandidate.create(
 			2L, 20L, Gender.FEMALE, "ISTJ", "디자인학과", ContactFrequency.FREQUENT,
-			new ArrayList<>(Collections.singletonList(Hobby.SOCCER)), LocalDate.of(2000, 11, 11), true
+			new ArrayList<>(Collections.singletonList(HobbyCategory.SPORTS)), LocalDate.of(2000, 11, 11), true
 		);
 		candidateRepository.save(partner);
 
 		MatchingRequest request = new MatchingRequest(
-			null, "IS", Hobby.Category.SPORTS, ContactFrequency.FREQUENT, false, null
+			null, "IS", HobbyCategory.SPORTS, ContactFrequency.FREQUENT, false, null
 		);
 
 		given(memberClient.getProfile(anyLong()))

@@ -1,7 +1,7 @@
 package com.comatching.matching.domain.entity;
 
 import com.comatching.common.domain.enums.ContactFrequency;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.matching.domain.enums.AgeOption;
 
 import jakarta.persistence.Embeddable;
@@ -24,7 +24,7 @@ public class MatchingCondition {
 	private ContactFrequency contactFrequency;
 
 	@Enumerated(EnumType.STRING)
-	private Hobby.Category hobbyOption;
+	private HobbyCategory hobbyOption;
 
 	private boolean sameMajorOption;
 
@@ -33,7 +33,7 @@ public class MatchingCondition {
 	private String importantOption;
 
 	@Builder
-	public MatchingCondition(AgeOption ageOption, ContactFrequency contactFrequency, Hobby.Category hobbyOption,
+	public MatchingCondition(AgeOption ageOption, ContactFrequency contactFrequency, HobbyCategory hobbyOption,
 		boolean sameMajorOption, String mbtiOption, String importantOption) {
 		this.ageOption = ageOption;
 		this.contactFrequency = contactFrequency;

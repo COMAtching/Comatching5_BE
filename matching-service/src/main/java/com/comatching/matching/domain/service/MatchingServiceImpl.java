@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.AddItemRequest;
@@ -206,7 +206,7 @@ public class MatchingServiceImpl implements MatchingService {
 		return true;
 	}
 
-	private boolean checkHobbyStrict(Hobby.Category reqHobby, List<Hobby.Category> candHobbies) {
+	private boolean checkHobbyStrict(HobbyCategory reqHobby, List<HobbyCategory> candHobbies) {
 		if (reqHobby == null) {
 			return true;
 		}
@@ -256,7 +256,7 @@ public class MatchingServiceImpl implements MatchingService {
 		return matchCount * 10;
 	}
 
-	private int calculateHobbyScore(List<Hobby.Category> candidateHobbies, Hobby.Category targetCategory) {
+	private int calculateHobbyScore(List<HobbyCategory> candidateHobbies, HobbyCategory targetCategory) {
 
 		if (candidateHobbies == null || candidateHobbies.isEmpty()) {
 			return 0;
