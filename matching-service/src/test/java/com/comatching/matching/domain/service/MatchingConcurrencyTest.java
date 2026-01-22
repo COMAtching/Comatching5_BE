@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,7 @@ import com.comatching.matching.domain.entity.MatchingCandidate;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
 import com.comatching.matching.infra.client.MemberClient;
 
+@Disabled("통합 테스트 환경 설정 필요 - Redis/Kafka 실행 후 활성화")
 @SpringBootTest
 class MatchingConcurrencyTest {
 

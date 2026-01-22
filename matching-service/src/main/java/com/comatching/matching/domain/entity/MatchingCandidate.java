@@ -7,9 +7,14 @@ import java.util.List;
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
+import com.comatching.common.domain.vo.KoreanAge;
+import com.comatching.matching.domain.vo.Mbti;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -42,13 +47,17 @@ public class MatchingCandidate {
 	@Enumerated(EnumType.STRING)
 	private Gender gender;
 
-	private String mbti;
+	@Embedded
+	@AttributeOverride(name = "value", column = @Column(name = "mbti"))
+	private Mbti mbti;
 
 	private String major;
 
 	private boolean isMatchable;
 
-	private int age;
+	@Embedded
+	@AttributeOverride(name = "value", column = @Column(name = "age"))
+	private KoreanAge age;
 
 	@Enumerated(EnumType.STRING)
 	private ContactFrequency contactFrequency;
@@ -68,7 +77,7 @@ public class MatchingCandidate {
 			this.gender = gender;
 		}
 		if (mbti != null) {
-			this.mbti = mbti;
+			this.mbti = new Mbti(mbti);
 		}
 		if (major != null) {
 			this.major = major;
@@ -77,7 +86,7 @@ public class MatchingCandidate {
 			this.contactFrequency = contactFrequency;
 		}
 		if (birthDate != null) {
-			this.age = birthDate.until(LocalDate.now()).getYears() + 1;
+			this.age = KoreanAge.fromBirthDate(birthDate);
 		}
 		if (isMatchable != null) {
 			this.isMatchable = isMatchable;
@@ -95,5 +104,13 @@ public class MatchingCandidate {
 		candidate.memberId = memberId;
 		candidate.syncProfile(profileId, gender, mbti, major, contactFrequency, hobbyCategories, birthDate, isMatchable);
 		return candidate;
+	}
+
+	public boolean hasHobbyCategory(HobbyCategory category) {
+		return category != null && this.hobbyCategories.contains(category);
+	}
+
+	public boolean matchesContactFrequency(ContactFrequency frequency) {
+		return frequency == null || this.contactFrequency == frequency;
 	}
 }

@@ -30,7 +30,7 @@ public record MatchingResponse(
 		return MatchingResponse.builder()
 			.memberId(candidate.getMemberId())
 			.gender(candidate.getGender())
-			.age(candidate.getAge())
+			.age(candidate.getAge() != null ? candidate.getAge().getValue() : 0)
 			.major(candidate.getMajor())
 			.mbti(profile.mbti())
 			.intro(profile.intro())
