@@ -14,6 +14,7 @@ import com.comatching.chat.domain.entity.ChatRoom;
 import com.comatching.chat.domain.enums.MessageType;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
+import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.chat.infra.kafka.ChatEventProducer;
 import com.comatching.common.dto.event.chat.ChatMessageEvent;
@@ -34,6 +35,7 @@ public class ChatServiceImpl implements ChatService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final S3Service s3Service;
 	private final ChatEventProducer chatEventProducer;
+	private final BlockService blockService;
 
 	@Override
 	public ChatMessageResponse markAsRead(String roomId, Long memberId) {
@@ -63,15 +65,27 @@ public class ChatServiceImpl implements ChatService {
 
 		LocalDateTime now = LocalDateTime.now();
 
-		ChatRoom chatRoom = updateChatRoomInfo(request, now);
+		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+
+		Long receiverId = getReceiverId(chatRoom, request.senderId());
+		boolean isBlockedByReceiver = blockService.isBlocked(receiverId, request.senderId());
 
 		String finalContent = resolveContent(request);
-
 		ChatMessage savedMessage = saveChatMessage(request, finalContent);
 
-		publishNotificationEvent(chatRoom, request, now);
+		if (!isBlockedByReceiver) {
+			updateChatRoomInfo(chatRoom, request, now);
+			publishNotificationEvent(chatRoom, request, now);
+		}
 
 		return ChatMessageResponse.from(savedMessage, 1);
+	}
+
+	private Long getReceiverId(ChatRoom chatRoom, Long senderId) {
+		return senderId.equals(chatRoom.getTargetUserId())
+			? chatRoom.getInitiatorUserId()
+			: chatRoom.getTargetUserId();
 	}
 
 	@Transactional(readOnly = true)
@@ -93,16 +107,13 @@ public class ChatServiceImpl implements ChatService {
 			.toList();
 	}
 
-	private ChatRoom updateChatRoomInfo(ChatMessageRequest request, LocalDateTime now) {
-		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
-			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
-
+	private void updateChatRoomInfo(ChatRoom chatRoom, ChatMessageRequest request, LocalDateTime now) {
 		String previewContent = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
 
 		chatRoom.updateLastMessageInfo(previewContent, now);
 		chatRoom.updateLastReadAt(request.senderId(), now);
 
-		return chatRoomRepository.save(chatRoom);
+		chatRoomRepository.save(chatRoom);
 	}
 
 	private String resolveContent(ChatMessageRequest request) {
