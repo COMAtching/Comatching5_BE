@@ -52,7 +52,7 @@ docker-compose.yml
 Dockerfile
 /database
 /docs
-application.yml
+docker-compose.prod.yml
 application-docker.yml
 application-secret.yml
 serviceAccountKey.json
