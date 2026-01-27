@@ -65,6 +65,8 @@ public class Profile {
 	@Column(nullable = false)
 	private ContactFrequency contactFrequency;
 
+	private String song;
+
 	@Column(nullable = false)
 	private boolean isMatchable = true;
 
@@ -79,7 +81,7 @@ public class Profile {
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
 		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
-		String major, ContactFrequency contactFrequency, List<ProfileHobby> hobbies, List<ProfileIntro> intros) {
+		String major, ContactFrequency contactFrequency, String song, List<ProfileHobby> hobbies, List<ProfileIntro> intros) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -92,6 +94,7 @@ public class Profile {
 		this.university = university;
 		this.major = major;
 		this.contactFrequency = contactFrequency;
+		this.song = song;
 
 		if (hobbies != null)
 			addHobbies(hobbies);
@@ -107,6 +110,7 @@ public class Profile {
 		this.socialAccountType = null;
 		this.socialAccountId = null;
 		this.major = "(알 수 없음)";
+		this.song = null;
 		this.point = 0;
 	}
 
@@ -114,7 +118,7 @@ public class Profile {
 		String nickname, String intro, String mbti,
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
-		String university, String major, ContactFrequency contactFrequency,
+		String university, String major, ContactFrequency contactFrequency, String song,
 		List<ProfileHobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
 
 		if (nickname != null)
@@ -137,6 +141,8 @@ public class Profile {
 			this.contactFrequency = contactFrequency;
 		if (isMatchable != null)
 			this.isMatchable = isMatchable;
+		if (song != null)
+			this.song = song;
 
 		updateSocialInfo(socialAccountType, socialAccountId);
 

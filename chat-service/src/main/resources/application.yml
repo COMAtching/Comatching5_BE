@@ -5,9 +5,6 @@ spring:
   application:
     name: chat-service
 
-  config:
-    import: optional:classpath:application-secret.yml
-
   data:
     mongodb:
       host: localhost
@@ -25,3 +22,20 @@ spring:
       auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY}
+        secret-key: ${AWS_SECRET_KEY}
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: ${AWS_S3_BUCKET}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}

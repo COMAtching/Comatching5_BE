@@ -1,9 +1,11 @@
 package com.comatching.member.domain.service.profile;
 
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
@@ -20,11 +22,11 @@ import com.comatching.member.domain.entity.ProfileHobby;
 import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
+import com.comatching.member.global.config.ProfileImageProperties;
 import com.comatching.member.global.exception.MemberErrorCode;
 import com.comatching.member.infra.kafka.MemberEventProducer;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	private final MemberRepository memberRepository;
 	private final ProfileRepository profileRepository;
 	private final MemberEventProducer memberEventProducer;
+	private final ProfileImageProperties profileImageProperties;
 
 	@Override
 	public ProfileResponse createProfile(Long memberId, ProfileCreateRequest request) {
@@ -94,6 +97,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.university(),
 			request.major(),
 			request.contactFrequency(),
+			request.song(),
 			getProfileHobbies(request.hobbies()),
 			getProfileIntros(request.intros()),
 			request.isMatchable()
@@ -132,6 +136,9 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	}
 
 	private Profile saveProfile(ProfileCreateRequest request, Member member) {
+
+		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey());
+
 		Profile profile = Profile.builder()
 			.member(member)
 			.nickname(request.nickname())
@@ -139,7 +146,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.birthDate(request.birthDate())
 			.mbti(request.mbti())
 			.intro(request.intro())
-			.profileImageUrl(request.profileImageKey())
+			.profileImageUrl(finalProfileImageUrl)
 			.socialAccountType(request.socialType())
 			.socialAccountId(request.socialAccountId())
 			.university(request.university())
@@ -150,6 +157,22 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.build();
 
 		return profileRepository.save(profile);
+	}
+
+	private String resolveProfileImageUrl(String inputImageKey) {
+		if (StringUtils.hasText(inputImageKey)) {
+			return profileImageProperties.baseUrl() + inputImageKey;
+		}
+
+		List<String> defaults = profileImageProperties.filenames();
+		if (defaults == null || defaults.isEmpty()) {
+			return null;
+		}
+
+		int randomIndex = ThreadLocalRandom.current().nextInt(defaults.size());
+		String selectedFilename = defaults.get(randomIndex);
+
+		return profileImageProperties.baseUrl() + selectedFilename;
 	}
 
 	private static List<ProfileHobby> getProfileHobbies(List<HobbyDto> hobbies) {

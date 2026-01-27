@@ -8,11 +8,10 @@ spring:
   application:
     name: item-service
 
-  config:
-    import: optional:classpath:application-secret.yml
-
   datasource:
     url: jdbc:mysql://localhost:3307/comatching_item?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:comatching12!@}
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
@@ -23,7 +22,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: false
 
   kafka:
@@ -36,3 +35,20 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY}
+        secret-key: ${AWS_SECRET_KEY}
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: ${AWS_S3_BUCKET}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}

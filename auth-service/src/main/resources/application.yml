@@ -13,13 +13,11 @@ member-service:
   url: http://localhost:9002
 
 client:
-  url: http://localhost:3000
+  url: ${CLIENT_URL:http://localhost:3000}
 
 spring:
   application:
     name: auth-service
-  config:
-    import: optional:classpath:application-secret.yml
 
   data:
     redis:
@@ -53,3 +51,47 @@ spring:
     openfeign:
       okhttp:
         enabled: true
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY}
+        secret-key: ${AWS_SECRET_KEY}
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: ${AWS_S3_BUCKET}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-name: kakao
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: ${CLIENT_URL:http://localhost:8080}/login/oauth2/code/kakao
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            scope:
+              - openid
+
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v1/oidc/userinfo
+            issuer-uri: https://kauth.kakao.com
+            user-name-attribute: sub
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}
+
+kakao:
+  auth:
+    admin-key: ${KAKAO_ADMIN_KEY}
+    unlink-url: https://kapi.kakao.com/v1/user/unlink
+    unlink-content-type: application/x-www-form-urlencoded;charset=utf-8
+    unlink-target-id-type: user_id

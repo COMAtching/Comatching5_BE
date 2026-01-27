@@ -21,6 +21,7 @@ public record ProfileUpdateRequest(
 	String university,
 	String major,
 	ContactFrequency contactFrequency,
+	String song,
 	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros,
 	Boolean isMatchable

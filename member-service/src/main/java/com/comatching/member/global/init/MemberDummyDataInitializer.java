@@ -113,7 +113,7 @@ public class MemberDummyDataInitializer {
 		Member member = Member.builder()
 			.email(email)
 			.password(passwordEncoder.encode("1234"))
-			.socialType(SocialType.KAKAO)
+			.socialType(null)
 			.socialId(UUID.randomUUID().toString())
 			.role(MemberRole.ROLE_USER)      // 👈 요청하신 부분
 			.status(MemberStatus.ACTIVE)     // 👈 요청하신 부분
