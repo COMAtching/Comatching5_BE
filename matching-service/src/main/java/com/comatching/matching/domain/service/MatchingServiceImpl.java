@@ -1,16 +1,10 @@
 package com.comatching.matching.domain.service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.ContactFrequency;
@@ -21,14 +15,13 @@ import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.item.ItemConsumption;
 import com.comatching.common.dto.member.ProfileResponse;
-import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.matching.domain.component.MatchingItemPolicy;
-import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.dto.MatchingResponse;
 import com.comatching.matching.domain.entity.MatchingCandidate;
+import com.comatching.matching.domain.entity.MatchingCondition;
 import com.comatching.matching.domain.entity.MatchingHistory;
 import com.comatching.matching.domain.enums.AgeOption;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
@@ -106,38 +99,6 @@ public class MatchingServiceImpl implements MatchingService {
 		}
 	}
 
-	@Override
-	@Transactional(readOnly = true)
-	public PagingResponse<MatchingHistoryResponse> getMyMatchingHistory(
-		Long memberId,
-		LocalDateTime startDate,
-		LocalDateTime endDate,
-		Pageable pageable) {
-
-		Page<MatchingHistory> histories = historyRepository.searchHistory(memberId, startDate, endDate, pageable);
-
-		if (histories.isEmpty()) {
-			return PagingResponse.from(Page.empty(pageable));
-		}
-
-		List<Long> partnerIds = histories.stream()
-			.map(MatchingHistory::getPartnerId)
-			.distinct()
-			.toList();
-
-		List<ProfileResponse> profiles = memberClient.getProfiles(partnerIds);
-
-		Map<Long, ProfileResponse> profileMap = profiles.stream()
-			.collect(Collectors.toMap(ProfileResponse::memberId, p -> p));
-
-		Page<MatchingHistoryResponse> resultPage = histories.map(history -> {
-			ProfileResponse partnerProfile = profileMap.get(history.getPartnerId());
-			return MatchingHistoryResponse.of(history, partnerProfile);
-		});
-
-		return PagingResponse.from(resultPage);
-	}
-
 	private MatchingCandidate processMatching(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
 
 		List<Long> excludeMemberIds = historyRepository.findPartnerIdsByMemberId(memberId);
@@ -177,7 +138,16 @@ public class MatchingServiceImpl implements MatchingService {
 		int randomIndex = (int)(Math.random() * bestCandidates.size());
 		MatchingCandidate finalPartner = bestCandidates.get(randomIndex);
 
-		MatchingHistory matchingHistory = saveMatchingHistory(memberId, finalPartner);
+		MatchingCondition matchingCondition = MatchingCondition.builder()
+			.ageOption(request.ageOption())
+			.contactFrequency(request.contactFrequency())
+			.hobbyOption(request.hobbyOption())
+			.mbtiOption(request.mbtiOption())
+			.sameMajorOption(request.sameMajorOption())
+			.importantOption(request.importantOption())
+			.build();
+
+		MatchingHistory matchingHistory = saveMatchingHistory(memberId, finalPartner, matchingCondition);
 
 		MatchingSuccessEvent matchingSuccessEvent = MatchingSuccessEvent.builder()
 			.matchingId(matchingHistory.getId())
@@ -322,10 +292,12 @@ public class MatchingServiceImpl implements MatchingService {
 		};
 	}
 
-	private MatchingHistory saveMatchingHistory(Long memberId, MatchingCandidate matchedCandidate) {
+	private MatchingHistory saveMatchingHistory(Long memberId, MatchingCandidate matchedCandidate,
+		MatchingCondition matchingCondition) {
 		MatchingHistory history = MatchingHistory.builder()
 			.memberId(memberId)
 			.partnerId(matchedCandidate.getMemberId())
+			.condition(matchingCondition)
 			.build();
 		return historyRepository.save(history);
 	}

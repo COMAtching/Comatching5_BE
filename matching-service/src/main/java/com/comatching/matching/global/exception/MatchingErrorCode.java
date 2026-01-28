@@ -10,6 +10,7 @@ import lombok.Getter;
 public enum MatchingErrorCode implements ErrorCode {
 	NO_MATCHING_CANDIDATE("MATCH-001", HttpStatus.INTERNAL_SERVER_ERROR, "매칭 후보가 없습니다."),
 	NOT_ENOUGH_ITEM("MATCH-002", HttpStatus.BAD_REQUEST, "아이템이 부족합니다."),
+	NOT_EXIST_HISTORY("MATCH-003", HttpStatus.BAD_REQUEST, "매칭 내역이 없습니다."),
 	;
 
 	private final String code;

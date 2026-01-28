@@ -2,7 +2,6 @@ package com.comatching.matching.infra.controller;
 
 import java.time.LocalDateTime;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -22,10 +21,11 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.matching.domain.dto.FavoriteHistoryRequest;
 import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.dto.MatchingResponse;
-import com.comatching.matching.domain.entity.MatchingCandidate;
+import com.comatching.matching.domain.service.MatchingHistoryService;
 import com.comatching.matching.domain.service.MatchingService;
 
 import lombok.RequiredArgsConstructor;
@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 public class MatchingController {
 
 	private final MatchingService matchingService;
+	private final MatchingHistoryService matchingHistoryService;
 
 	@RequireRole(MemberRole.ROLE_USER)
 	@PostMapping
@@ -52,9 +53,21 @@ public class MatchingController {
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+		@RequestParam(required = false, defaultValue = "false") boolean favoriteOnly,
 		@PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		PagingResponse<MatchingHistoryResponse> result = matchingService.getMyMatchingHistory(memberId, startDate, endDate, pageable);
+		PagingResponse<MatchingHistoryResponse> result = matchingHistoryService.getMyMatchingHistory(memberId,
+			startDate, endDate, pageable, favoriteOnly);
 		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
+
+	@RequireRole(MemberRole.ROLE_USER)
+	@PostMapping("/history/favorite")
+	public ResponseEntity<ApiResponse<Void>> changeFavorite(
+		@CurrentMember MemberInfo memberInfo,
+		@RequestBody FavoriteHistoryRequest request
+	) {
+		matchingHistoryService.changeFavorite(memberInfo.memberId(), request.historyId(), request.favorite());
+		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

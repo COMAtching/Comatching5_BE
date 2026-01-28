@@ -1,5 +1,6 @@
 package com.comatching.auth.domain.service.auth;
 
+import com.comatching.auth.domain.dto.CompleteSignupResponse;
 import com.comatching.common.dto.auth.SignupRequest;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
@@ -13,5 +14,5 @@ public interface SignupService {
 	void signup(SignupRequest request);
 
 	// 프로필 + 토큰 갱신
-	ProfileResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request, HttpServletResponse response);
+	CompleteSignupResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request, HttpServletResponse response);
 }

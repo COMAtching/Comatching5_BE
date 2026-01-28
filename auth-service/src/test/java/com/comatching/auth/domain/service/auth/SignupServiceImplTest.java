@@ -13,11 +13,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.comatching.auth.domain.dto.CompleteSignupResponse;
 import com.comatching.auth.domain.service.mail.EmailService;
 import com.comatching.auth.global.exception.AuthErrorCode;
 import com.comatching.auth.global.security.refresh.RefreshToken;
 import com.comatching.auth.global.security.refresh.repository.RefreshTokenRepository;
 import com.comatching.auth.infra.client.MemberServiceClient;
+import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.auth.SignupRequest;
@@ -94,12 +96,12 @@ class SignupServiceImplTest {
 		// given
 		Long memberId = 1L;
 		ProfileCreateRequest request = new ProfileCreateRequest(
-			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null, null, null, null, null
+			"nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl", null, null, null, null, ContactFrequency.NORMAL, null, null
 		);
 
 		ProfileResponse mockProfileResponse = new ProfileResponse(
 			memberId, "test@test.com", "nickname", Gender.MALE, LocalDate.of(2026, 1, 6), "mbti", "intro", "imgUrl",
-			null, null, null, null, null, null
+			null, null, null, null, "보통", null, null
 		);
 
 		MemberInfo memberInfo = new MemberInfo(memberId, "test@test.com", "ROLE_GUEST");
@@ -112,11 +114,11 @@ class SignupServiceImplTest {
 		given(jwtUtil.createRefreshToken(anyLong())).willReturn(refreshToken);
 
 		// when
-		ProfileResponse result = signupService.completeSignup(memberInfo, request, response);
+		CompleteSignupResponse result = signupService.completeSignup(memberInfo, request, response);
 
 		// then
-		assertThat(result.memberId()).isEqualTo(memberId);
-		assertThat(result.email()).isEqualTo("test@test.com");
+		assertThat(result.profile().memberId()).isEqualTo(memberId);
+		assertThat(result.profile().email()).isEqualTo("test@test.com");
 
 		verify(refreshTokenRepository, times(1)).save(any(RefreshToken.class));
 

@@ -62,6 +62,7 @@ public class Profile {
 	private String major;
 
 	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
 	private ContactFrequency contactFrequency;
 
 	@Column(nullable = false)

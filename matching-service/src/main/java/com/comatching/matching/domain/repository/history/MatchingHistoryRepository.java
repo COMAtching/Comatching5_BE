@@ -30,4 +30,16 @@ public interface MatchingHistoryRepository extends JpaRepository<MatchingHistory
 		@Param("endDate") LocalDateTime endDate,
 		Pageable pageable
 	);
+
+	@Query("SELECT m FROM MatchingHistory m " +
+		"WHERE m.memberId = :memberId " +
+		"AND (:startDate IS NULL OR m.matchedAt >= :startDate) " +
+		"AND (:endDate IS NULL OR m.matchedAt <= :endDate)" +
+		"AND m.favorite = TRUE")
+	Page<MatchingHistory> searchFavoriteHistory(
+		@Param("memberId") Long memberId,
+		@Param("startDate") LocalDateTime startDate,
+		@Param("endDate") LocalDateTime endDate,
+		Pageable pageable
+	);
 }
