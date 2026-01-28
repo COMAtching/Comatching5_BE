@@ -2,6 +2,7 @@ package com.comatching.chat.domain.service.chatroom;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.entity.ChatRoom;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
+import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final BlockService blockService;
 
 	@Override
 	public void createChatRoom(MatchingSuccessEvent event) {
@@ -47,8 +50,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	public List<ChatRoomResponse> getMyChatRooms(Long memberId) {
 
 		Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
+		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
 		return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
+			.filter(room -> {
+				Long otherUserId = getOtherUserId(room, memberId);
+				return !blockedUserIds.contains(otherUserId);
+			})
 			.map(room -> {
 				LocalDateTime myLastRead = (memberId.equals(room.getInitiatorUserId()))
 					? room.getInitiatorLastReadAt()
@@ -62,15 +70,27 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			.toList();
 	}
 
+	private Long getOtherUserId(ChatRoom room, Long memberId) {
+		return memberId.equals(room.getInitiatorUserId())
+			? room.getTargetUserId()
+			: room.getInitiatorUserId();
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public long getTotalUnreadCount(Long memberId) {
 
 		Sort sort = Sort.unsorted();
 		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId, sort);
+		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
 		long totalUnread = 0;
 		for (ChatRoom room : myRooms) {
+			Long otherUserId = getOtherUserId(room, memberId);
+			if (blockedUserIds.contains(otherUserId)) {
+				continue;
+			}
+
 			LocalDateTime myReadTime = (memberId.equals(room.getInitiatorUserId()))
 				? room.getInitiatorLastReadAt()
 				: room.getTargetLastReadAt();

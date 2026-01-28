@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
@@ -26,6 +26,7 @@ import com.comatching.common.domain.enums.SocialType;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.entity.Profile;
+import com.comatching.member.domain.entity.ProfileHobby;
 import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
@@ -67,7 +68,7 @@ public class MemberDummyDataInitializer {
 		// 1. [내 계정] 테스트용 내 계정 생성 (로그인용)
 		createMemberAndProfile(
 			"myuser@test.com", "승환", Gender.MALE, "ENFP", "컴퓨터공학과", ContactFrequency.FREQUENT,
-			List.of(Hobby.CODING, Hobby.SOCCER), LocalDate.of(2000, 1, 1)
+			List.of(new ProfileHobby(HobbyCategory.DEV, "코딩"), new ProfileHobby(HobbyCategory.SPORTS, "축구")), LocalDate.of(2000, 1, 1)
 		);
 
 		// 2. [랜덤 유저] 생성
@@ -78,8 +79,9 @@ public class MemberDummyDataInitializer {
 			String major = majors.get(random.nextInt(majors.size()));
 
 			// 취미 랜덤
-			List<Hobby> hobbies = new ArrayList<>();
-			hobbies.add(Hobby.values()[random.nextInt(Hobby.values().length)]);
+			List<ProfileHobby> hobbies = new ArrayList<>();
+			HobbyCategory randomCategory = HobbyCategory.values()[random.nextInt(HobbyCategory.values().length)];
+			hobbies.add(new ProfileHobby(randomCategory, "취미" + i));
 			List<ContactFrequency> contactFrequencies = new ArrayList<>(Set.of(ContactFrequency.values()));
 
 			createMemberAndProfile(
@@ -89,28 +91,29 @@ public class MemberDummyDataInitializer {
 		}
 
 		// 3. [시나리오 유저] 매칭 테스트를 위한 맞춤형 상대방 생성
-		// - Scenario 1: 완전 일치 (여성, ENFP, 시각디자인과, 헬스)
+		// - Scenario 1:
+		// 완전 일치 (여성, ENFP, 시각디자인과, 헬스)
 		createMemberAndProfile(
 			"target1@test.com", "완벽매칭녀", Gender.FEMALE, "ENFP", "시각디자인과", ContactFrequency.FREQUENT,
-			List.of(Hobby.GYM), LocalDate.of(2000, 5, 5)
+			List.of(new ProfileHobby(HobbyCategory.SPORTS, "헬스")), LocalDate.of(2000, 5, 5)
 		);
 
 		// - Scenario 2: 취미만 다름 (여성, ENFP, 경영학과(전공다름), 독서(취미다름))
 		createMemberAndProfile(
 			"target2@test.com", "취미다른녀", Gender.FEMALE, "ENFP", "컴퓨터공학과", ContactFrequency.FREQUENT,
-			List.of(Hobby.READING), LocalDate.of(2001, 3, 15)
+			List.of(new ProfileHobby(HobbyCategory.CULTURE, "독서")), LocalDate.of(2001, 3, 15)
 		);
 
 		log.info("✅ [Member] 더미 데이터 생성 완료!");
 	}
 
-	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, ContactFrequency contactFrequency, List<Hobby> hobbies, LocalDate birthDate) {
+	private void createMemberAndProfile(String email, String nickname, Gender gender, String mbti, String major, ContactFrequency contactFrequency, List<ProfileHobby> hobbies, LocalDate birthDate) {
 
 		// 1. Member 생성 (USER, ACTIVE)
 		Member member = Member.builder()
 			.email(email)
 			.password(passwordEncoder.encode("1234"))
-			.socialType(SocialType.KAKAO)
+			.socialType(null)
 			.socialId(UUID.randomUUID().toString())
 			.role(MemberRole.ROLE_USER)      // 👈 요청하신 부분
 			.status(MemberStatus.ACTIVE)     // 👈 요청하신 부분
@@ -185,7 +188,7 @@ public class MemberDummyDataInitializer {
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency())
-			.hobbies(profile.getHobbies())
+			.hobbyCategories(profile.getHobbyCategories())
 			.birthDate(profile.getBirthDate())
 			.isMatchable(true) // 기본값 true
 			.build();

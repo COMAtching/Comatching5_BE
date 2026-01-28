@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,13 +21,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.matching.domain.dto.MatchingRequest;
 import com.comatching.matching.domain.entity.MatchingCandidate;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
 import com.comatching.matching.infra.client.MemberClient;
 
+@Disabled("통합 테스트 환경 설정 필요 - Redis/Kafka 실행 후 활성화")
 @SpringBootTest
 class MatchingConcurrencyTest {
 
@@ -55,12 +57,12 @@ class MatchingConcurrencyTest {
 
 		MatchingCandidate partner = MatchingCandidate.create(
 			2L, 20L, Gender.FEMALE, "ISTJ", "디자인학과", ContactFrequency.FREQUENT,
-			new ArrayList<>(Collections.singletonList(Hobby.SOCCER)), LocalDate.of(2000, 11, 11), true
+			new ArrayList<>(Collections.singletonList(HobbyCategory.SPORTS)), LocalDate.of(2000, 11, 11), true
 		);
 		candidateRepository.save(partner);
 
 		MatchingRequest request = new MatchingRequest(
-			null, "IS", Hobby.Category.SPORTS, ContactFrequency.FREQUENT, false, null
+			null, "IS", HobbyCategory.SPORTS, ContactFrequency.FREQUENT, false, null
 		);
 
 		given(memberClient.getProfile(anyLong()))

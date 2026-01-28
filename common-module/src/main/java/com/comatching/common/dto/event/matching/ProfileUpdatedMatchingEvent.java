@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.domain.enums.HobbyCategory;
 
 import lombok.Builder;
 
@@ -17,7 +17,7 @@ public record ProfileUpdatedMatchingEvent(
 	String mbti,
 	String major,
 	ContactFrequency contactFrequency,
-	List<Hobby> hobbies,
+	List<HobbyCategory> hobbyCategories,
 	LocalDate birthDate,
 	Boolean isMatchable
 ) {

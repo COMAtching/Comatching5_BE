@@ -5,9 +5,6 @@ spring:
   application:
     name: gateway-service
 
-  config:
-    import: optional:classpath:application-secret.yml
-
   cloud:
     gateway:
       server:
@@ -117,6 +114,13 @@ spring:
                 - AuthorizationHeaderFilter
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}
 
 logging:
   level:

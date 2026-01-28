@@ -2,12 +2,11 @@ package com.comatching.member.domain.dto;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
+import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileIntroDto;
 
 public record ProfileUpdateRequest(
@@ -22,7 +21,8 @@ public record ProfileUpdateRequest(
 	String university,
 	String major,
 	ContactFrequency contactFrequency,
-	List<Hobby> hobbies,
+	String song,
+	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros,
 	Boolean isMatchable
 ) {}

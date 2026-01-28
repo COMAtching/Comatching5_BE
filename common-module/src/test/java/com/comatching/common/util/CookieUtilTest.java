@@ -22,7 +22,7 @@ class CookieUtilTest {
 		assertThat(cookie.isHttpOnly()).isTrue();
 		assertThat(cookie.getPath()).isEqualTo("/");
 		assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(Duration.ofDays(1).toSeconds());
-		assertThat(cookie.getSameSite()).isEqualTo("Strict");
+		assertThat(cookie.getSameSite()).isEqualTo("Lax");
 	}
 
 	@Test
@@ -36,7 +36,7 @@ class CookieUtilTest {
 		// then
 		assertThat(cookie.getValue()).isEqualTo(token);
 		assertThat(cookie.isHttpOnly()).isTrue();
-		assertThat(cookie.getPath()).isEqualTo("/auth/reissue");
+		assertThat(cookie.getPath()).isEqualTo("/api/auth");
 		assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(Duration.ofDays(7).toSeconds());
 	}
 

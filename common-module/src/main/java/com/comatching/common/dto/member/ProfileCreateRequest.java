@@ -6,7 +6,6 @@ import java.util.Set;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
 
 import lombok.Builder;
@@ -24,7 +23,7 @@ public record ProfileCreateRequest(
 	String university,
 	String major,
 	ContactFrequency contactFrequency,
-	List<Hobby> hobbies,
+	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros
 ) {
 }

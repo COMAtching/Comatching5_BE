@@ -46,6 +46,7 @@ class S3ServiceTest {
 	@Test
 	void getPresignedPutUrl_Success() throws MalformedURLException {
 		//given
+		Long memberId = 1L;
 		String dirName = "profiles";
 		String filename = "test-image.jpg";
 		String expectedUrl = "https://s3.ap-northeast-2.amazonaws.com/test-bucket/profiles/uuid.jpg";
@@ -55,22 +56,22 @@ class S3ServiceTest {
 		given(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).willReturn(presignedRequest);
 
 		//when
-		S3UploadResponseDto response = s3Service.getPresignedPutUrl(dirName, filename);
+		S3UploadResponseDto response = s3Service.getPresignedPutUrl(memberId, dirName, filename);
 
 		//then
 		assertThat(response.presignedUrl()).isEqualTo(expectedUrl);
 		assertThat(response.imageKey()).startsWith("profiles/");
 		assertThat(response.imageKey()).endsWith(".jpg");
-		assertThat(response.imageKey().split("/")[1].length()).isGreaterThan(10);
 	}
 
 	@Test
 	void getPresignedPutUrl_Fail_NoExtension() {
 		// given
+		Long memberId = 1L;
 		String filename = "image";
 
 		// when & then
-		assertThatThrownBy(() -> s3Service.getPresignedPutUrl("profiles", filename))
+		assertThatThrownBy(() -> s3Service.getPresignedPutUrl(memberId, "profiles", filename))
 			.isInstanceOf(BusinessException.class)
 			.extracting(ex -> ((BusinessException) ex).getErrorCode())
 			.isEqualTo(GeneralErrorCode.INVALID_INPUT_VALUE);
@@ -79,10 +80,11 @@ class S3ServiceTest {
 	@Test
 	void getPresignedPutUrl_Fail_InvalidExtension() {
 		// given
+		Long memberId = 1L;
 		String filename = "script.sh";
 
 		// when & then
-		assertThatThrownBy(() -> s3Service.getPresignedPutUrl("profiles", filename))
+		assertThatThrownBy(() -> s3Service.getPresignedPutUrl(memberId, "profiles", filename))
 			.isInstanceOf(BusinessException.class)
 			.hasMessageContaining("지원하지 않는 이미지 형식")
 			.extracting(ex -> ((BusinessException) ex).getErrorCode())

@@ -2,10 +2,9 @@ package com.comatching.common.dto.event.matching;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
+import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileIntroDto;
 
 import lombok.Builder;
@@ -18,7 +17,7 @@ public record ProfileUpdatedHistoryEvent(
 	Gender gender,
 	String mbti,
 	String major,
-	Set<Hobby> hobbies,
+	List<HobbyDto> hobbies,
 	String intro,
 	List<ProfileIntroDto> intros,
 	LocalDate birthDate,

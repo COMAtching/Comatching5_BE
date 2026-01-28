@@ -1,11 +1,10 @@
 package com.comatching.matching.domain.dto;
 
 import java.util.List;
-import java.util.Set;
 
 import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.Hobby;
 import com.comatching.common.domain.enums.SocialAccountType;
+import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.matching.domain.entity.MatchingCandidate;
@@ -24,14 +23,14 @@ public record MatchingResponse(
 	String profileImageUrl,
 	SocialAccountType socialType,
 	String socialAccountId,
-	List<Hobby> hobbies,
+	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros
 ) {
 	public static MatchingResponse of(MatchingCandidate candidate, ProfileResponse profile) {
 		return MatchingResponse.builder()
 			.memberId(candidate.getMemberId())
 			.gender(candidate.getGender())
-			.age(candidate.getAge())
+			.age(candidate.getAge() != null ? candidate.getAge().getValue() : 0)
 			.major(candidate.getMajor())
 			.mbti(profile.mbti())
 			.intro(profile.intro())

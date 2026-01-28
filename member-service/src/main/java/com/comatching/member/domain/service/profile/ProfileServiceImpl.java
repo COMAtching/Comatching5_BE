@@ -1,13 +1,16 @@
 package com.comatching.member.domain.service.profile;
 
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.IntroQuestion;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
+import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -15,14 +18,15 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.member.domain.dto.ProfileUpdateRequest;
 import com.comatching.member.domain.entity.Member;
 import com.comatching.member.domain.entity.Profile;
+import com.comatching.member.domain.entity.ProfileHobby;
 import com.comatching.member.domain.entity.ProfileIntro;
 import com.comatching.member.domain.repository.MemberRepository;
 import com.comatching.member.domain.repository.ProfileRepository;
+import com.comatching.member.global.config.ProfileImageProperties;
 import com.comatching.member.global.exception.MemberErrorCode;
 import com.comatching.member.infra.kafka.MemberEventProducer;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	private final MemberRepository memberRepository;
 	private final ProfileRepository profileRepository;
 	private final MemberEventProducer memberEventProducer;
+	private final ProfileImageProperties profileImageProperties;
 
 	@Override
 	public ProfileResponse createProfile(Long memberId, ProfileCreateRequest request) {
@@ -92,7 +97,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.university(),
 			request.major(),
 			request.contactFrequency(),
-			request.hobbies(),
+			request.song(),
+			getProfileHobbies(request.hobbies()),
 			getProfileIntros(request.intros()),
 			request.isMatchable()
 		);
@@ -121,7 +127,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency())
-			.hobbies(profile.getHobbies())
+			.hobbyCategories(profile.getHobbyCategories())
 			.birthDate(profile.getBirthDate())
 			.isMatchable(profile.isMatchable())
 			.build();
@@ -130,6 +136,9 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	}
 
 	private Profile saveProfile(ProfileCreateRequest request, Member member) {
+
+		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey());
+
 		Profile profile = Profile.builder()
 			.member(member)
 			.nickname(request.nickname())
@@ -137,17 +146,43 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.birthDate(request.birthDate())
 			.mbti(request.mbti())
 			.intro(request.intro())
-			.profileImageUrl(request.profileImageKey())
+			.profileImageUrl(finalProfileImageUrl)
 			.socialAccountType(request.socialType())
 			.socialAccountId(request.socialAccountId())
 			.university(request.university())
 			.major(request.major())
 			.contactFrequency(request.contactFrequency())
-			.hobbies(request.hobbies())
+			.hobbies(getProfileHobbies(request.hobbies()))
 			.intros(getProfileIntros(request.intros()))
 			.build();
 
 		return profileRepository.save(profile);
+	}
+
+	private String resolveProfileImageUrl(String inputImageKey) {
+		if (StringUtils.hasText(inputImageKey)) {
+			return profileImageProperties.baseUrl() + inputImageKey;
+		}
+
+		List<String> defaults = profileImageProperties.filenames();
+		if (defaults == null || defaults.isEmpty()) {
+			return null;
+		}
+
+		int randomIndex = ThreadLocalRandom.current().nextInt(defaults.size());
+		String selectedFilename = defaults.get(randomIndex);
+
+		return profileImageProperties.baseUrl() + selectedFilename;
+	}
+
+	private static List<ProfileHobby> getProfileHobbies(List<HobbyDto> hobbies) {
+		List<ProfileHobby> newHobbies = null;
+		if (hobbies != null) {
+			newHobbies = hobbies.stream()
+				.map(dto -> new ProfileHobby(dto.category(), dto.name()))
+				.toList();
+		}
+		return newHobbies;
 	}
 
 	private static List<ProfileIntro> getProfileIntros(List<ProfileIntroDto> intros) {
@@ -178,7 +213,9 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.university(profile.getUniversity())
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency().getCode())
-			.hobbies(profile.getHobbies())
+			.hobbies(profile.getHobbies().stream()
+				.map(h -> new HobbyDto(h.getCategory(), h.getName()))
+				.toList())
 			.intros(profile.getIntros().stream()
 				.map(i -> new ProfileIntroDto(i.getQuestion().getQuestion(), i.getAnswer()))
 				.toList())

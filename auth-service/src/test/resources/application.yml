@@ -1,5 +1,5 @@
 jwt:
-  secret: "vms_test_secret_key_random_string_more_than_32_characters"
+  secret: "dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW5zLW11c3QtYmUtYXQtbGVhc3QtMzItYnl0ZXMtbG9uZw=="
   access-token:
     expiration: 3600000
   refresh-token:

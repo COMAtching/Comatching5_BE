@@ -42,8 +42,18 @@ bin/
 .DS_Store
 
 .env
+.claudeignore
+.claude
+CLAUDE.md
+scripts
 .idea
+.dockerignore
 docker-compose.yml
+Dockerfile
 /database
+/docs
+docker-compose.prod.yml
+application-docker.yml
 application-secret.yml
 serviceAccountKey.json
+MemberDummyDataInitializer.java

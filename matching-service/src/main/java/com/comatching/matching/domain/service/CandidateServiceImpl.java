@@ -38,7 +38,7 @@ public class CandidateServiceImpl implements CandidateService {
 						event.mbti(),
 						event.major(),
 						event.contactFrequency(),
-						event.hobbies(),
+						event.hobbyCategories(),
 						event.birthDate(),
 						event.isMatchable()
 					);
@@ -51,7 +51,7 @@ public class CandidateServiceImpl implements CandidateService {
 						event.mbti(),
 						event.major(),
 						event.contactFrequency(),
-						event.hobbies(),
+						event.hobbyCategories(),
 						event.birthDate(),
 						event.isMatchable()
 					);
