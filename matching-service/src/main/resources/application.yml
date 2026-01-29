@@ -1,8 +1,8 @@
 server:
   port: 9001
 
-member-service:
-  url: http://localhost:9002
+user-service:
+  url: http://localhost:9000
 
 item-service:
   url: http://localhost:9006

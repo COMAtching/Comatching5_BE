@@ -1,11 +1,10 @@
 rootProject.name = 'backend'
 
-include 'auth-service'
 include 'common-module'
 include 'gateway-service'
 include 'matching-service'
-include 'member-service'
 include 'payment-service'
 include 'chat-service'
 include 'item-service'
 include 'notification'
+include 'user-service'

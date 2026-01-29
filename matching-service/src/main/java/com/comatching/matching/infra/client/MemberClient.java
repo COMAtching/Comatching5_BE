@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 
-@FeignClient(name = "member-service", path = "/api/internal/members", url = "${member-service.url}")
+@FeignClient(name = "user-service", path = "/api/internal/users", url = "${user-service.url}")
 public interface MemberClient {
 
 	@GetMapping("/profile")

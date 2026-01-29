@@ -24,24 +24,24 @@ spring:
 
           # 2. 라우팅 규칙
           routes:
-            - id: auth-service-public
+            - id: user-service-public
               uri: http://localhost:9000
               predicates:
                 - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
 
-            - id: auth-service-protected
+            - id: user-service-protected
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw, /api/members/**, /api/internal/users/**
               filters:
                 - AuthorizationHeaderFilter
 
-            - id: auth-service-swagger
+            - id: user-service-swagger
               uri: http://localhost:9000
               predicates:
-                - Path=/auth-doc/**
+                - Path=/user-doc/**
               filters:
-                - RewritePath=/auth-doc/(?<segment>.*), /$\{segment}
+                - RewritePath=/user-doc/(?<segment>.*), /$\{segment}
 
             - id: matching-service
               uri: http://localhost:9001
@@ -56,20 +56,6 @@ spring:
                 - Path=/matching-doc/**
               filters:
                 - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
-
-            - id: member-service
-              uri: http://localhost:9002
-              predicates:
-                - Path=/api/members/**, /api/internal/members/**
-              filters:
-                - AuthorizationHeaderFilter
-
-            - id: member-service-swagger
-              uri: http://localhost:9002
-              predicates:
-                - Path=/member-doc/**
-              filters:
-                - RewritePath=/member-doc/(?<segment>.*), /$\{segment}
 
             - id: chat-service
               uri: http://localhost:9003

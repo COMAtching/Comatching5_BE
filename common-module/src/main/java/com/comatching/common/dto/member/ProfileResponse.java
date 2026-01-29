@@ -23,6 +23,7 @@ public record ProfileResponse(
 	String university,
 	String major,
 	String contactFrequency,
+	String song,
 	List<HobbyDto> hobbies,
 	List<ProfileIntroDto> intros
 ) {
