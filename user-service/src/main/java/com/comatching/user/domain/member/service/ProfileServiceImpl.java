@@ -16,6 +16,7 @@ import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
+import com.comatching.user.domain.member.component.RandomNicknameGenerator;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
@@ -37,6 +38,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	private final ProfileRepository profileRepository;
 	private final UserEventPublisher eventPublisher;
 	private final ProfileImageProperties profileImageProperties;
+	private final RandomNicknameGenerator nicknameGenerator;
 
 	@Override
 	public ProfileResponse createProfile(Long memberId, ProfileCreateRequest request) {
@@ -139,9 +141,14 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey());
 
+		String finalNickname = request.nickname();
+		if (!StringUtils.hasText(finalNickname)) {
+			finalNickname = nicknameGenerator.generate();
+		}
+
 		Profile profile = Profile.builder()
 			.member(member)
-			.nickname(request.nickname())
+			.nickname(finalNickname)
 			.gender(request.gender())
 			.birthDate(request.birthDate())
 			.mbti(request.mbti())
