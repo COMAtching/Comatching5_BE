@@ -44,6 +44,7 @@ bin/
 .env
 .claudeignore
 .claude
+.mcp.json
 CLAUDE.md
 scripts
 .idea
