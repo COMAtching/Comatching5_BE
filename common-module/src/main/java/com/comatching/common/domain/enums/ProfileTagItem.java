@@ -2,6 +2,13 @@ package com.comatching.common.domain.enums;
 
 import static com.comatching.common.domain.enums.ProfileTagGroup.*;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.Getter;
 
 @Getter
@@ -99,8 +106,25 @@ public enum ProfileTagItem {
 	private final ProfileTagGroup group;
 	private final String label;
 
+	private static final Map<ProfileTagGroup, List<ProfileTagItem>> BY_GROUP;
+
+	static {
+		BY_GROUP = Collections.unmodifiableMap(
+			Arrays.stream(values())
+				.collect(Collectors.groupingBy(
+					ProfileTagItem::getGroup,
+					() -> new EnumMap<>(ProfileTagGroup.class),
+					Collectors.toUnmodifiableList()
+				))
+		);
+	}
+
 	ProfileTagItem(ProfileTagGroup group, String label) {
 		this.group = group;
 		this.label = label;
+	}
+
+	public static List<ProfileTagItem> getByGroup(ProfileTagGroup group) {
+		return BY_GROUP.getOrDefault(group, List.of());
 	}
 }

@@ -2,6 +2,8 @@ package com.comatching.common.domain.enums;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -80,6 +82,84 @@ class ProfileTagItemTest {
 					.as("카테고리 '%s'의 라벨이 비어있음", category.name())
 					.isNotBlank();
 			}
+		}
+	}
+
+	@Nested
+	@DisplayName("getByGroup 캐싱 메서드")
+	class GetByGroup {
+
+		@Test
+		@DisplayName("각 그룹별 태그 목록을 올바르게 반환한다")
+		void shouldReturnTagsForGroup() {
+			// when
+			List<ProfileTagItem> faceShapeTags = ProfileTagItem.getByGroup(ProfileTagGroup.FACE_SHAPE);
+
+			// then
+			assertThat(faceShapeTags).isNotEmpty();
+			assertThat(faceShapeTags).allSatisfy(tag ->
+				assertThat(tag.getGroup()).isEqualTo(ProfileTagGroup.FACE_SHAPE)
+			);
+		}
+
+		@Test
+		@DisplayName("모든 그룹에 대해 최소 1개 이상의 태그가 존재한다")
+		void eachGroupShouldHaveAtLeastOneTag() {
+			for (ProfileTagGroup group : ProfileTagGroup.values()) {
+				List<ProfileTagItem> tags = ProfileTagItem.getByGroup(group);
+				assertThat(tags)
+					.as("그룹 '%s'에 속한 태그", group.name())
+					.isNotEmpty();
+			}
+		}
+
+		@Test
+		@DisplayName("모든 그룹의 태그 합이 전체 ProfileTagItem 수와 같다")
+		void totalTagsShouldMatchEnumSize() {
+			long total = 0;
+			for (ProfileTagGroup group : ProfileTagGroup.values()) {
+				total += ProfileTagItem.getByGroup(group).size();
+			}
+			assertThat(total).isEqualTo(ProfileTagItem.values().length);
+		}
+	}
+
+	@Nested
+	@DisplayName("getByCategory 캐싱 메서드 (ProfileTagGroup)")
+	class GetByCategory {
+
+		@Test
+		@DisplayName("각 카테고리별 그룹 목록을 올바르게 반환한다")
+		void shouldReturnGroupsForCategory() {
+			// when
+			List<ProfileTagGroup> appearanceGroups = ProfileTagGroup.getByCategory(ProfileTagCategory.APPEARANCE);
+
+			// then
+			assertThat(appearanceGroups).isNotEmpty();
+			assertThat(appearanceGroups).allSatisfy(group ->
+				assertThat(group.getCategory()).isEqualTo(ProfileTagCategory.APPEARANCE)
+			);
+		}
+
+		@Test
+		@DisplayName("모든 카테고리에 대해 최소 1개 이상의 그룹이 존재한다")
+		void eachCategoryShouldHaveAtLeastOneGroup() {
+			for (ProfileTagCategory category : ProfileTagCategory.values()) {
+				List<ProfileTagGroup> groups = ProfileTagGroup.getByCategory(category);
+				assertThat(groups)
+					.as("카테고리 '%s'에 속한 그룹", category.name())
+					.isNotEmpty();
+			}
+		}
+
+		@Test
+		@DisplayName("모든 카테고리의 그룹 합이 전체 ProfileTagGroup 수와 같다")
+		void totalGroupsShouldMatchEnumSize() {
+			long total = 0;
+			for (ProfileTagCategory category : ProfileTagCategory.values()) {
+				total += ProfileTagGroup.getByCategory(category).size();
+			}
+			assertThat(total).isEqualTo(ProfileTagGroup.values().length);
 		}
 	}
 

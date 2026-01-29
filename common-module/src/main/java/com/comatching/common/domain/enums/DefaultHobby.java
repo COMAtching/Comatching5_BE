@@ -1,8 +1,12 @@
 package com.comatching.common.domain.enums;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -113,15 +117,31 @@ public enum DefaultHobby {
 	private final HobbyCategory category;
 	private final String displayName;
 
+	private static final Map<HobbyCategory, List<DefaultHobby>> BY_CATEGORY;
+	private static final Map<String, DefaultHobby> BY_DISPLAY_NAME;
+
+	static {
+		BY_CATEGORY = Collections.unmodifiableMap(
+			Arrays.stream(values())
+				.collect(Collectors.groupingBy(
+					DefaultHobby::getCategory,
+					() -> new EnumMap<>(HobbyCategory.class),
+					Collectors.toUnmodifiableList()
+				))
+		);
+
+		BY_DISPLAY_NAME = Arrays.stream(values())
+			.collect(Collectors.toUnmodifiableMap(
+				DefaultHobby::getDisplayName,
+				hobby -> hobby
+			));
+	}
+
 	public static List<DefaultHobby> getByCategory(HobbyCategory category) {
-		return Arrays.stream(values())
-			.filter(hobby -> hobby.category == category)
-			.toList();
+		return BY_CATEGORY.getOrDefault(category, List.of());
 	}
 
 	public static Optional<DefaultHobby> findByDisplayName(String displayName) {
-		return Arrays.stream(values())
-			.filter(hobby -> hobby.displayName.equals(displayName))
-			.findFirst();
+		return Optional.ofNullable(BY_DISPLAY_NAME.get(displayName));
 	}
 }

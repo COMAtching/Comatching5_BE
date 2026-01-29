@@ -1,6 +1,5 @@
 package com.comatching.user.infra.controller;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -15,17 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
-import com.comatching.common.domain.enums.ProfileTagCategory;
-import com.comatching.common.domain.enums.ProfileTagGroup;
-import com.comatching.common.domain.enums.ProfileTagItem;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 import com.comatching.user.domain.member.dto.TagCategoryResponse;
-import com.comatching.user.domain.member.dto.TagCategoryResponse.TagGroupResponse;
-import com.comatching.user.domain.member.dto.TagCategoryResponse.TagItemResponse;
+import com.comatching.user.domain.member.service.EnumLookupService;
 import com.comatching.user.domain.member.service.ProfileCreateService;
 import com.comatching.user.domain.member.service.ProfileManageService;
 
@@ -38,6 +33,7 @@ public class ProfileController {
 
 	private final ProfileCreateService profileCreateService;
 	private final ProfileManageService profileManageService;
+	private final EnumLookupService enumLookupService;
 
 	@PostMapping("/internal/users/profile")
 	public ProfileResponse createProfile(
@@ -78,24 +74,7 @@ public class ProfileController {
 
 	@GetMapping("/profile/tags")
 	public ResponseEntity<ApiResponse<List<TagCategoryResponse>>> getProfileTags() {
-		List<TagCategoryResponse> response = Arrays.stream(ProfileTagCategory.values())
-			.map(category -> new TagCategoryResponse(
-				category.name(),
-				category.getLabel(),
-				Arrays.stream(ProfileTagGroup.values())
-					.filter(group -> group.getCategory() == category)
-					.map(group -> new TagGroupResponse(
-						group.name(),
-						group.getLabel(),
-						Arrays.stream(ProfileTagItem.values())
-							.filter(item -> item.getGroup() == group)
-							.map(item -> new TagItemResponse(item.name(), item.getLabel()))
-							.toList()
-					))
-					.toList()
-			))
-			.toList();
-
+		List<TagCategoryResponse> response = enumLookupService.getProfileTags();
 		return ResponseEntity.ok(ApiResponse.ok(response));
 	}
 }
