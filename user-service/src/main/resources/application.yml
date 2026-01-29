@@ -27,8 +27,8 @@ spring:
 
   datasource:
     url: jdbc:mysql://localhost:3307/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:comatching12!@}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
