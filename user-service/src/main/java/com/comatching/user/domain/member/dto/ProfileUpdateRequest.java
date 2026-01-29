@@ -7,7 +7,7 @@ import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.dto.member.HobbyDto;
-import com.comatching.common.dto.member.ProfileIntroDto;
+import com.comatching.common.dto.member.ProfileTagDto;
 
 public record ProfileUpdateRequest(
 	String nickname,
@@ -23,6 +23,6 @@ public record ProfileUpdateRequest(
 	ContactFrequency contactFrequency,
 	String song,
 	List<HobbyDto> hobbies,
-	List<ProfileIntroDto> intros,
+	List<ProfileTagDto> tags,
 	Boolean isMatchable
 ) {}

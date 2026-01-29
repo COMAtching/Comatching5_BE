@@ -5,7 +5,7 @@ import java.util.List;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.dto.member.HobbyDto;
-import com.comatching.common.dto.member.ProfileIntroDto;
+import com.comatching.common.dto.member.ProfileTagDto;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.matching.domain.entity.MatchingCandidate;
 
@@ -24,7 +24,7 @@ public record MatchingResponse(
 	SocialAccountType socialType,
 	String socialAccountId,
 	List<HobbyDto> hobbies,
-	List<ProfileIntroDto> intros
+	List<ProfileTagDto> tags
 ) {
 	public static MatchingResponse of(MatchingCandidate candidate, ProfileResponse profile) {
 		return MatchingResponse.builder()
@@ -39,7 +39,7 @@ public record MatchingResponse(
 			.socialType(profile.socialType())
 			.socialAccountId(profile.socialAccountId())
 			.hobbies(profile.hobbies())
-			.intros(profile.intros())
+			.tags(profile.tags())
 			.build();
 	}
 }

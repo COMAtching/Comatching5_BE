@@ -17,7 +17,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
 	@Query("SELECT DISTINCT p FROM Profile p " +
 		"JOIN FETCH p.member m " +
-		"LEFT JOIN FETCH p.intros " +
+		"LEFT JOIN FETCH p.tags " +
 		"WHERE m.id IN :memberIds")
 	List<Profile> findAllByMemberIdIn(@Param("memberIds") List<Long> memberIds);
 }

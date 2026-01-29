@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.dto.member.HobbyDto;
-import com.comatching.common.dto.member.ProfileIntroDto;
+import com.comatching.common.dto.member.ProfileTagDto;
 
 import lombok.Builder;
 
@@ -19,7 +19,7 @@ public record ProfileUpdatedHistoryEvent(
 	String major,
 	List<HobbyDto> hobbies,
 	String intro,
-	List<ProfileIntroDto> intros,
+	List<ProfileTagDto> tags,
 	LocalDate birthDate,
 	String profileImageUrl,
 	String socialType,

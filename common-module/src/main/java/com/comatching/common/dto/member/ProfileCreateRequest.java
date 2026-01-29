@@ -25,6 +25,6 @@ public record ProfileCreateRequest(
 	ContactFrequency contactFrequency,
 	String song,
 	List<HobbyDto> hobbies,
-	List<ProfileIntroDto> intros
+	List<ProfileTagDto> tags
 ) {
 }

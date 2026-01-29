@@ -27,7 +27,7 @@ public enum UserErrorCode implements ErrorCode {
 	PROFILE_NOT_EXISTS("MEM-004", HttpStatus.BAD_REQUEST, "프로필이 존재하지 않습니다."),
 	INVALID_SOCIAL_INFO("MEM-005", HttpStatus.BAD_REQUEST, "소셜 정보는 타입과 ID가 함께 입력되어야 합니다."),
 	INVALID_HOBBY_COUNT("MEM-006", HttpStatus.BAD_REQUEST, "취미는 최소 2개 이상 최대 5개 이하를 등록해야 합니다."),
-	INTRO_LIMIT_EXCEEDED("MEM-007", HttpStatus.BAD_REQUEST, "소개 항목이 최대 갯수(3개)를 초과했습니다."),
+	TAG_LIMIT_PER_CATEGORY_EXCEEDED("MEM-007", HttpStatus.BAD_REQUEST, "카테고리별 태그는 최대 3개까지 선택 가능합니다."),
 	;
 
 	private final String code;

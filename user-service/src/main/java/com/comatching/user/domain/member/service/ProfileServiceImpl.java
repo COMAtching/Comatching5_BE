@@ -7,13 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.comatching.common.domain.enums.IntroQuestion;
+import com.comatching.common.domain.enums.ProfileTagItem;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
-import com.comatching.common.dto.member.ProfileIntroDto;
 import com.comatching.common.dto.member.ProfileResponse;
+import com.comatching.common.dto.member.ProfileTagDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.component.RandomNicknameGenerator;
@@ -21,7 +21,7 @@ import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
 import com.comatching.user.domain.member.entity.ProfileHobby;
-import com.comatching.user.domain.member.entity.ProfileIntro;
+import com.comatching.user.domain.member.entity.ProfileTag;
 import com.comatching.user.domain.member.repository.MemberRepository;
 import com.comatching.user.domain.member.repository.ProfileRepository;
 import com.comatching.user.global.config.ProfileImageProperties;
@@ -101,7 +101,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.contactFrequency(),
 			request.song(),
 			getProfileHobbies(request.hobbies()),
-			getProfileIntros(request.intros()),
+			getProfileTags(request.tags()),
 			request.isMatchable()
 		);
 
@@ -161,7 +161,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.contactFrequency(request.contactFrequency())
 			.song(request.song())
 			.hobbies(getProfileHobbies(request.hobbies()))
-			.intros(getProfileIntros(request.intros()))
+			.tags(getProfileTags(request.tags()))
 			.build();
 
 		return profileRepository.save(profile);
@@ -193,14 +193,14 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return newHobbies;
 	}
 
-	private static List<ProfileIntro> getProfileIntros(List<ProfileIntroDto> intros) {
-		List<ProfileIntro> newIntros = null;
-		if (intros != null) {
-			newIntros = intros.stream()
-				.map(dto -> new ProfileIntro(IntroQuestion.valueOf(dto.question()), dto.answer()))
+	private static List<ProfileTag> getProfileTags(List<ProfileTagDto> tags) {
+		List<ProfileTag> newTags = null;
+		if (tags != null) {
+			newTags = tags.stream()
+				.map(dto -> new ProfileTag(ProfileTagItem.valueOf(dto.tag())))
 				.toList();
 		}
-		return newIntros;
+		return newTags;
 	}
 
 	private ProfileResponse toProfileResponse(Profile profile) {
@@ -225,8 +225,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.hobbies(profile.getHobbies().stream()
 				.map(h -> new HobbyDto(h.getCategory(), h.getName()))
 				.toList())
-			.intros(profile.getIntros().stream()
-				.map(i -> new ProfileIntroDto(i.getQuestion().getQuestion(), i.getAnswer()))
+			.tags(profile.getTags().stream()
+				.map(t -> new ProfileTagDto(t.getTag().name()))
 				.toList())
 			.build();
 

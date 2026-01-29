@@ -25,6 +25,6 @@ public record ProfileResponse(
 	String contactFrequency,
 	String song,
 	List<HobbyDto> hobbies,
-	List<ProfileIntroDto> intros
+	List<ProfileTagDto> tags
 ) {
 }
