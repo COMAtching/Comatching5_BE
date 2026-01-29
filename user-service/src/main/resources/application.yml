@@ -1,0 +1,119 @@
+server:
+  port: 9000
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: JSESSIONID
+        path: /
+        http-only: true
+        secure: false
+
+client:
+  url: ${CLIENT_URL:http://localhost:3000}
+
+comatching:
+  profile:
+    default-images:
+      base-url: "https://${AWS_S3_BUCKET}.s3.ap-northeast-2.amazonaws.com/defaults/profile/"
+      filenames:
+        - "userDefaultImage1.jpg"
+        - "userDefaultImage2.jpg"
+        - "userDefaultImage3.jpg"
+
+spring:
+  application:
+    name: user-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      pool-name: HikariPool-${spring.application.name}
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      validation-timeout: 5000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      default_batch_fetch_size: 100
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: user-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: recordaydev@gmail.com
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY}
+        secret-key: ${AWS_SECRET_KEY}
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: ${AWS_S3_BUCKET}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-name: kakao
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            redirect-uri: ${CLIENT_URL:http://localhost:8080}/login/oauth2/code/kakao
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            scope:
+              - openid
+
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v1/oidc/userinfo
+            issuer-uri: https://kauth.kakao.com
+            user-name-attribute: sub
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}
+
+kakao:
+  auth:
+    admin-key: ${KAKAO_ADMIN_KEY}
+    unlink-url: https://kapi.kakao.com/v1/user/unlink
+    unlink-content-type: application/x-www-form-urlencoded;charset=utf-8
+    unlink-target-id-type: user_id

@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.matching.domain.service.CandidateService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,19 +15,13 @@ import lombok.extern.slf4j.Slf4j;
 public class MatchingMemberEventConsumer {
 
 	private final CandidateService candidateService;
-	private final ObjectMapper objectMapper;
 
 	@KafkaListener(topics = "member-withdraw", groupId = "matching-service-group")
-	public void handleMemberWithdraw(String message) {
+	public void handleMemberWithdraw(MemberWithdrawnEvent event) {
 		try {
-
-			MemberWithdrawnEvent event = objectMapper.readValue(message, MemberWithdrawnEvent.class);
-
 			candidateService.removeCandidate(event.memberId());
-
 		} catch (Exception e) {
-			log.error("회원 탈퇴 이벤트 처리 중 오류 발생: {}", message, e);
-			// 필요 시 Dead Letter Queue(DLQ)로 보내거나 재시도 로직 추가
+			log.error("회원 탈퇴 이벤트 처리 중 오류 발생", e);
 		}
 	}
 }

@@ -1,23 +1,21 @@
-package com.comatching.common.dto.member;
+package com.comatching.user.domain.member.dto;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.SocialAccountType;
+import com.comatching.common.dto.member.HobbyDto;
+import com.comatching.common.dto.member.ProfileIntroDto;
 
-import lombok.Builder;
-
-@Builder
-public record ProfileCreateRequest(
+public record ProfileUpdateRequest(
 	String nickname,
+	String intro,
+	String mbti,
+	String profileImageUrl,
 	Gender gender,
 	LocalDate birthDate,
-	String mbti,
-	String intro,
-	String profileImageKey,
 	SocialAccountType socialType,
 	String socialAccountId,
 	String university,
@@ -25,6 +23,6 @@ public record ProfileCreateRequest(
 	ContactFrequency contactFrequency,
 	String song,
 	List<HobbyDto> hobbies,
-	List<ProfileIntroDto> intros
-) {
-}
+	List<ProfileIntroDto> intros,
+	Boolean isMatchable
+) {}

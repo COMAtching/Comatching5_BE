@@ -29,7 +29,7 @@ import com.comatching.matching.domain.entity.MatchingCandidate;
 import com.comatching.matching.domain.entity.MatchingHistory;
 import com.comatching.matching.domain.repository.history.MatchingHistoryRepository;
 import com.comatching.matching.global.exception.MatchingErrorCode;
-import com.comatching.matching.infra.ItemClient;
+import com.comatching.matching.infra.client.ItemClient;
 import com.comatching.matching.infra.client.MemberClient;
 import com.comatching.matching.infra.kafka.MatchingEventProducer;
 
