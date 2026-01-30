@@ -1,6 +1,7 @@
 package com.comatching.user.domain.member.entity;
 
-import com.comatching.common.domain.enums.IntroQuestion;
+import com.comatching.common.domain.enums.ProfileTagItem;
+
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -9,10 +10,11 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "profile_intro")
-public class ProfileIntro {
+@Table(name = "profile_tag")
+public class ProfileTag {
 
-	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
@@ -21,14 +23,10 @@ public class ProfileIntro {
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private IntroQuestion question;
+	private ProfileTagItem tag;
 
-	@Column(nullable = false)
-	private String answer;
-
-	public ProfileIntro(IntroQuestion question, String answer) {
-		this.question = question;
-		this.answer = answer;
+	public ProfileTag(ProfileTagItem tag) {
+		this.tag = tag;
 	}
 
 	public void assignProfile(Profile profile) {

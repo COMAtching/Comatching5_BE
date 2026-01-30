@@ -19,6 +19,8 @@ import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
+import com.comatching.user.domain.member.dto.TagCategoryResponse;
+import com.comatching.user.domain.member.service.EnumLookupService;
 import com.comatching.user.domain.member.service.ProfileCreateService;
 import com.comatching.user.domain.member.service.ProfileManageService;
 
@@ -31,6 +33,7 @@ public class ProfileController {
 
 	private final ProfileCreateService profileCreateService;
 	private final ProfileManageService profileManageService;
+	private final EnumLookupService enumLookupService;
 
 	@PostMapping("/internal/users/profile")
 	public ProfileResponse createProfile(
@@ -66,6 +69,12 @@ public class ProfileController {
 	) {
 		ProfileResponse response = profileManageService.updateProfile(memberInfo.memberId(), request);
 
+		return ResponseEntity.ok(ApiResponse.ok(response));
+	}
+
+	@GetMapping("/profile/tags")
+	public ResponseEntity<ApiResponse<List<TagCategoryResponse>>> getProfileTags() {
+		List<TagCategoryResponse> response = enumLookupService.getProfileTags();
 		return ResponseEntity.ok(ApiResponse.ok(response));
 	}
 }

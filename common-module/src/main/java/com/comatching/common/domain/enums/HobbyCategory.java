@@ -6,11 +6,12 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum HobbyCategory {
-	SPORTS("운동"),
-	CULTURE("문화 예술"),
-	DEV("개발"),
-	TRAVEL("여행"),
-	ETC("기타");
+	SPORTS("스포츠"),
+	CULTURE("문화예술"),
+	MUSIC("음악"),
+	LEISURE("여가생활"),
+	DAILY("일상/공부"),
+	GAME("게임");
 
 	private final String description;
 }

@@ -8,13 +8,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
+import com.comatching.common.domain.enums.ProfileTagCategory;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.global.exception.UserErrorCode;
@@ -84,12 +85,12 @@ public class Profile {
 	private int point = 0;
 
 	@OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<ProfileIntro> intros = new ArrayList<>();
+	private List<ProfileTag> tags = new ArrayList<>();
 
 	@Builder
 	public Profile(Member member, String nickname, Gender gender, LocalDate birthDate, String intro, String mbti,
 		String profileImageUrl, SocialAccountType socialAccountType, String socialAccountId, String university,
-		String major, ContactFrequency contactFrequency, String song, List<ProfileHobby> hobbies, List<ProfileIntro> intros) {
+		String major, ContactFrequency contactFrequency, String song, List<ProfileHobby> hobbies, List<ProfileTag> tags) {
 		this.member = member;
 		this.nickname = nickname;
 		this.gender = gender;
@@ -106,8 +107,8 @@ public class Profile {
 
 		if (hobbies != null)
 			addHobbies(hobbies);
-		if (intros != null)
-			addIntros(intros);
+		if (tags != null)
+			addTags(tags);
 	}
 
 	public void clearProfileData() {
@@ -127,7 +128,7 @@ public class Profile {
 		String profileImageUrl, Gender gender, LocalDate birthDate,
 		SocialAccountType socialAccountType, String socialAccountId,
 		String university, String major, ContactFrequency contactFrequency, String song,
-		List<ProfileHobby> hobbies, List<ProfileIntro> intros, Boolean isMatchable) {
+		List<ProfileHobby> hobbies, List<ProfileTag> tags, Boolean isMatchable) {
 
 		if (nickname != null)
 			this.nickname = nickname;
@@ -156,9 +157,7 @@ public class Profile {
 
 		if (hobbies != null)
 			addHobbies(hobbies);
-		addIntros(intros);
-
-
+		addTags(tags);
 	}
 
 	public void addHobbies(List<ProfileHobby> newHobbies) {
@@ -179,15 +178,24 @@ public class Profile {
 			.toList();
 	}
 
-	public void addIntros(List<ProfileIntro> newIntros) {
-		if (newIntros != null && newIntros.size() > 3) {
-			throw new BusinessException(UserErrorCode.INTRO_LIMIT_EXCEEDED);
+	public void addTags(List<ProfileTag> newTags) {
+		if (newTags != null) {
+			Map<ProfileTagCategory, Long> countByCategory = newTags.stream()
+				.collect(Collectors.groupingBy(
+					t -> t.getTag().getGroup().getCategory(),
+					Collectors.counting()
+				));
+			countByCategory.forEach((cat, count) -> {
+				if (count > 3) {
+					throw new BusinessException(UserErrorCode.TAG_LIMIT_PER_CATEGORY_EXCEEDED);
+				}
+			});
 		}
-		this.intros.clear();
-		if (newIntros != null) {
-			for (ProfileIntro intro : newIntros) {
-				this.intros.add(intro);
-				intro.assignProfile(this);
+		this.tags.clear();
+		if (newTags != null) {
+			for (ProfileTag tag : newTags) {
+				this.tags.add(tag);
+				tag.assignProfile(this);
 			}
 		}
 	}
