@@ -1,25 +1,20 @@
 package com.comatching.item.infra.controller;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.comatching.common.annotation.CurrentMember;
-import com.comatching.common.annotation.RequireRole;
-import com.comatching.common.domain.enums.MemberRole;
-import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.response.PagingResponse;
-import com.comatching.item.domain.dto.ItemHistoryResponse;
+import com.comatching.item.domain.item.dto.ItemHistoryResponse;
 import com.comatching.common.domain.enums.ItemType;
-import com.comatching.item.domain.dto.ItemResponse;
-import com.comatching.item.domain.enums.ItemHistoryType;
-import com.comatching.item.domain.service.ItemHistoryService;
-import com.comatching.item.domain.service.ItemService;
+import com.comatching.item.domain.item.dto.ItemResponse;
+import com.comatching.item.domain.item.enums.ItemHistoryType;
+import com.comatching.item.domain.item.service.ItemHistoryService;
+import com.comatching.item.domain.item.service.ItemService;
 
 import lombok.RequiredArgsConstructor;
 

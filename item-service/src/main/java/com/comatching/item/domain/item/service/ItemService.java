@@ -1,0 +1,17 @@
+package com.comatching.item.domain.item.service;
+
+import org.springframework.data.domain.Pageable;
+
+import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.item.AddItemRequest;
+import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.item.domain.item.dto.ItemResponse;
+
+public interface ItemService {
+
+	void useItem(Long memberId, ItemType itemType, int count);
+
+	void addItem(Long memberId, AddItemRequest request);
+
+	PagingResponse<ItemResponse> getMyItems(Long memberId, ItemType itemType, Pageable pageable);
+}

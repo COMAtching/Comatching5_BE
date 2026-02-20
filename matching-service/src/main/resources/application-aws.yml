@@ -1,20 +1,21 @@
+# AWS 환경 설정 - Docker 컨테이너 간 통신용
 server:
   port: 9001
 
 user-service:
-  url: http://localhost:9000
+  url: http://user-service:9000
 
 item-service:
-  url: http://localhost:9006
+  url: http://item-service:9006
 
 spring:
   application:
     name: matching-service
 
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_matching?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${MYSQL_ROOT_PASSWORD:comatching12!@}
+    url: jdbc:mysql://${RDS_ENDPOINT}:3306/comatching_matching?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=true&requireSSL=true
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: HikariPool-${spring.application.name}
@@ -34,11 +35,13 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:29092
     consumer:
       group-id: matching-service-group
       auto-offset-reset: latest

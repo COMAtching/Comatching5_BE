@@ -84,15 +84,26 @@ public class BlockServiceImpl implements BlockService {
 	public Set<Long> getBlockedUserIds(Long blockerUserId) {
 		String cacheKey = BLOCK_CACHE_KEY_PREFIX + blockerUserId;
 
-		Set<Long> cachedBlockedIds = (Set<Long>) redisTemplate.opsForValue().get(cacheKey);
-		if (cachedBlockedIds != null) {
-			return cachedBlockedIds;
+		Object cachedValue = redisTemplate.opsForValue().get(cacheKey);
+
+		if (cachedValue != null) {
+			// Redis 직렬화(JSON) 과정에서 Set이 List(Array)로 변환되어 저장된 경우 처리
+			if (cachedValue instanceof java.util.List) {
+				return new java.util.HashSet<>((java.util.List<Long>) cachedValue);
+			}
+			// 설정에 따라 Set 타입 그대로 복원된 경우
+			if (cachedValue instanceof Set) {
+				return (Set<Long>) cachedValue;
+			}
+			// 그 외의 타입이 들어있다면 무시하고 DB 조회로 넘어갑니다.
 		}
 
+		// DB 조회 로직 (기존과 동일)
 		Set<Long> blockedUserIds = userBlockRepository.findByBlockerUserId(blockerUserId).stream()
 			.map(UserBlock::getBlockedUserId)
 			.collect(Collectors.toSet());
 
+		// 캐시 저장
 		redisTemplate.opsForValue().set(cacheKey, blockedUserIds, CACHE_TTL);
 
 		return blockedUserIds;

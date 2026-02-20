@@ -1,3 +1,4 @@
+# AWS 환경 설정 - Docker 컨테이너 간 통신용
 server:
   port: 8080
 
@@ -9,81 +10,80 @@ spring:
     gateway:
       server:
         webflux:
-          # 1. CORS 설정
+          # CORS 설정
           globalcors:
             cors-configurations:
               '[/**]':
                 allowedOrigins:
                   - "https://comatching.site"
                   - "http://localhost:3000"
-                  - "http://localhost:5173"
-                  - "http://localhost:5500"
                 allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
                 allowedHeaders: "*"
                 allowCredentials: true
 
-          # 2. 라우팅 규칙
+          # 라우팅 규칙 - 컨테이너 이름 사용
           routes:
             - id: user-service-public
-              uri: http://localhost:9000
+              uri: http://user-service:9000
               predicates:
                 - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-protected
-              uri: http://localhost:9000
+              uri: http://user-service:9000
               predicates:
                 - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw, /api/members/**, /api/internal/users/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: user-service-swagger
-              uri: http://localhost:9000
+              uri: http://user-service:9000
               predicates:
                 - Path=/user-doc/**
               filters:
                 - RewritePath=/user-doc/(?<segment>.*), /$\{segment}
 
             - id: matching-service
-              uri: http://localhost:9001
+              uri: http://matching-service:9001
               predicates:
                 - Path=/api/matching/**, /api/internal/matching/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: matching-service-swagger
-              uri: http://localhost:9001
+              uri: http://matching-service:9001
               predicates:
                 - Path=/matching-doc/**
               filters:
                 - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
 
             - id: chat-service
-              uri: http://localhost:9003
+              uri: http://chat-service:9003
               predicates:
                 - Path=/api/chat/**, /api/internal/chat/**, /ws/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: chat-service-swagger
-              uri: http://localhost:9003
+              uri: http://chat-service:9003
               predicates:
                 - Path=/chat-doc/**
               filters:
                 - RewritePath=/chat-doc/(?<segment>.*), /$\{segment}
 
             - id: item-service
-              uri: http://localhost:9006
+              uri: http://item-service:9006
               predicates:
-                - Path=/api/items/**, /api/internal/items/**, /api/v1/**
+                - Path=/api/items/**, /api/internal/items/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: notification-service
-              uri: http://localhost:9005
+              uri: http://notification:9005
               predicates:
                 - Path=/api/fcm/**
               filters:
                 - AuthorizationHeaderFilter
+
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 

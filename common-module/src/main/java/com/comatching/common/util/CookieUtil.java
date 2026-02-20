@@ -17,6 +17,7 @@ public class CookieUtil {
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(1).toSeconds())
 			.sameSite("Lax")
+			.domain("comatching.site")
 			.build();
 	}
 
@@ -28,6 +29,7 @@ public class CookieUtil {
 			.secure(false) // HTTPS 환경에서는 true
 			.maxAge(Duration.ofDays(7).toSeconds())
 			.sameSite("Lax")
+			.domain("comatching.site")
 			.build();
 	}
 
@@ -36,7 +38,8 @@ public class CookieUtil {
 		return ResponseCookie.from(cookieName, "")
 			.path(cookieName.equals("accessToken") ? "/" :"/api/auth")
 			.httpOnly(true)
-			.maxAge(0) // 즉시 만료
+			.maxAge(0)
+			.domain("comatching.site")
 			.build();
 	}
 }

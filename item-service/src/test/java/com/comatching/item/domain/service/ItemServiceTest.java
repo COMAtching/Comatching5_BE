@@ -14,9 +14,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.comatching.item.domain.entity.Item;
+import com.comatching.item.domain.item.entity.Item;
 import com.comatching.common.domain.enums.ItemType;
-import com.comatching.item.domain.repository.ItemRepository;
+import com.comatching.item.domain.item.repository.ItemRepository;
+import com.comatching.item.domain.item.service.ItemHistoryService;
+import com.comatching.item.domain.item.service.ItemServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ItemServiceImpl 테스트")

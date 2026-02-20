@@ -1,3 +1,4 @@
+# AWS 환경 설정 - Docker 컨테이너 간 통신용
 server:
   port: 9000
   servlet:
@@ -7,10 +8,10 @@ server:
         name: JSESSIONID
         path: /
         http-only: true
-        secure: false
+        secure: true
 
 client:
-  url: ${CLIENT_URL:http://localhost:3000}
+  url: ${CLIENT_URL:https://comatching.site}
 
 comatching:
   profile:
@@ -26,9 +27,9 @@ spring:
     name: user-service
 
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${MYSQL_ROOT_PASSWORD:comatching12!@}
+    url: jdbc:mysql://${RDS_ENDPOINT}:3306/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=true&requireSSL=true
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
@@ -39,18 +40,20 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
-    show-sql: true
+      ddl-auto: update
+    show-sql: false
     properties:
       default_batch_fetch_size: 100
 
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:29092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -90,7 +93,7 @@ spring:
             client-name: kakao
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: ${CLIENT_URL:http://localhost:8080}/login/oauth2/code/kakao
+            redirect-uri: https://srv.comatching.site/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
             scope:
