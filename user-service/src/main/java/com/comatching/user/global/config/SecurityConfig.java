@@ -58,6 +58,11 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	public LoginSuccessHandler loginSuccessHandler() {
+		return new LoginSuccessHandler(jwtUtil, objectMapper, refreshTokenRepository);
+	}
+
+	@Bean
 	public CustomJsonUsernamePasswordAuthenticationFilter customJsonUsernamePasswordAuthenticationFilter() throws
 		Exception {
 		CustomJsonUsernamePasswordAuthenticationFilter filter = new CustomJsonUsernamePasswordAuthenticationFilter(
@@ -67,7 +72,7 @@ public class SecurityConfig {
 		filter.setAuthenticationManager(authenticationManager());
 
 		// 핸들러 설정
-		filter.setAuthenticationSuccessHandler(new LoginSuccessHandler(jwtUtil, objectMapper, refreshTokenRepository));
+		filter.setAuthenticationSuccessHandler(loginSuccessHandler());
 		filter.setAuthenticationFailureHandler(new LoginFailureHandler(objectMapper));
 
 		return filter;

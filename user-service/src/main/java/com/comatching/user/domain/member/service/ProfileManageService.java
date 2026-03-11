@@ -8,6 +8,7 @@ import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 public interface ProfileManageService {
 
 	ProfileResponse getProfile(Long memberId);
+	boolean isNicknameAvailable(String nickname);
 
 	List<ProfileResponse> getProfilesByIds(List<Long> memberIds);
 

@@ -1,7 +1,9 @@
 package com.comatching.user.domain.member.service;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +17,8 @@ import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.member.ProfileTagDto;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.service.S3Service;
 import com.comatching.user.domain.event.UserEventPublisher;
-import com.comatching.user.domain.member.component.RandomNicknameGenerator;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
@@ -34,11 +36,18 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class ProfileServiceImpl implements ProfileCreateService, ProfileManageService {
 
+	private static final String DEFAULT_IMAGE_VALUE = "default";
+	private static final String DEFAULT_IMAGE_PREFIX = "default_";
+	private static final String DEFAULT_IMAGE_EXTENSION = ".png";
+	private static final Set<String> DEFAULT_IMAGE_ANIMALS = Set.of(
+		"dog", "cat", "dinosaur", "otter", "bear", "fox", "penguin", "wolf", "rabbit", "snake", "horse", "frog"
+	);
+
 	private final MemberRepository memberRepository;
 	private final ProfileRepository profileRepository;
 	private final UserEventPublisher eventPublisher;
 	private final ProfileImageProperties profileImageProperties;
-	private final RandomNicknameGenerator nicknameGenerator;
+	private final S3Service s3Service;
 
 	@Override
 	public ProfileResponse createProfile(Long memberId, ProfileCreateRequest request) {
@@ -72,6 +81,13 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean isNicknameAvailable(String nickname) {
+		String normalizedNickname = normalizeNickname(nickname);
+		return !profileRepository.existsByNickname(normalizedNickname);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<ProfileResponse> getProfilesByIds(List<Long> memberIds) {
 		if (memberIds == null || memberIds.isEmpty()) {
 			return List.of();
@@ -87,11 +103,14 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		Profile profile = profileRepository.findByMemberId(memberId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.PROFILE_NOT_EXISTS));
 
+		String normalizedNickname = normalizeNicknameForUpdate(request.nickname(), profile.getNickname(), memberId);
+		String profileImageUrl = resolveProfileImageUrlForUpdate(request.profileImageUrl());
+
 		profile.update(
-			request.nickname(),
+			normalizedNickname,
 			request.intro(),
 			request.mbti(),
-			request.profileImageUrl(),
+			profileImageUrl,
 			request.gender(),
 			request.birthDate(),
 			request.socialType(),
@@ -139,12 +158,9 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	private Profile saveProfile(ProfileCreateRequest request, Member member) {
 
+		String finalNickname = normalizeNickname(request.nickname());
+		validateNicknameDuplicateOnCreate(finalNickname);
 		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey());
-
-		String finalNickname = request.nickname();
-		if (!StringUtils.hasText(finalNickname)) {
-			finalNickname = nicknameGenerator.generate();
-		}
 
 		Profile profile = Profile.builder()
 			.member(member)
@@ -167,20 +183,72 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return profileRepository.save(profile);
 	}
 
-	private String resolveProfileImageUrl(String inputImageKey) {
-		if (StringUtils.hasText(inputImageKey)) {
-			return profileImageProperties.baseUrl() + inputImageKey;
+	private String normalizeNickname(String nickname) {
+		if (!StringUtils.hasText(nickname)) {
+			throw new BusinessException(UserErrorCode.INVALID_NICKNAME);
 		}
 
-		List<String> defaults = profileImageProperties.filenames();
-		if (defaults == null || defaults.isEmpty()) {
+		return nickname.trim();
+	}
+
+	private String normalizeNicknameForUpdate(String nickname, String currentNickname, Long memberId) {
+		if (nickname == null) {
 			return null;
 		}
 
-		int randomIndex = ThreadLocalRandom.current().nextInt(defaults.size());
-		String selectedFilename = defaults.get(randomIndex);
+		String normalizedNickname = normalizeNickname(nickname);
+		if (!Objects.equals(normalizedNickname, currentNickname)
+			&& profileRepository.existsByNicknameAndMemberIdNot(normalizedNickname, memberId)) {
+			throw new BusinessException(UserErrorCode.DUPLICATE_NICKNAME);
+		}
 
-		return profileImageProperties.baseUrl() + selectedFilename;
+		return normalizedNickname;
+	}
+
+	private void validateNicknameDuplicateOnCreate(String nickname) {
+		if (profileRepository.existsByNickname(nickname)) {
+			throw new BusinessException(UserErrorCode.DUPLICATE_NICKNAME);
+		}
+	}
+
+	private String resolveProfileImageUrlForUpdate(String profileImageValue) {
+		if (profileImageValue == null) {
+			return null;
+		}
+		return resolveProfileImageUrl(profileImageValue);
+	}
+
+	private String resolveProfileImageUrl(String profileImageValue) {
+		if (!StringUtils.hasText(profileImageValue)) {
+			return buildDefaultProfileImageUrl(DEFAULT_IMAGE_VALUE + DEFAULT_IMAGE_EXTENSION);
+		}
+
+		String normalizedValue = profileImageValue.trim();
+		String loweredValue = normalizedValue.toLowerCase(Locale.ROOT);
+
+		if (DEFAULT_IMAGE_VALUE.equals(loweredValue)) {
+			return buildDefaultProfileImageUrl(DEFAULT_IMAGE_VALUE + DEFAULT_IMAGE_EXTENSION);
+		}
+
+		if (loweredValue.startsWith(DEFAULT_IMAGE_PREFIX)) {
+			String animalName = loweredValue.substring(DEFAULT_IMAGE_PREFIX.length());
+			if (DEFAULT_IMAGE_ANIMALS.contains(animalName)) {
+				return buildDefaultProfileImageUrl(animalName + DEFAULT_IMAGE_EXTENSION);
+			}
+		}
+
+		if (normalizedValue.startsWith("http://") || normalizedValue.startsWith("https://")) {
+			return normalizedValue;
+		}
+
+		return s3Service.getFileUrl(normalizedValue);
+	}
+
+	private String buildDefaultProfileImageUrl(String filename) {
+		if (!StringUtils.hasText(profileImageProperties.baseUrl())) {
+			return null;
+		}
+		return profileImageProperties.baseUrl() + filename;
 	}
 
 	private static List<ProfileHobby> getProfileHobbies(List<HobbyDto> hobbies) {

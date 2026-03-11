@@ -55,8 +55,8 @@ class ProfileTest {
 		}
 
 		@Test
-		@DisplayName("카테고리별 3개를 초과하면 BusinessException이 발생한다")
-		void shouldThrowWhenExceedingCategoryLimit() {
+		@DisplayName("같은 카테고리여도 전체 5개 이하면 허용된다")
+		void shouldAllowSameCategoryWhenWithinTotalLimit() {
 			// given - 외모(APPEARANCE) 카테고리 태그 4개
 			List<ProfileTag> tags = List.of(
 				new ProfileTag(ProfileTagItem.EGG_FACE),
@@ -65,9 +65,11 @@ class ProfileTest {
 				new ProfileTag(ProfileTagItem.SHARP_FACE)
 			);
 
-			// when & then
-			assertThatThrownBy(() -> profile.addTags(tags))
-				.isInstanceOf(BusinessException.class);
+			// when
+			profile.addTags(tags);
+
+			// then
+			assertThat(profile.getTags()).hasSize(4);
 		}
 
 		@Test
@@ -107,9 +109,9 @@ class ProfileTest {
 		}
 
 		@Test
-		@DisplayName("서로 다른 카테고리의 태그는 각각 최대 3개까지 허용된다")
-		void shouldAllowThreeTagsPerCategory() {
-			// given - 외모 3개 + 성격 3개 = 총 6개
+		@DisplayName("전체 태그가 5개를 초과하면 BusinessException이 발생한다")
+		void shouldThrowWhenExceedingTotalTagLimit() {
+			// given - 총 6개
 			List<ProfileTag> tags = List.of(
 				new ProfileTag(ProfileTagItem.EGG_FACE),
 				new ProfileTag(ProfileTagItem.DIMPLE),
@@ -119,11 +121,9 @@ class ProfileTest {
 				new ProfileTag(ProfileTagItem.LOGICAL)
 			);
 
-			// when
-			profile.addTags(tags);
-
-			// then
-			assertThat(profile.getTags()).hasSize(6);
+			// when & then
+			assertThatThrownBy(() -> profile.addTags(tags))
+				.isInstanceOf(BusinessException.class);
 		}
 
 		@Test

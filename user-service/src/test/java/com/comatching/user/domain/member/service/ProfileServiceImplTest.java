@@ -26,8 +26,8 @@ import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.member.ProfileTagDto;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.service.S3Service;
 import com.comatching.user.domain.event.UserEventPublisher;
-import com.comatching.user.domain.member.component.RandomNicknameGenerator;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
@@ -36,6 +36,7 @@ import com.comatching.user.domain.member.entity.ProfileTag;
 import com.comatching.user.domain.member.repository.MemberRepository;
 import com.comatching.user.domain.member.repository.ProfileRepository;
 import com.comatching.user.global.config.ProfileImageProperties;
+import com.comatching.user.global.exception.UserErrorCode;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProfileServiceImpl 테스트")
@@ -57,7 +58,7 @@ class ProfileServiceImplTest {
 	private ProfileImageProperties profileImageProperties;
 
 	@Mock
-	private RandomNicknameGenerator nicknameGenerator;
+	private S3Service s3Service;
 
 	@Nested
 	@DisplayName("프로필 생성")
@@ -77,7 +78,10 @@ class ProfileServiceImplTest {
 				.university("한국대학교")
 				.major("컴퓨터공학과")
 				.contactFrequency(ContactFrequency.FREQUENT)
-				.hobbies(List.of(new HobbyDto(HobbyCategory.SPORTS, "축구")))
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
 				.tags(List.of(
 					new ProfileTagDto("EGG_FACE"),
 					new ProfileTagDto("BRIGHT")
@@ -86,7 +90,6 @@ class ProfileServiceImplTest {
 
 			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
-			given(profileImageProperties.filenames()).willReturn(List.of("default.png"));
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 			willDoNothing().given(eventPublisher).sendSignupEvent(any());
@@ -114,13 +117,15 @@ class ProfileServiceImplTest {
 				.university("한국대학교")
 				.major("컴퓨터공학과")
 				.contactFrequency(ContactFrequency.FREQUENT)
-				.hobbies(List.of(new HobbyDto(HobbyCategory.SPORTS, "축구")))
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
 				.tags(null)
 				.build();
 
 			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
-			given(profileImageProperties.filenames()).willReturn(List.of("default.png"));
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 			willDoNothing().given(eventPublisher).sendSignupEvent(any());
@@ -131,6 +136,109 @@ class ProfileServiceImplTest {
 			// then
 			assertThat(response).isNotNull();
 			assertThat(response.tags()).isEmpty();
+		}
+
+		@Test
+		@DisplayName("프로필 이미지 값이 S3 key면 퍼블릭 URL로 변환해 저장한다")
+		void shouldConvertS3KeyToPublicUrlWhenCreatingProfile() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			String imageKey = "profiles/1/test.png";
+			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/test.png";
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("테스트유저")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.profileImageKey(imageKey)
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(null)
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendSignupEvent(any());
+
+			// when
+			ProfileResponse response = profileService.createProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo(imageUrl);
+		}
+
+		@Test
+		@DisplayName("프로필 이미지 값이 default_동물이름이면 해당 기본 이미지 URL을 저장한다")
+		void shouldUseAnimalDefaultImageWhenCreatingProfile() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("테스트유저")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.profileImageKey("default_dog")
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(null)
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendSignupEvent(any());
+
+			// when
+			ProfileResponse response = profileService.createProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog.png");
+		}
+
+		@Test
+		@DisplayName("닉네임이 중복되면 프로필 생성 시 예외가 발생한다")
+		void shouldThrowWhenNicknameDuplicatedOnCreate() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("중복닉네임")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(null)
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(profileRepository.existsByNickname("중복닉네임")).willReturn(true);
+
+			// when & then
+			assertThatThrownBy(() -> profileService.createProfile(memberId, request))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(UserErrorCode.DUPLICATE_NICKNAME);
 		}
 	}
 
@@ -164,21 +272,23 @@ class ProfileServiceImplTest {
 		}
 
 		@Test
-		@DisplayName("카테고리별 3개 초과 태그로 수정 시 예외가 발생한다")
-		void shouldThrowWhenExceedingCategoryLimitOnUpdate() {
+		@DisplayName("전체 5개 초과 태그로 수정 시 예외가 발생한다")
+		void shouldThrowWhenExceedingTotalTagLimitOnUpdate() {
 			// given
 			Long memberId = 1L;
 			Profile profile = createProfileWithTags(memberId);
 
-			// 외모 카테고리 태그 4개 (FACE_SHAPE 그룹)
+			// 총 6개 태그
 			ProfileUpdateRequest request = new ProfileUpdateRequest(
 				null, null, null, null, null, null, null, null,
 				null, null, null, null, null,
 				List.of(
 					new ProfileTagDto("EGG_FACE"),
-					new ProfileTagDto("ANGULAR_FACE"),
-					new ProfileTagDto("ROUND_FACE"),
-					new ProfileTagDto("SHARP_FACE")
+					new ProfileTagDto("DIMPLE"),
+					new ProfileTagDto("FAIR_SKIN"),
+					new ProfileTagDto("EXTROVERT"),
+					new ProfileTagDto("CARING"),
+					new ProfileTagDto("LOGICAL")
 				),
 				null
 			);
@@ -188,6 +298,60 @@ class ProfileServiceImplTest {
 			// when & then
 			assertThatThrownBy(() -> profileService.updateProfile(memberId, request))
 				.isInstanceOf(BusinessException.class);
+		}
+
+		@Test
+		@DisplayName("프로필 이미지 값이 default면 기본 프로필 이미지로 변경된다")
+		void shouldSetDefaultProfileImageOnUpdateWhenDefaultValueProvided() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, "default", null, null, null, null,
+				null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/default.png");
+		}
+	}
+
+	@Nested
+	@DisplayName("닉네임 중복 확인")
+	class NicknameAvailability {
+
+		@Test
+		@DisplayName("중복 닉네임이면 사용 불가를 반환한다")
+		void shouldReturnFalseWhenNicknameDuplicated() {
+			// given
+			given(profileRepository.existsByNickname("중복닉네임")).willReturn(true);
+
+			// when
+			boolean available = profileService.isNicknameAvailable("중복닉네임");
+
+			// then
+			assertThat(available).isFalse();
+		}
+
+		@Test
+		@DisplayName("미사용 닉네임이면 사용 가능을 반환한다")
+		void shouldReturnTrueWhenNicknameAvailable() {
+			// given
+			given(profileRepository.existsByNickname("신규닉네임")).willReturn(false);
+
+			// when
+			boolean available = profileService.isNicknameAvailable("신규닉네임");
+
+			// then
+			assertThat(available).isTrue();
 		}
 	}
 
@@ -225,7 +389,10 @@ class ProfileServiceImplTest {
 	private Profile createProfileWithTags(Long memberId) {
 		Member member = createMember(memberId);
 
-		List<ProfileHobby> hobbies = List.of(new ProfileHobby(HobbyCategory.SPORTS, "축구"));
+		List<ProfileHobby> hobbies = List.of(
+			new ProfileHobby(HobbyCategory.SPORTS, "축구"),
+			new ProfileHobby(HobbyCategory.CULTURE, "영화감상")
+		);
 		List<ProfileTag> tags = List.of(
 			new ProfileTag(ProfileTagItem.EGG_FACE),
 			new ProfileTag(ProfileTagItem.BRIGHT)
