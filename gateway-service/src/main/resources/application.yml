@@ -27,7 +27,7 @@ spring:
             - id: user-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-protected
               uri: http://localhost:9000

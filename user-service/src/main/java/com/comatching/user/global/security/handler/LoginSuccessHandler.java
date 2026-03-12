@@ -57,20 +57,19 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
 
+		if (role.equals("ROLE_ADMIN")) {
+			response.setStatus(HttpServletResponse.SC_OK);
+			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+			response.setCharacterEncoding("UTF-8");
+			ApiResponse<Void> apiResponse = ApiResponse.ok();
+			objectMapper.writeValue(response.getWriter(), apiResponse);
+			return;
+		}
+
 		if (role.equals("ROLE_GUEST")) {
 			response.sendRedirect(clientUrl + "/onboarding");
 		} else {
 			response.sendRedirect(clientUrl + "/main");
 		}
-
-		// json 응답
-		/*response.setStatus(HttpServletResponse.SC_OK);
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		response.setCharacterEncoding("UTF-8");
-		ApiResponse<Void> apiResponse = ApiResponse.ok();
-
-		objectMapper.writeValue(response.getWriter(), apiResponse);*/
-
-
 	}
 }
