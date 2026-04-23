@@ -3,6 +3,12 @@ server:
   port: 9005
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
   kafka:
     bootstrap-servers: kafka:29092
     consumer:

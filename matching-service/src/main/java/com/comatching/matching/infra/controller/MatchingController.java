@@ -53,9 +53,9 @@ public class MatchingController {
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-		@RequestParam(required = false, defaultValue = "false") boolean favoriteOnly,
-		@PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable
-	) {
+			@RequestParam(required = false, defaultValue = "false") boolean favoriteOnly,
+			@PageableDefault(size = 30, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable
+		) {
 		PagingResponse<MatchingHistoryResponse> result = matchingHistoryService.getMyMatchingHistory(memberId,
 			startDate, endDate, pageable, favoriteOnly);
 		return ResponseEntity.ok(ApiResponse.ok(result));

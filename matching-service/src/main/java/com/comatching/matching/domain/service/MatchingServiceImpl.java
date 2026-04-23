@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.ItemRoute;
+import com.comatching.common.domain.vo.KoreanAge;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.item.ItemConsumption;
@@ -34,6 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class MatchingServiceImpl implements MatchingService {
 
+	private static final int MIN_ALLOWED_AGE = 20;
+	private static final int MAX_ALLOWED_AGE = 27;
+
 	private final MatchingHistoryRepository historyRepository;
 	private final MemberClient memberClient;
 	private final ItemClient itemClient;
@@ -45,6 +49,7 @@ public class MatchingServiceImpl implements MatchingService {
 	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
 	public MatchingResponse match(Long memberId, MatchingRequest request) {
 		ProfileResponse myProfile = memberClient.getProfile(memberId);
+		validateAgeLimitRequest(request, myProfile);
 
 		List<ItemConsumption> consumedConsumptions = consumeItems(memberId, request);
 
@@ -99,6 +104,8 @@ public class MatchingServiceImpl implements MatchingService {
 	private void saveHistoryAndPublishEvent(Long memberId, MatchingCandidate matchedCandidate, MatchingRequest request) {
 		MatchingCondition condition = MatchingCondition.builder()
 			.ageOption(request.ageOption())
+			.minAgeOffset(request.minAgeOffset())
+			.maxAgeOffset(request.maxAgeOffset())
 			.contactFrequency(request.contactFrequency())
 			.hobbyOption(request.hobbyOption())
 			.mbtiOption(request.mbtiOption())
@@ -121,5 +128,32 @@ public class MatchingServiceImpl implements MatchingService {
 			.build();
 
 		matchingEventProducer.sendMatchingSuccess(event);
+	}
+
+	private void validateAgeLimitRequest(MatchingRequest request, ProfileResponse myProfile) {
+		if (!request.hasAgeLimit()) {
+			return;
+		}
+
+		if (!request.hasCompleteAgeLimit()) {
+			throw new BusinessException(MatchingErrorCode.INVALID_AGE_LIMIT_OPTION);
+		}
+
+		KoreanAge myAge = KoreanAge.fromBirthDate(myProfile.birthDate());
+		if (myAge == null) {
+			throw new BusinessException(MatchingErrorCode.INVALID_AGE_LIMIT_OPTION);
+		}
+
+		int minOffset = request.minAgeOffset();
+		int maxOffset = request.maxAgeOffset();
+		if (minOffset > maxOffset) {
+			throw new BusinessException(MatchingErrorCode.INVALID_AGE_LIMIT_OPTION);
+		}
+
+		int minAge = Math.max(MIN_ALLOWED_AGE, myAge.getValue() + minOffset);
+		int maxAge = Math.min(MAX_ALLOWED_AGE, myAge.getValue() + maxOffset);
+		if (minAge > maxAge) {
+			throw new BusinessException(MatchingErrorCode.INVALID_AGE_LIMIT_OPTION);
+		}
 	}
 }

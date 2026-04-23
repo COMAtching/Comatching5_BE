@@ -12,6 +12,27 @@ public record MatchingRequest(
 	HobbyCategory hobbyOption,
 	ContactFrequency contactFrequency,
 	boolean sameMajorOption,
-	ImportantOption importantOption
+	ImportantOption importantOption,
+	Integer minAgeOffset,
+	Integer maxAgeOffset
 ) {
+
+	public MatchingRequest(
+		AgeOption ageOption,
+		String mbtiOption,
+		HobbyCategory hobbyOption,
+		ContactFrequency contactFrequency,
+		boolean sameMajorOption,
+		ImportantOption importantOption
+	) {
+		this(ageOption, mbtiOption, hobbyOption, contactFrequency, sameMajorOption, importantOption, null, null);
+	}
+
+	public boolean hasAgeLimit() {
+		return minAgeOffset != null || maxAgeOffset != null;
+	}
+
+	public boolean hasCompleteAgeLimit() {
+		return minAgeOffset != null && maxAgeOffset != null;
+	}
 }

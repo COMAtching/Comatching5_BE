@@ -24,17 +24,27 @@ spring:
 
           # 라우팅 규칙 - 컨테이너 이름 사용
           routes:
-            - id: user-service-public
-              uri: http://user-service:9000
+            - id: item-service-admin-monitor
+              uri: http://item-service:9006
               predicates:
-                - Path=/api/auth/login, /api/auth/signup/**, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/admin-payment-monitor.html
+
+            - id: item-service-payment-ws
+              uri: http://item-service:9006
+              predicates:
+                - Path=/ws/payment, /ws/payment/**
 
             - id: user-service-protected
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw, /api/members/**, /api/internal/users/**
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/internal/users/**
               filters:
                 - AuthorizationHeaderFilter
+
+            - id: user-service-public
+              uri: http://user-service:9000
+              predicates:
+                - Path=/api/auth/login, /api/auth/signup/**, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-swagger
               uri: http://user-service:9000

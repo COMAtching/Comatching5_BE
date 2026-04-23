@@ -27,6 +27,7 @@ import com.comatching.matching.domain.enums.AgeOption;
 import com.comatching.matching.domain.enums.ImportantOption;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
 import com.comatching.matching.domain.repository.history.MatchingHistoryRepository;
+import com.comatching.matching.global.exception.MatchingErrorCode;
 
 @ExtendWith(MockitoExtension.class)
 class MatchingProcessorTest {
@@ -209,6 +210,63 @@ class MatchingProcessorTest {
 			// then
 			verify(candidateRepository).findPotentialCandidates(eq(Gender.FEMALE), eq("컴퓨터공학과"), anyList());
 			assertThat(result).isNotNull();
+		}
+
+		@Test
+		@DisplayName("나이 제한 옵션이 있으면 20~27세 경계 내에서 후보를 필터링한다")
+		void shouldFilterCandidatesByAgeLimitOffsetWithin20To27() {
+			// given
+			Long memberId = 1L;
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
+			MatchingRequest request = new MatchingRequest(
+				null, null, null, null, false, null,
+				-10, 10
+			);
+
+			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);
+			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
+			List<MatchingCandidate> candidates = List.of(age19, age27);
+
+			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(candidateRepository.findPotentialCandidates(eq(Gender.FEMALE), isNull(), anyList()))
+				.willReturn(candidates);
+			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
+			given(scoreCalculator.calculate(eq(age27), eq(request), any(KoreanAge.class))).willReturn(30);
+
+			// when
+			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
+
+			// then
+			assertThat(result.getMemberId()).isEqualTo(3L);
+			verify(scoreCalculator, never()).calculate(eq(age19), eq(request), any(KoreanAge.class));
+		}
+
+		@Test
+		@DisplayName("나이 제한 조건에 맞는 후보가 없으면 NO_MATCHING_CANDIDATE를 던진다")
+		void shouldThrowNoCandidateWhenAllFilteredByAgeLimit() {
+			// given
+			Long memberId = 1L;
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
+			MatchingRequest request = new MatchingRequest(
+				null, null, null, null, false, null,
+				-1, 1
+			);
+
+			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);
+			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
+			List<MatchingCandidate> candidates = List.of(age19, age27);
+
+			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(candidateRepository.findPotentialCandidates(eq(Gender.FEMALE), isNull(), anyList()))
+				.willReturn(candidates);
+
+			// when & then
+			assertThatThrownBy(() -> matchingProcessor.process(memberId, myProfile, request))
+				.isInstanceOf(BusinessException.class)
+				.satisfies(e -> assertThat(((BusinessException)e).getErrorCode())
+					.isEqualTo(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+
+			verify(scoreCalculator, never()).calculate(any(), eq(request), any(KoreanAge.class));
 		}
 	}
 }

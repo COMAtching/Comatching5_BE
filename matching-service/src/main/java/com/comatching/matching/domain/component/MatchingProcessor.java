@@ -21,6 +21,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MatchingProcessor {
 
+	private static final int MIN_ALLOWED_AGE = 20;
+	private static final int MAX_ALLOWED_AGE = 27;
+
 	private final MatchingCandidateRepository candidateRepository;
 	private final MatchingHistoryRepository historyRepository;
 	private final MatchingScoreCalculator scoreCalculator;
@@ -54,6 +57,10 @@ public class MatchingProcessor {
 		int maxScore = -1;
 
 		for (MatchingCandidate candidate : candidates) {
+			if (!matchesAgeLimit(candidate, request, myAge)) {
+				continue;
+			}
+
 			if (!conditionCheckerFactory.check(request.importantOption(), candidate, request, myAge)) {
 				continue;
 			}
@@ -70,6 +77,26 @@ public class MatchingProcessor {
 		}
 
 		return bestCandidates;
+	}
+
+	private boolean matchesAgeLimit(MatchingCandidate candidate, MatchingRequest request, KoreanAge myAge) {
+		if (!request.hasAgeLimit()) {
+			return true;
+		}
+
+		if (!request.hasCompleteAgeLimit() || candidate.getAge() == null || myAge == null) {
+			return false;
+		}
+
+		int minAge = Math.max(MIN_ALLOWED_AGE, myAge.getValue() + request.minAgeOffset());
+		int maxAge = Math.min(MAX_ALLOWED_AGE, myAge.getValue() + request.maxAgeOffset());
+
+		if (minAge > maxAge) {
+			return false;
+		}
+
+		int candidateAge = candidate.getAge().getValue();
+		return candidateAge >= minAge && candidateAge <= maxAge;
 	}
 
 	private MatchingCandidate selectRandomCandidate(List<MatchingCandidate> candidates) {

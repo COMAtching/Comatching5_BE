@@ -24,6 +24,8 @@ public class MatchingItemPolicyImpl implements MatchingItemPolicy {
 			cnt++;
 		if (request.importantOption() != null)
 			cnt++;
+		if (request.hasAgeLimit())
+			cnt++;
 
 		if (cnt != 0) {
 			consumptions.add(new ItemConsumption(ItemType.OPTION_TICKET, cnt));

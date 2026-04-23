@@ -200,5 +200,54 @@ class MatchingServiceImplTest {
 			verify(historyRepository).save(any(MatchingHistory.class));
 			verify(matchingEventProducer).sendMatchingSuccess(any());
 		}
+
+		@Test
+		@DisplayName("잘못된 나이 제한 옵션이면 아이템 차감 전에 예외를 던진다")
+		void shouldThrowBeforeConsumeWhenAgeLimitIsInvalid() {
+			// given
+			Long memberId = 1L;
+			MatchingRequest request = new MatchingRequest(
+				null, null, null, null, false, null,
+				2, -1
+			);
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(BusinessException.class);
+
+			verify(itemClient, never()).useItem(anyLong(), any(), anyInt());
+		}
+
+		@Test
+		@DisplayName("나이 제한 조건에 맞는 후보가 없으면 아이템 환불 후 NO_MATCHING_CANDIDATE를 던진다")
+		void shouldRefundAndThrowWhenNoCandidateByAgeLimit() {
+			// given
+			Long memberId = 1L;
+			MatchingRequest request = new MatchingRequest(
+				null, null, null, null, false, null,
+				-1, 1
+			);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			List<ItemConsumption> consumptions = List.of(
+				new ItemConsumption(ItemType.MATCHING_TICKET, 1),
+				new ItemConsumption(ItemType.OPTION_TICKET, 1)
+			);
+
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request))
+				.willThrow(new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(BusinessException.class)
+				.satisfies(e -> assertThat(((BusinessException)e).getErrorCode())
+					.isEqualTo(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+
+			verify(itemClient, times(2)).addItem(eq(memberId), any());
+		}
 	}
 }

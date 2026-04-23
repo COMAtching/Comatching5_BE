@@ -21,6 +21,10 @@ public class MatchingCondition {
 	@Enumerated(EnumType.STRING)
 	private AgeOption ageOption;
 
+	private Integer minAgeOffset;
+
+	private Integer maxAgeOffset;
+
 	@Enumerated(EnumType.STRING)
 	private ContactFrequency contactFrequency;
 
@@ -35,9 +39,12 @@ public class MatchingCondition {
 	private ImportantOption importantOption;
 
 	@Builder
-	public MatchingCondition(AgeOption ageOption, ContactFrequency contactFrequency, HobbyCategory hobbyOption,
+	public MatchingCondition(AgeOption ageOption, Integer minAgeOffset, Integer maxAgeOffset,
+		ContactFrequency contactFrequency, HobbyCategory hobbyOption,
 		boolean sameMajorOption, String mbtiOption, ImportantOption importantOption) {
 		this.ageOption = ageOption;
+		this.minAgeOffset = minAgeOffset;
+		this.maxAgeOffset = maxAgeOffset;
 		this.contactFrequency = contactFrequency;
 		this.hobbyOption = hobbyOption;
 		this.sameMajorOption = sameMajorOption;

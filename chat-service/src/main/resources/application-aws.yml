@@ -12,6 +12,11 @@ spring:
       port: 27017
       database: comatching_chat
       auto-index-creation: true
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
 
   kafka:
     bootstrap-servers: kafka:29092

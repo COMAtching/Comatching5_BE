@@ -24,15 +24,25 @@ spring:
 
           # 2. 라우팅 규칙
           routes:
+            - id: item-service-admin-monitor
+              uri: http://localhost:9006
+              predicates:
+                - Path=/admin-payment-monitor.html
+
+            - id: item-service-payment-ws
+              uri: http://localhost:9006
+              predicates:
+                - Path=/ws/payment, /ws/payment/**
+
             - id: user-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-protected
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw, /api/members/**, /api/internal/users/**
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/internal/users/**
               filters:
                 - AuthorizationHeaderFilter
 
