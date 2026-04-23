@@ -14,6 +14,8 @@ import com.comatching.user.domain.member.entity.Profile;
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
 	Optional<Profile> findByMemberId(Long memberId);
+	boolean existsByNickname(String nickname);
+	boolean existsByNicknameAndMemberIdNot(String nickname, Long memberId);
 
 	@Query("SELECT DISTINCT p FROM Profile p " +
 		"JOIN FETCH p.member m " +

@@ -60,6 +60,10 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
 
-		getRedirectStrategy().sendRedirect(request, response, clientUrl + "/oauth2/callback/success");
+		if (role.equals("ROLE_GUEST")) {
+			getRedirectStrategy().sendRedirect(request, response, clientUrl + "/onboarding");
+		} else {
+			getRedirectStrategy().sendRedirect(request, response, clientUrl + "/main");
+		}
 	}
 }

@@ -1,7 +1,10 @@
 package com.comatching.gateway;
 
+import org.redisson.spring.starter.RedissonAutoConfigurationV2;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
@@ -12,7 +15,10 @@ import com.comatching.common.exception.handler.GlobalExceptionHandler;
 @SpringBootApplication(
 	exclude = {
 		DataSourceAutoConfiguration.class,
-		HibernateJpaAutoConfiguration.class
+		HibernateJpaAutoConfiguration.class,
+		RedisAutoConfiguration.class,
+		RedisRepositoriesAutoConfiguration.class,
+		RedissonAutoConfigurationV2.class
 	}
 )
 @ComponentScan(

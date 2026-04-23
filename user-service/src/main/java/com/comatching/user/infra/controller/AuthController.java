@@ -4,20 +4,24 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.user.domain.auth.dto.ChangePasswordRequest;
 import com.comatching.user.domain.auth.dto.CompleteSignupResponse;
+import com.comatching.user.domain.auth.dto.NicknameAvailabilityResponse;
 import com.comatching.user.domain.auth.dto.PasswordResetCodeRequest;
 import com.comatching.user.domain.auth.dto.ResetPasswordRequest;
 import com.comatching.user.domain.auth.dto.TokenResponse;
 import com.comatching.user.domain.auth.service.AuthService;
 import com.comatching.user.domain.auth.service.SignupService;
 import com.comatching.user.domain.mail.service.EmailService;
+import com.comatching.user.domain.member.service.ProfileManageService;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
@@ -39,6 +43,7 @@ public class AuthController {
 	private final AuthService authService;
 	private final SignupService signupService;
 	private final EmailService emailService;
+	private final ProfileManageService profileManageService;
 
 	@PostMapping("/signup")
 	public ResponseEntity<ApiResponse<Void>> signup(@RequestBody @Valid SignupRequest request) {
@@ -54,6 +59,14 @@ public class AuthController {
 	) {
 		CompleteSignupResponse result = signupService.completeSignup(memberInfo, request, response);
 		return ResponseEntity.ok(ApiResponse.ok(result));
+	}
+
+	@GetMapping("/signup/nickname/availability")
+	public ResponseEntity<ApiResponse<NicknameAvailabilityResponse>> checkNicknameAvailability(
+		@RequestParam String nickname
+	) {
+		boolean available = profileManageService.isNicknameAvailable(nickname);
+		return ResponseEntity.ok(ApiResponse.ok(new NicknameAvailabilityResponse(available)));
 	}
 
 	@PostMapping("/reissue")

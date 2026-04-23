@@ -42,6 +42,8 @@ bin/
 .DS_Store
 
 .env
+.env.aws
+.env.prod
 .claudeignore
 .claude
 .mcp.json

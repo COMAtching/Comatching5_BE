@@ -1,0 +1,100 @@
+# AWS 환경 설정 - Docker 컨테이너 간 통신용
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # CORS 설정
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "https://comatching.site"
+                  - "http://localhost:3000"
+                  - "http://localhost:5173"
+                allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+                allowedHeaders: "*"
+                allowCredentials: true
+
+          # 라우팅 규칙 - 컨테이너 이름 사용
+          routes:
+            - id: user-service-public
+              uri: http://user-service:9000
+              predicates:
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
+
+            - id: user-service-protected
+              uri: http://user-service:9000
+              predicates:
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/**, /api/auth/withdraw, /api/members/**, /api/internal/users/**
+              filters:
+                - AuthorizationHeaderFilter
+
+            - id: user-service-swagger
+              uri: http://user-service:9000
+              predicates:
+                - Path=/user-doc/**
+              filters:
+                - RewritePath=/user-doc/(?<segment>.*), /$\{segment}
+
+            - id: matching-service
+              uri: http://matching-service:9001
+              predicates:
+                - Path=/api/matching/**, /api/internal/matching/**
+              filters:
+                - AuthorizationHeaderFilter
+
+            - id: matching-service-swagger
+              uri: http://matching-service:9001
+              predicates:
+                - Path=/matching-doc/**
+              filters:
+                - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
+
+            - id: chat-service
+              uri: http://chat-service:9003
+              predicates:
+                - Path=/api/chat/**, /api/internal/chat/**, /ws/**
+              filters:
+                - AuthorizationHeaderFilter
+
+            - id: chat-service-swagger
+              uri: http://chat-service:9003
+              predicates:
+                - Path=/chat-doc/**
+              filters:
+                - RewritePath=/chat-doc/(?<segment>.*), /$\{segment}
+
+            - id: item-service
+              uri: http://item-service:9006
+              predicates:
+                - Path=/api/items/**, /api/internal/items/**
+              filters:
+                - AuthorizationHeaderFilter
+
+            - id: notification-service
+              uri: http://notification:9005
+              predicates:
+                - Path=/api/fcm/**
+              filters:
+                - AuthorizationHeaderFilter
+
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token:
+    expiration: ${ACCESS_TOKEN_EXP:86400000}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXP:604800000}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

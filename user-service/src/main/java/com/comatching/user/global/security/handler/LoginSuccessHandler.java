@@ -2,6 +2,7 @@ package com.comatching.user.global.security.handler;
 
 import java.io.IOException;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -27,11 +28,15 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 	private final ObjectMapper objectMapper;
 	private final RefreshTokenRepository refreshTokenRepository;
 
+	@Value("${client.url}")
+	private String clientUrl;
+
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 		Authentication authentication) throws IOException, ServletException {
 
 		UserPrincipal principal = (UserPrincipal)authentication.getPrincipal();
+		String role = principal.getRole();
 
 		// 토큰 생성
 		String accessToken = jwtUtil.createAccessToken(principal.getId(), principal.getUsername(), principal.getRole(),
@@ -52,12 +57,19 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
 
-		// json 응답
-		response.setStatus(HttpServletResponse.SC_OK);
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		response.setCharacterEncoding("UTF-8");
-		ApiResponse<Void> apiResponse = ApiResponse.ok();
+		if (role.equals("ROLE_ADMIN")) {
+			response.setStatus(HttpServletResponse.SC_OK);
+			response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+			response.setCharacterEncoding("UTF-8");
+			ApiResponse<Void> apiResponse = ApiResponse.ok();
+			objectMapper.writeValue(response.getWriter(), apiResponse);
+			return;
+		}
 
-		objectMapper.writeValue(response.getWriter(), apiResponse);
+		if (role.equals("ROLE_GUEST")) {
+			response.sendRedirect(clientUrl + "/onboarding");
+		} else {
+			response.sendRedirect(clientUrl + "/main");
+		}
 	}
 }
