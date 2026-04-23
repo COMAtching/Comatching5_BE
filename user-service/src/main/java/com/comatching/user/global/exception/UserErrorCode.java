@@ -26,8 +26,10 @@ public enum UserErrorCode implements ErrorCode {
 	PROFILE_ALREADY_EXISTS("MEM-003", HttpStatus.BAD_REQUEST, "프로필이 이미 존재합니다."),
 	PROFILE_NOT_EXISTS("MEM-004", HttpStatus.BAD_REQUEST, "프로필이 존재하지 않습니다."),
 	INVALID_SOCIAL_INFO("MEM-005", HttpStatus.BAD_REQUEST, "소셜 정보는 타입과 ID가 함께 입력되어야 합니다."),
-	INVALID_HOBBY_COUNT("MEM-006", HttpStatus.BAD_REQUEST, "취미는 최소 2개 이상 최대 5개 이하를 등록해야 합니다."),
-	TAG_LIMIT_PER_CATEGORY_EXCEEDED("MEM-007", HttpStatus.BAD_REQUEST, "카테고리별 태그는 최대 3개까지 선택 가능합니다."),
+	INVALID_HOBBY_COUNT("MEM-006", HttpStatus.BAD_REQUEST, "취미는 최소 2개 이상 최대 10개 이하를 등록해야 합니다."),
+	TAG_LIMIT_PER_CATEGORY_EXCEEDED("MEM-007", HttpStatus.BAD_REQUEST, "장점 태그는 전체 최대 5개까지 선택 가능합니다."),
+	DUPLICATE_NICKNAME("MEM-008", HttpStatus.BAD_REQUEST, "이미 사용 중인 닉네임입니다."),
+	INVALID_NICKNAME("MEM-009", HttpStatus.BAD_REQUEST, "닉네임은 공백일 수 없습니다."),
 	;
 
 	private final String code;

@@ -9,13 +9,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
-import com.comatching.common.domain.enums.ProfileTagCategory;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.global.exception.UserErrorCode;
@@ -161,7 +158,7 @@ public class Profile {
 	}
 
 	public void addHobbies(List<ProfileHobby> newHobbies) {
-		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 10 || newHobbies.size() < 1) {
+		if (newHobbies == null || newHobbies.isEmpty() || newHobbies.size() > 10 || newHobbies.size() < 2) {
 			throw new BusinessException(UserErrorCode.INVALID_HOBBY_COUNT);
 		}
 
@@ -179,17 +176,8 @@ public class Profile {
 	}
 
 	public void addTags(List<ProfileTag> newTags) {
-		if (newTags != null) {
-			Map<ProfileTagCategory, Long> countByCategory = newTags.stream()
-				.collect(Collectors.groupingBy(
-					t -> t.getTag().getGroup().getCategory(),
-					Collectors.counting()
-				));
-			countByCategory.forEach((cat, count) -> {
-				if (count > 3) {
-					throw new BusinessException(UserErrorCode.TAG_LIMIT_PER_CATEGORY_EXCEEDED);
-				}
-			});
+		if (newTags != null && newTags.size() > 5) {
+			throw new BusinessException(UserErrorCode.TAG_LIMIT_PER_CATEGORY_EXCEEDED);
 		}
 		this.tags.clear();
 		if (newTags != null) {

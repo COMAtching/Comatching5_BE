@@ -17,6 +17,7 @@ spring:
                 allowedOrigins:
                   - "https://comatching.site"
                   - "http://localhost:3000"
+                  - "http://localhost:5173"
                 allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
                 allowedHeaders: "*"
                 allowCredentials: true
@@ -26,7 +27,7 @@ spring:
             - id: user-service-public
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/email/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-protected
               uri: http://user-service:9000
