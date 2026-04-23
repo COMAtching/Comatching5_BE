@@ -16,11 +16,11 @@ client:
 comatching:
   profile:
     default-images:
-      base-url: "https://${AWS_S3_BUCKET}.s3.ap-northeast-2.amazonaws.com/defaults/profile/"
+      base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:https://comatching.site/api/public/profile-images/}
       filenames:
-        - "userDefaultImage1.jpg"
-        - "userDefaultImage2.jpg"
-        - "userDefaultImage3.jpg"
+        - "dog_male 1.png"
+        - "cat_female 1.png"
+        - "dinosaur 1.png"
 
 spring:
   application:

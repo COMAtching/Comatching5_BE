@@ -35,13 +35,19 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
-		log.warn("[Business Exception] Code: {}, Message: {}", e.getErrorCode().getCode(), e.getMessage());
-
 		if (e.getErrorData() != null) {
+			log.warn(
+				"[Business Exception] Code: {}, Message: {}, Data: {}",
+				e.getErrorCode().getCode(),
+				e.getMessage(),
+				e.getErrorData()
+			);
 			return ResponseEntity
 				.status(e.getErrorCode().getHttpStatus())
 				.body(ApiResponse.errorResponse(e.getErrorCode(), e.getErrorData()));
 		}
+
+		log.warn("[Business Exception] Code: {}, Message: {}", e.getErrorCode().getCode(), e.getMessage());
 
 		return ResponseEntity
 			.status(e.getErrorCode().getHttpStatus())

@@ -12,14 +12,20 @@ server:
 client:
   url: ${CLIENT_URL:http://localhost:3000}
 
+auth:
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:false}
+    domain: ${AUTH_COOKIE_DOMAIN:}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+
 comatching:
   profile:
     default-images:
-      base-url: "https://${AWS_S3_BUCKET}.s3.ap-northeast-2.amazonaws.com/defaults/profile/"
+      base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:http://localhost:8080/api/public/profile-images/}
       filenames:
-        - "userDefaultImage1.jpg"
-        - "userDefaultImage2.jpg"
-        - "userDefaultImage3.jpg"
+        - "dog_male 1.png"
+        - "cat_female 1.png"
+        - "dinosaur 1.png"
 
 spring:
   application:

@@ -39,4 +39,21 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 		@Param("itemType") ItemType itemType,
 		Pageable pageable
 	);
+
+	@Query("SELECT i FROM Item i " +
+		"WHERE i.memberId = :memberId " +
+		"AND i.quantity > 0 " +
+		"AND i.expiredAt > CURRENT_TIMESTAMP " +
+		"ORDER BY i.expiredAt ASC, i.id ASC")
+	List<Item> findAllUsableItemsForAdmin(@Param("memberId") Long memberId);
+
+	@Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Item i " +
+		"WHERE i.memberId = :memberId " +
+		"AND i.itemType = :itemType " +
+		"AND i.quantity > 0 " +
+		"AND i.expiredAt > CURRENT_TIMESTAMP")
+	long sumUsableQuantityByMemberIdAndItemType(
+		@Param("memberId") Long memberId,
+		@Param("itemType") ItemType itemType
+	);
 }

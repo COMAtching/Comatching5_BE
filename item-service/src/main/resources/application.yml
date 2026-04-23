@@ -4,6 +4,9 @@ server:
 member-service:
   url: http://localhost:9002
 
+user-service:
+  url: http://localhost:9000
+
 spring:
   application:
     name: item-service

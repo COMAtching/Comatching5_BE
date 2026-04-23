@@ -5,6 +5,9 @@ server:
 member-service:
   url: http://user-service:9000
 
+user-service:
+  url: http://user-service:9000
+
 spring:
   application:
     name: item-service
@@ -25,6 +28,13 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        enabled: true
 
   kafka:
     bootstrap-servers: kafka:29092

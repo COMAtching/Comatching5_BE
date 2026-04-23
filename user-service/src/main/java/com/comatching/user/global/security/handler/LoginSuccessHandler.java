@@ -9,10 +9,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 import com.comatching.user.global.security.UserPrincipal;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 import com.comatching.user.domain.auth.entity.RefreshToken;
 import com.comatching.user.domain.auth.repository.RefreshTokenRepository;
 import com.comatching.common.dto.response.ApiResponse;
-import com.comatching.common.util.CookieUtil;
 import com.comatching.common.util.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -27,6 +27,7 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 	private final JwtUtil jwtUtil;
 	private final ObjectMapper objectMapper;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final AuthCookieFactory authCookieFactory;
 
 	@Value("${client.url}")
 	private String clientUrl;
@@ -51,8 +52,8 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 		refreshTokenRepository.save(redisToken);
 
 		// 쿠키 설정
-		ResponseCookie accessCookie = CookieUtil.createAccessTokenCookie(accessToken);
-		ResponseCookie refreshCookie = CookieUtil.createRefreshTokenCookie(refreshToken);
+		ResponseCookie accessCookie = authCookieFactory.createAccessTokenCookie(accessToken);
+		ResponseCookie refreshCookie = authCookieFactory.createRefreshTokenCookie(refreshToken);
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());

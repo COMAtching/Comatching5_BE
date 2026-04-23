@@ -5,6 +5,7 @@ import static com.comatching.common.domain.enums.ProfileTagGroup.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -107,6 +108,8 @@ public enum ProfileTagItem {
 	private final String label;
 
 	private static final Map<ProfileTagGroup, List<ProfileTagItem>> BY_GROUP;
+	private static final Map<String, ProfileTagItem> BY_CODE;
+	private static final Map<String, ProfileTagItem> BY_LABEL;
 
 	static {
 		BY_GROUP = Collections.unmodifiableMap(
@@ -115,8 +118,20 @@ public enum ProfileTagItem {
 					ProfileTagItem::getGroup,
 					() -> new EnumMap<>(ProfileTagGroup.class),
 					Collectors.toUnmodifiableList()
-				))
+					))
 		);
+
+		BY_CODE = Arrays.stream(values())
+			.collect(Collectors.toUnmodifiableMap(
+				item -> item.name().toUpperCase(Locale.ROOT),
+				item -> item
+			));
+
+		BY_LABEL = Arrays.stream(values())
+			.collect(Collectors.toUnmodifiableMap(
+				ProfileTagItem::getLabel,
+				item -> item
+			));
 	}
 
 	ProfileTagItem(ProfileTagGroup group, String label) {
@@ -126,5 +141,25 @@ public enum ProfileTagItem {
 
 	public static List<ProfileTagItem> getByGroup(ProfileTagGroup group) {
 		return BY_GROUP.getOrDefault(group, List.of());
+	}
+
+	public static ProfileTagItem fromCodeOrLabel(String value) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException("Profile tag value is blank");
+		}
+
+		String normalized = value.trim();
+
+		ProfileTagItem byCode = BY_CODE.get(normalized.toUpperCase(Locale.ROOT));
+		if (byCode != null) {
+			return byCode;
+		}
+
+		ProfileTagItem byLabel = BY_LABEL.get(normalized);
+		if (byLabel != null) {
+			return byLabel;
+		}
+
+		throw new IllegalArgumentException("Unknown profile tag: " + value);
 	}
 }

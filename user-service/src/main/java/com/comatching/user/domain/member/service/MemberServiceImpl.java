@@ -2,10 +2,12 @@ package com.comatching.user.domain.member.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.auth.MemberLoginDto;
+import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
@@ -77,6 +79,33 @@ public class MemberServiceImpl implements MemberService {
 
 		// Kafka 이벤트 발행
 		eventPublisher.sendWithdrawEvent(memberId, email);
+	}
+
+	@Override
+	public long getActiveUserCount() {
+		return memberRepository.countByRoleAndStatus(MemberRole.ROLE_USER, MemberStatus.ACTIVE);
+	}
+
+	@Override
+	@Transactional
+	public void updateRealName(Long memberId, String realName) {
+		if (!StringUtils.hasText(realName)) {
+			throw new BusinessException(UserErrorCode.INVALID_REAL_NAME);
+		}
+
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+
+		member.updateRealName(realName.trim());
+	}
+
+	@Override
+	public OrdererInfoDto getOrdererInfo(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+
+		String nickname = member.getProfile() != null ? member.getProfile().getNickname() : null;
+		return new OrdererInfoDto(member.getId(), member.getRealName(), nickname);
 	}
 
 	private Member registerSocialMember(SocialLoginRequestDto request) {

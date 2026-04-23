@@ -63,7 +63,6 @@ public class Profile {
 
 	/**
 	 * 매칭에는 필요하지 않은 선택 프로필 목록
-	 * todo: 프로필 생성 시 입력하지 않으면 nickname, 프로필 사진을 기본 랜덤으로 설정하기
 	 */
 
 	private String nickname;

@@ -19,7 +19,7 @@ public interface ItemClient {
 		@RequestParam("count") int count
 	);
 
-	@PostMapping("/api/items/add")
+	@PostMapping("/api/internal/items/add")
 	void addItem(
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestBody AddItemRequest request

@@ -19,8 +19,8 @@ import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.util.CookieUtil;
 import com.comatching.common.util.JwtUtil;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +37,7 @@ public class SignupServiceImpl implements SignupService {
 	private final PasswordEncoder passwordEncoder;
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final AuthCookieFactory authCookieFactory;
 
 	@Override
 	public void signup(SignupRequest request) {
@@ -73,8 +74,8 @@ public class SignupServiceImpl implements SignupService {
 			.token(refreshToken)
 			.build());
 
-		ResponseCookie accessCookie = CookieUtil.createAccessTokenCookie(accessToken);
-		ResponseCookie refreshCookie = CookieUtil.createRefreshTokenCookie(refreshToken);
+		ResponseCookie accessCookie = authCookieFactory.createAccessTokenCookie(accessToken);
+		ResponseCookie refreshCookie = authCookieFactory.createRefreshTokenCookie(refreshToken);
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());

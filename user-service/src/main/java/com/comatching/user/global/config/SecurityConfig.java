@@ -19,6 +19,7 @@ import com.comatching.user.global.security.filter.CustomJsonUsernamePasswordAuth
 import com.comatching.user.global.security.filter.GatewayAuthenticationFilter;
 import com.comatching.user.global.security.handler.LoginFailureHandler;
 import com.comatching.user.global.security.handler.LoginSuccessHandler;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 import com.comatching.user.global.security.oauth2.handler.CustomOAuth2FailureHandler;
 import com.comatching.user.global.security.oauth2.handler.CustomOAuth2SuccessHandler;
 import com.comatching.user.global.security.oauth2.service.CustomOAuth2UserService;
@@ -44,12 +45,14 @@ public class SecurityConfig {
 	private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
 	private final CustomOAuth2FailureHandler customOAuth2FailureHandler;
 	private final GatewayAuthenticationFilter gatewayAuthenticationFilter;
+	private final AuthCookieFactory authCookieFactory;
 
 	private static final List<String> AUTH_EXCLUDED_PATHS = List.of(
 		"/auth-doc/**",
 		"/v3/api-docs/**",
 		"/api/auth/**",
-		"/api/internal/**"
+		"/api/internal/**",
+		"/api/public/profile-images/**"
 	);
 
 	@Bean
@@ -59,7 +62,7 @@ public class SecurityConfig {
 
 	@Bean
 	public LoginSuccessHandler loginSuccessHandler() {
-		return new LoginSuccessHandler(jwtUtil, objectMapper, refreshTokenRepository);
+		return new LoginSuccessHandler(jwtUtil, objectMapper, refreshTokenRepository, authCookieFactory);
 	}
 
 	@Bean

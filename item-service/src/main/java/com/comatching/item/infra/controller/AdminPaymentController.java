@@ -29,7 +29,7 @@ public class AdminPaymentController {
 
 	private final AdminPaymentService adminPaymentService;
 
-	// @RequireRole(MemberRole.ROLE_ADMIN)
+	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(summary = "승인 대기 목록 조회", description = "아직 처리되지 않은(PENDING) 구매 요청 목록을 최신순으로 조회합니다.")
 	@GetMapping("/requests")
 	public ResponseEntity<ApiResponse<List<PurchaseRequestDto>>> getPendingRequests(@CurrentMember MemberInfo memberInfo) {
@@ -40,7 +40,15 @@ public class AdminPaymentController {
 	@Operation(summary = "구매 승인 및 아이템 지급", description = "입금이 확인된 요청 건을 승인하고 사용자에게 아이템을 지급합니다.")
 	@PostMapping("/approve/{requestId}")
 	public ResponseEntity<ApiResponse<Void>> approvePurchase(@PathVariable Long requestId, @CurrentMember MemberInfo memberInfo) {
-		adminPaymentService.approvePurchase(requestId);
+		adminPaymentService.approvePurchase(requestId, memberInfo.memberId());
+		return ResponseEntity.ok(ApiResponse.ok());
+	}
+
+	@RequireRole(MemberRole.ROLE_ADMIN)
+	@Operation(summary = "구매 요청 거부", description = "관리자가 대기 중(PENDING) 구매 요청 건을 거부 처리합니다.")
+	@PostMapping("/reject/{requestId}")
+	public ResponseEntity<ApiResponse<Void>> rejectPurchase(@PathVariable Long requestId, @CurrentMember MemberInfo memberInfo) {
+		adminPaymentService.rejectPurchase(requestId, memberInfo.memberId());
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

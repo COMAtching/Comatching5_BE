@@ -14,10 +14,10 @@ public class CookieUtil {
 		return ResponseCookie.from("accessToken", accessToken)
 			.path("/")
 			.httpOnly(true)
-			.secure(false)
+			.secure(true)
 			.maxAge(Duration.ofDays(1).toSeconds())
 			.sameSite("Lax")
-			// .domain("comatching.site")
+			.domain("comatching.site")
 			.build();
 	}
 
@@ -26,7 +26,7 @@ public class CookieUtil {
 		return ResponseCookie.from("refreshToken", refreshToken)
 			.path("/api/auth")
 			.httpOnly(true)
-			.secure(false)
+			.secure(true)
 			.maxAge(Duration.ofDays(7).toSeconds())
 			.sameSite("Lax")
 			.domain("comatching.site")

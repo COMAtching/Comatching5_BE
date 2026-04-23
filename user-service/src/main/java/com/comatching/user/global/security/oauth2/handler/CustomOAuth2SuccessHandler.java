@@ -9,9 +9,9 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import com.comatching.user.global.security.oauth2.user.CustomOAuth2User;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 import com.comatching.user.domain.auth.entity.RefreshToken;
 import com.comatching.user.domain.auth.repository.RefreshTokenRepository;
-import com.comatching.common.util.CookieUtil;
 import com.comatching.common.util.JwtUtil;
 
 import jakarta.servlet.FilterChain;
@@ -26,6 +26,7 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 
 	private final JwtUtil jwtUtil;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final AuthCookieFactory authCookieFactory;
 
 	@Value("${client.url}")
 	private String clientUrl;
@@ -54,8 +55,8 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 			.build());
 
 		// 쿠키 설정
-		ResponseCookie accessCookie = CookieUtil.createAccessTokenCookie(accessToken);
-		ResponseCookie refreshCookie = CookieUtil.createRefreshTokenCookie(refreshToken);
+		ResponseCookie accessCookie = authCookieFactory.createAccessTokenCookie(accessToken);
+		ResponseCookie refreshCookie = authCookieFactory.createRefreshTokenCookie(refreshToken);
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());

@@ -1,5 +1,6 @@
 package com.comatching.item.domain.product.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -9,14 +10,15 @@ import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.service.ItemService;
+import com.comatching.item.domain.order.entity.Order;
+import com.comatching.item.domain.order.entity.OrderItem;
+import com.comatching.item.domain.order.entity.OrderGrantLedger;
+import com.comatching.item.domain.order.enums.OrderStatus;
+import com.comatching.item.domain.order.repository.OrderGrantLedgerRepository;
+import com.comatching.item.domain.order.repository.OrderRepository;
+import com.comatching.item.domain.order.service.OrderDecisionLogService;
+import com.comatching.item.domain.order.service.OrderOutboxService;
 import com.comatching.item.domain.product.dto.PurchaseRequestDto;
-import com.comatching.item.domain.product.entity.Product;
-import com.comatching.item.domain.product.entity.ProductReward;
-import com.comatching.item.domain.product.entity.PurchaseRequest;
-import com.comatching.item.domain.product.enums.PurchaseStatus;
-import com.comatching.item.domain.product.repository.ProductRepository;
-import com.comatching.item.domain.product.repository.PurchaseRequestRepository;
-import com.comatching.item.global.exception.ItemErrorCode;
 import com.comatching.item.global.exception.PaymentErrorCode;
 
 import lombok.RequiredArgsConstructor;
@@ -26,52 +28,174 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class AdminPaymentServiceImpl implements AdminPaymentService {
 
-	private final PurchaseRequestRepository purchaseRequestRepository;
-	private final ProductRepository productRepository;
+	private static final String EXPIRE_REASON = "AUTO_EXPIRED_BEFORE_ADMIN_DECISION";
+
+	private final OrderRepository orderRepository;
+	private final OrderGrantLedgerRepository orderGrantLedgerRepository;
+	private final OrderDecisionLogService orderDecisionLogService;
+	private final OrderOutboxService orderOutboxService;
 	private final ItemService itemService;
 
 	// 상수: 구매 아이템의 유효기간 (약 100년)
 	private static final int PURCHASED_ITEM_EXPIRE_DAYS = 36500;
 
 	@Override
-	@Transactional(readOnly = true)
 	public List<PurchaseRequestDto> getPendingRequests() {
-		// PENDING 상태인 요청을 최신순으로 조회하여 DTO로 변환
-		return purchaseRequestRepository.findAllByStatusOrderByRequestedAtDesc(PurchaseStatus.PENDING)
+		return orderRepository.findAllByStatusAndExpiresAtAfterOrderByRequestedAtDesc(OrderStatus.PENDING, LocalDateTime.now())
 			.stream()
 			.map(PurchaseRequestDto::from)
 			.toList();
 	}
 
 	@Override
-	public void approvePurchase(Long requestId) {
-		// 1. 요청 조회
-		PurchaseRequest request = purchaseRequestRepository.findById(requestId)
-			.orElseThrow(() -> new BusinessException(PaymentErrorCode.REQUEST_NOT_FOUND));
+	public void approvePurchase(Long requestId, Long adminId) {
+		LocalDateTime now = LocalDateTime.now();
+		Order order = findOrderWithItems(requestId);
 
-		// 2. 상태 검증 (이미 처리된 건인지)
-		if (request.getStatus() != PurchaseStatus.PENDING) {
-			throw new BusinessException(PaymentErrorCode.ALREADY_PROCESSED);
+		if (transitionToExpiredIfNeeded(order, now)) {
+			throw new BusinessException(PaymentErrorCode.REQUEST_EXPIRED);
 		}
 
-		// 3. 요청 상태 변경 (승인)
-		request.approve();
+		int updatedCount = orderRepository.updateStatusIfCurrentAndNotExpired(
+			requestId,
+			OrderStatus.PENDING,
+			OrderStatus.APPROVED,
+			now,
+			now
+		);
+		if (updatedCount == 0) {
+			throw resolveNotProcessableRequest(requestId);
+		}
 
-		// 4. 상품 정보 조회 (구성품 확인용)
-		Product product = productRepository.findById(request.getProductId())
-			.orElseThrow(() -> new BusinessException(ItemErrorCode.PRODUCT_NOT_FOUND));
+		for (OrderItem reward : order.getOrderItems()) {
+			if (orderGrantLedgerRepository.existsByOrderIdAndOrderItemId(order.getId(), reward.getId())) {
+				continue;
+			}
 
-		// 5. 구성품 지급 (루프)
-		for (ProductReward reward : product.getRewards()) {
+			OrderGrantLedger ledger = OrderGrantLedger.builder()
+				.orderId(order.getId())
+				.orderItemId(reward.getId())
+				.memberId(order.getMemberId())
+				.itemType(reward.getItemType())
+				.quantity(reward.getQuantity())
+				.grantedAt(now)
+				.build();
+			orderGrantLedgerRepository.save(ledger);
+
 			AddItemRequest addItemRequest = new AddItemRequest(
 				reward.getItemType(),
 				reward.getQuantity(),
-				ItemRoute.CHARGE, // 경로는 '충전'
-				PURCHASED_ITEM_EXPIRE_DAYS // 유효기간 설정
+				ItemRoute.CHARGE,
+				PURCHASED_ITEM_EXPIRE_DAYS
 			);
 
-			// 기존 ItemService의 addItem 재사용 (히스토리 저장 등 로직 포함됨)
-			itemService.addItem(request.getMemberId(), addItemRequest);
+			itemService.addItem(order.getMemberId(), addItemRequest);
 		}
+
+		orderDecisionLogService.logDecision(
+			order.getId(),
+			OrderStatus.PENDING,
+			OrderStatus.APPROVED,
+			adminId,
+			null,
+			now
+		);
+		orderOutboxService.enqueueOrderStatusChanged(
+			order.getId(),
+			OrderStatus.PENDING,
+			OrderStatus.APPROVED,
+			now,
+			adminId,
+			null
+		);
+	}
+
+	@Override
+	public void rejectPurchase(Long requestId, Long adminId) {
+		LocalDateTime now = LocalDateTime.now();
+		Order order = findOrderWithItems(requestId);
+
+		if (transitionToExpiredIfNeeded(order, now)) {
+			throw new BusinessException(PaymentErrorCode.REQUEST_EXPIRED);
+		}
+
+		int updatedCount = orderRepository.updateStatusIfCurrentAndNotExpired(
+			requestId,
+			OrderStatus.PENDING,
+			OrderStatus.REJECTED,
+			now,
+			now
+		);
+		if (updatedCount == 0) {
+			throw resolveNotProcessableRequest(requestId);
+		}
+
+		orderDecisionLogService.logDecision(
+			order.getId(),
+			OrderStatus.PENDING,
+			OrderStatus.REJECTED,
+			adminId,
+			null,
+			now
+		);
+		orderOutboxService.enqueueOrderStatusChanged(
+			order.getId(),
+			OrderStatus.PENDING,
+			OrderStatus.REJECTED,
+			now,
+			adminId,
+			null
+		);
+	}
+
+	private BusinessException resolveNotProcessableRequest(Long requestId) {
+		LocalDateTime now = LocalDateTime.now();
+		return orderRepository.findById(requestId)
+			.map(order -> {
+				boolean expired = order.getStatus() == OrderStatus.EXPIRED
+					|| (order.getStatus() == OrderStatus.PENDING && !order.getExpiresAt().isAfter(now));
+				if (expired) {
+					orderRepository.updateStatusToExpiredIfCurrent(order.getId(), now, OrderStatus.PENDING);
+					return new BusinessException(PaymentErrorCode.REQUEST_EXPIRED);
+				}
+				return new BusinessException(PaymentErrorCode.ALREADY_PROCESSED);
+			})
+			.orElseGet(() -> new BusinessException(PaymentErrorCode.REQUEST_NOT_FOUND));
+	}
+
+	private Order findOrderWithItems(Long requestId) {
+		return orderRepository.findByIdWithItems(requestId)
+			.orElseThrow(() -> new BusinessException(PaymentErrorCode.REQUEST_NOT_FOUND));
+	}
+
+	private boolean transitionToExpiredIfNeeded(Order order, LocalDateTime now) {
+		if (order.getStatus() != OrderStatus.PENDING) {
+			return order.getStatus() == OrderStatus.EXPIRED;
+		}
+
+		if (order.getExpiresAt().isAfter(now)) {
+			return false;
+		}
+
+		int expired = orderRepository.updateStatusToExpiredIfCurrent(order.getId(), now, OrderStatus.PENDING);
+		if (expired == 1) {
+			orderDecisionLogService.logDecision(
+				order.getId(),
+				OrderStatus.PENDING,
+				OrderStatus.EXPIRED,
+				null,
+				EXPIRE_REASON,
+				now
+			);
+			orderOutboxService.enqueueOrderStatusChanged(
+				order.getId(),
+				OrderStatus.PENDING,
+				OrderStatus.EXPIRED,
+				now,
+				null,
+				EXPIRE_REASON
+			);
+		}
+		return true;
 	}
 }
