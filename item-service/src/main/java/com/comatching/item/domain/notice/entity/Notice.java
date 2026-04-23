@@ -44,4 +44,11 @@ public class Notice {
 		this.startTime = startTime;
 		this.endTime = endTime;
 	}
+
+	public void update(String title, String content, LocalDateTime startTime, LocalDateTime endTime) {
+		this.title = title;
+		this.content = content;
+		this.startTime = startTime;
+		this.endTime = endTime;
+	}
 }

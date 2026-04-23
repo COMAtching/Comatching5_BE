@@ -8,5 +8,7 @@ public interface AdminPaymentService {
 
 	List<PurchaseRequestDto> getPendingRequests();
 
-	void approvePurchase(Long requestId);
+	void approvePurchase(Long requestId, Long adminId);
+
+	void rejectPurchase(Long requestId, Long adminId);
 }

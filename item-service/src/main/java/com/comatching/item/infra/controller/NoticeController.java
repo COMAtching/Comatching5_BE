@@ -3,7 +3,10 @@ package com.comatching.item.infra.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +19,7 @@ import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
 import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
+import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
 import com.comatching.item.domain.notice.service.NoticeService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +27,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "Notice API", description = "공지사항 등록 및 조회")
+@Tag(name = "Notice API", description = "공지사항 등록/수정/삭제 및 조회")
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -39,6 +43,29 @@ public class NoticeController {
 		@RequestBody @Valid NoticeCreateRequest request
 	) {
 		noticeService.createNotice(request);
+		return ResponseEntity.ok(ApiResponse.ok());
+	}
+
+	@RequireRole(MemberRole.ROLE_ADMIN)
+	@Operation(summary = "공지사항 수정", description = "관리자가 기존 공지사항의 제목, 내용, 노출 기간을 수정합니다.")
+	@PatchMapping("/admin/notices/{noticeId}")
+	public ResponseEntity<ApiResponse<Void>> updateNotice(
+		@CurrentMember MemberInfo memberInfo,
+		@PathVariable Long noticeId,
+		@RequestBody @Valid NoticeUpdateRequest request
+	) {
+		noticeService.updateNotice(noticeId, request);
+		return ResponseEntity.ok(ApiResponse.ok());
+	}
+
+	@RequireRole(MemberRole.ROLE_ADMIN)
+	@Operation(summary = "공지사항 삭제", description = "관리자가 공지사항을 삭제합니다.")
+	@DeleteMapping("/admin/notices/{noticeId}")
+	public ResponseEntity<ApiResponse<Void>> deleteNotice(
+		@CurrentMember MemberInfo memberInfo,
+		@PathVariable Long noticeId
+	) {
+		noticeService.deleteNotice(noticeId);
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 

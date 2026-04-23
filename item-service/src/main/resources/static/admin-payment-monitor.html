@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>결제 관리자 모니터</title>
+	<style>
+		:root {
+			--bg: #f4f6fb;
+			--panel: #ffffff;
+			--text: #1d2433;
+			--muted: #6f7a94;
+			--line: #dce2f0;
+			--ok: #0f7b6c;
+			--warn: #c86c00;
+			--bad: #b3261e;
+			--accent: #1657d9;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			background: radial-gradient(circle at top left, #eef4ff, var(--bg) 35%);
+			color: var(--text);
+			font-family: "Pretendard", "Noto Sans KR", sans-serif;
+		}
+
+		.container {
+			max-width: 1320px;
+			margin: 24px auto;
+			padding: 0 16px 40px;
+		}
+
+		.panel {
+			background: var(--panel);
+			border: 1px solid var(--line);
+			border-radius: 14px;
+			padding: 14px;
+			box-shadow: 0 12px 30px rgba(18, 35, 76, 0.08);
+		}
+
+		h1 {
+			margin: 0 0 12px;
+			font-size: 24px;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(6, minmax(0, 1fr));
+			gap: 10px;
+		}
+
+		.field label {
+			display: block;
+			font-size: 12px;
+			color: var(--muted);
+			margin-bottom: 4px;
+		}
+
+		.field input {
+			width: 100%;
+			height: 38px;
+			border-radius: 8px;
+			border: 1px solid var(--line);
+			padding: 0 10px;
+			font-size: 14px;
+			outline: none;
+			background: #fff;
+		}
+
+		.field input:focus {
+			border-color: var(--accent);
+			box-shadow: 0 0 0 3px rgba(22, 87, 217, 0.12);
+		}
+
+		.controls {
+			margin-top: 12px;
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			align-items: center;
+		}
+
+		button {
+			height: 38px;
+			border: 1px solid var(--line);
+			background: #fff;
+			color: var(--text);
+			padding: 0 12px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 14px;
+		}
+
+		button.primary {
+			background: var(--accent);
+			color: #fff;
+			border-color: var(--accent);
+		}
+
+		button.ok {
+			background: var(--ok);
+			color: #fff;
+			border-color: var(--ok);
+		}
+
+		button.bad {
+			background: var(--bad);
+			color: #fff;
+			border-color: var(--bad);
+		}
+
+		button:disabled {
+			opacity: 0.45;
+			cursor: not-allowed;
+		}
+
+		.state {
+			padding: 6px 10px;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 700;
+		}
+
+		.state.connected {
+			color: #0f7b6c;
+			background: rgba(15, 123, 108, 0.12);
+		}
+
+		.state.disconnected {
+			color: #b3261e;
+			background: rgba(179, 38, 30, 0.12);
+		}
+
+		.state.connecting {
+			color: #c86c00;
+			background: rgba(200, 108, 0, 0.12);
+		}
+
+		.summary {
+			margin-top: 12px;
+			font-size: 13px;
+			color: var(--muted);
+		}
+
+		.table-wrap {
+			margin-top: 14px;
+			overflow: auto;
+		}
+
+		table {
+			width: 100%;
+			min-width: 1100px;
+			border-collapse: collapse;
+			background: #fff;
+		}
+
+		th, td {
+			border-bottom: 1px solid var(--line);
+			padding: 10px;
+			font-size: 13px;
+			text-align: left;
+			vertical-align: middle;
+		}
+
+		th {
+			background: #f8faff;
+			font-size: 12px;
+			color: #506082;
+			position: sticky;
+			top: 0;
+			z-index: 1;
+		}
+
+		td.actions {
+			display: flex;
+			gap: 6px;
+			flex-wrap: wrap;
+		}
+
+		.log-panel {
+			margin-top: 16px;
+		}
+
+		.log-list {
+			margin: 0;
+			padding: 10px;
+			height: 220px;
+			overflow: auto;
+			list-style: none;
+			background: #0b1220;
+			border-radius: 10px;
+			color: #cdd7f0;
+			font-family: "SFMono-Regular", Consolas, monospace;
+			font-size: 12px;
+			line-height: 1.5;
+		}
+
+		.log-list li {
+			padding: 2px 0;
+			border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+		}
+
+		.log-list li:last-child {
+			border-bottom: none;
+		}
+
+		@media (max-width: 1100px) {
+			.grid {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+		}
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="panel">
+		<h1>결제 관리자 모니터 (예시)</h1>
+
+		<div class="grid">
+			<div class="field">
+				<label for="baseUrl">API Base URL</label>
+				<input id="baseUrl" />
+			</div>
+			<div class="field">
+				<label for="memberId">X-Member-Id</label>
+				<input id="memberId" value="1" />
+			</div>
+			<div class="field">
+				<label for="memberRole">X-Member-Role</label>
+				<input id="memberRole" value="ROLE_ADMIN" />
+			</div>
+			<div class="field">
+				<label for="memberEmail">X-Member-Email</label>
+				<input id="memberEmail" value="admin@comatching.com" />
+			</div>
+			<div class="field">
+				<label for="syncSec">동기화 주기(초)</label>
+				<input id="syncSec" value="30" />
+			</div>
+			<div class="field">
+				<label for="maxLogs">로그 보관 개수</label>
+				<input id="maxLogs" value="200" />
+			</div>
+		</div>
+
+		<div class="controls">
+			<button id="loadBtn" class="primary">초기 목록 조회</button>
+			<button id="connectBtn">STOMP 연결</button>
+			<button id="disconnectBtn">연결 해제</button>
+			<button id="clearLogBtn">로그 비우기</button>
+			<span id="connState" class="state disconnected">DISCONNECTED</span>
+		</div>
+
+		<div id="summary" class="summary">
+			대기 요청 0건
+		</div>
+
+		<div class="table-wrap">
+			<table>
+				<thead>
+				<tr>
+					<th>요청 ID</th>
+					<th>유저 ID</th>
+					<th>실명</th>
+					<th>username</th>
+					<th>요청 상품명</th>
+					<th>옵션권 수량</th>
+					<th>매칭권 수량</th>
+					<th>요청금액</th>
+					<th>서버계산금액</th>
+					<th>요청시각</th>
+					<th>만료시각</th>
+					<th>상태</th>
+					<th>작업</th>
+				</tr>
+				</thead>
+				<tbody id="ordersBody"></tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="panel log-panel">
+		<div class="controls">
+			<strong>실시간 이벤트 로그</strong>
+		</div>
+		<ul id="logList" class="log-list"></ul>
+	</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+	(() => {
+		const state = {
+			stompClient: null,
+			isConnected: false,
+			reconnectTimer: null,
+			reconnectAttempt: 0,
+			pollingTimer: null,
+			orderMap: new Map()
+		};
+
+		const el = {
+			baseUrl: document.getElementById("baseUrl"),
+			memberId: document.getElementById("memberId"),
+			memberRole: document.getElementById("memberRole"),
+			memberEmail: document.getElementById("memberEmail"),
+			syncSec: document.getElementById("syncSec"),
+			maxLogs: document.getElementById("maxLogs"),
+			loadBtn: document.getElementById("loadBtn"),
+			connectBtn: document.getElementById("connectBtn"),
+			disconnectBtn: document.getElementById("disconnectBtn"),
+			clearLogBtn: document.getElementById("clearLogBtn"),
+			ordersBody: document.getElementById("ordersBody"),
+			logList: document.getElementById("logList"),
+			connState: document.getElementById("connState"),
+			summary: document.getElementById("summary")
+		};
+
+		el.baseUrl.value = window.location.origin;
+
+		const toIso = (value) => value ? new Date(value).toLocaleString("ko-KR", { hour12: false }) : "-";
+		const toMoney = (value) => new Intl.NumberFormat("ko-KR").format(Number(value || 0)) + "원";
+		const toInt = (value, fallback) => {
+			const parsed = Number.parseInt(value, 10);
+			return Number.isNaN(parsed) ? fallback : parsed;
+		};
+
+		function log(message, level = "info") {
+			const li = document.createElement("li");
+			const now = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+			li.textContent = `[${now}] [${level.toUpperCase()}] ${message}`;
+			el.logList.prepend(li);
+			const maxLogs = Math.max(10, toInt(el.maxLogs.value, 200));
+			while (el.logList.children.length > maxLogs) {
+				el.logList.removeChild(el.logList.lastChild);
+			}
+		}
+
+		function headers() {
+			return {
+				"Content-Type": "application/json",
+				"X-Member-Id": el.memberId.value.trim(),
+				"X-Member-Role": el.memberRole.value.trim(),
+				"X-Member-Email": el.memberEmail.value.trim()
+			};
+		}
+
+		function setConnState(text, cls) {
+			el.connState.textContent = text;
+			el.connState.className = `state ${cls}`;
+		}
+
+		function updateSummary() {
+			el.summary.textContent = `대기 요청 ${state.orderMap.size}건`;
+		}
+
+		function upsertOrder(order) {
+			if (!order || !order.requestId) {
+				return;
+			}
+			state.orderMap.set(order.requestId, order);
+			renderOrders();
+		}
+
+		function removeOrder(orderId) {
+			state.orderMap.delete(orderId);
+			renderOrders();
+		}
+
+		function renderOrders() {
+			const orders = Array.from(state.orderMap.values()).sort((a, b) => b.requestId - a.requestId);
+			el.ordersBody.innerHTML = "";
+
+			for (const order of orders) {
+				const tr = document.createElement("tr");
+				tr.innerHTML = `
+					<td>${order.requestId}</td>
+					<td>${order.memberId}</td>
+					<td>${escapeHtml(order.requesterRealName || "-")}</td>
+					<td>${escapeHtml(order.requesterUsername || "-")}</td>
+					<td>${escapeHtml(order.requestedItemName || "-")}</td>
+					<td>${order.optionTicketQty ?? 0}</td>
+					<td>${order.matchingTicketQty ?? 0}</td>
+					<td>${toMoney(order.requestedPrice)}</td>
+					<td>${toMoney(order.expectedPrice)}</td>
+					<td>${toIso(order.requestedAt)}</td>
+					<td>${toIso(order.expiresAt)}</td>
+					<td>${order.status || "-"}</td>
+					<td class="actions">
+						<button class="ok" data-action="approve" data-id="${order.requestId}">승인</button>
+						<button class="bad" data-action="reject" data-id="${order.requestId}">거절</button>
+					</td>
+				`;
+				el.ordersBody.appendChild(tr);
+			}
+
+			updateSummary();
+		}
+
+		function escapeHtml(value) {
+			return String(value)
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll("\"", "&quot;")
+				.replaceAll("'", "&#39;");
+		}
+
+		async function api(path, options = {}) {
+			const base = el.baseUrl.value.trim().replace(/\/$/, "");
+			const res = await fetch(base + path, {
+				...options,
+				headers: {
+					...headers(),
+					...(options.headers || {})
+				}
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok || (json && json.code && json.code !== "GEN-000")) {
+				const message = json && json.message ? json.message : `HTTP ${res.status}`;
+				throw new Error(message);
+			}
+			return json;
+		}
+
+		async function loadPendingRequests(showLog = true) {
+			try {
+				const result = await api("/api/v1/admin/payment/requests", { method: "GET" });
+				const rows = (result && result.data) || [];
+				state.orderMap.clear();
+				for (const row of rows) {
+					upsertOrder(row);
+				}
+				if (showLog) {
+					log(`초기 동기화 완료: ${rows.length}건`);
+				}
+			} catch (err) {
+				log(`초기 목록 조회 실패: ${err.message}`, "error");
+			}
+		}
+
+		async function processOrder(orderId, action) {
+			const actionName = action === "approve" ? "승인" : "거절";
+			const path = action === "approve"
+				? `/api/v1/admin/payment/approve/${orderId}`
+				: `/api/v1/admin/payment/reject/${orderId}`;
+
+			try {
+				await api(path, { method: "POST" });
+				log(`${orderId} ${actionName} 요청 성공`);
+				await loadPendingRequests(false);
+			} catch (err) {
+				log(`${orderId} ${actionName} 실패: ${err.message}`, "error");
+			}
+		}
+
+		function handleRealtimeMessage(eventMessage) {
+			if (!eventMessage || !eventMessage.eventType) {
+				return;
+			}
+
+			const payload = eventMessage.payload || {};
+			log(`수신: ${eventMessage.eventType} / eventId=${eventMessage.eventId}`);
+
+			if (eventMessage.eventType === "ORDER_CREATED") {
+				if (payload.status === "PENDING") {
+					upsertOrder({
+						requestId: payload.orderId,
+						memberId: payload.memberId,
+						requestedItemName: payload.requestedItemName,
+						requesterRealName: payload.requesterRealName,
+						requesterUsername: payload.requesterUsername,
+						optionTicketQty: payload.optionTicketQty,
+						matchingTicketQty: payload.matchingTicketQty,
+						requestedPrice: payload.requestedPrice,
+						expectedPrice: payload.expectedPrice,
+						status: payload.status,
+						requestedAt: payload.requestedAt,
+						expiresAt: payload.expiresAt
+					});
+				}
+				return;
+			}
+
+			if (eventMessage.eventType === "ORDER_STATUS_CHANGED") {
+				const orderId = payload.orderId;
+				const toStatus = payload.toStatus;
+
+				if (toStatus === "PENDING") {
+					return;
+				}
+				removeOrder(orderId);
+				return;
+			}
+		}
+
+		function startPolling() {
+			stopPolling();
+			const sec = Math.max(5, toInt(el.syncSec.value, 30));
+			state.pollingTimer = window.setInterval(() => loadPendingRequests(false), sec * 1000);
+			log(`주기적 동기화 시작: ${sec}초`);
+		}
+
+		function stopPolling() {
+			if (state.pollingTimer) {
+				clearInterval(state.pollingTimer);
+				state.pollingTimer = null;
+			}
+		}
+
+		function connectWebSocket(manual = false) {
+			if (state.stompClient && state.isConnected) {
+				return;
+			}
+
+			setConnState("CONNECTING", "connecting");
+
+			const base = el.baseUrl.value.trim().replace(/\/$/, "");
+			const socket = new SockJS(base + "/ws/payment");
+			const client = Stomp.over(socket);
+
+			client.debug = () => {};
+			client.heartbeat.outgoing = 10000;
+			client.heartbeat.incoming = 10000;
+
+			client.connect({}, () => {
+				state.stompClient = client;
+				state.isConnected = true;
+				state.reconnectAttempt = 0;
+				setConnState("CONNECTED", "connected");
+				log("STOMP 연결 성공");
+
+				client.subscribe("/topic/admin/orders", (frame) => {
+					try {
+						const message = JSON.parse(frame.body);
+						handleRealtimeMessage(message);
+					} catch (err) {
+						log(`메시지 파싱 실패: ${err.message}`, "error");
+					}
+				});
+
+				loadPendingRequests(false);
+				startPolling();
+			}, (error) => {
+				state.isConnected = false;
+				state.stompClient = null;
+				setConnState("DISCONNECTED", "disconnected");
+				log(`STOMP 연결 오류: ${String(error)}`, "error");
+				stopPolling();
+				scheduleReconnect();
+			});
+
+			socket.onclose = () => {
+				if (state.isConnected) {
+					state.isConnected = false;
+					setConnState("DISCONNECTED", "disconnected");
+					log("소켓 종료 감지", "warn");
+					stopPolling();
+					scheduleReconnect();
+				}
+			};
+
+			if (manual) {
+				log("STOMP 연결 시도");
+			}
+		}
+
+		function scheduleReconnect() {
+			if (state.reconnectTimer) {
+				return;
+			}
+			state.reconnectAttempt += 1;
+			const waitMs = Math.min(30000, 1000 * Math.pow(2, state.reconnectAttempt));
+			log(`재연결 예약: ${waitMs / 1000}초 후`, "warn");
+
+			state.reconnectTimer = setTimeout(() => {
+				state.reconnectTimer = null;
+				connectWebSocket(false);
+			}, waitMs);
+		}
+
+		function disconnectWebSocket() {
+			if (state.reconnectTimer) {
+				clearTimeout(state.reconnectTimer);
+				state.reconnectTimer = null;
+			}
+			stopPolling();
+
+			if (state.stompClient) {
+				try {
+					state.stompClient.disconnect(() => log("STOMP 연결 해제"));
+				} catch (err) {
+					log(`연결 해제 오류: ${err.message}`, "error");
+				}
+			}
+
+			state.stompClient = null;
+			state.isConnected = false;
+			setConnState("DISCONNECTED", "disconnected");
+		}
+
+		el.loadBtn.addEventListener("click", () => loadPendingRequests(true));
+		el.connectBtn.addEventListener("click", () => connectWebSocket(true));
+		el.disconnectBtn.addEventListener("click", disconnectWebSocket);
+		el.clearLogBtn.addEventListener("click", () => {
+			el.logList.innerHTML = "";
+		});
+
+		el.ordersBody.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLButtonElement)) {
+				return;
+			}
+			const action = target.getAttribute("data-action");
+			const orderId = Number(target.getAttribute("data-id"));
+			if (!action || !orderId) {
+				return;
+			}
+			processOrder(orderId, action);
+		});
+
+		loadPendingRequests(true);
+		connectWebSocket(false);
+	})();
+</script>
+</body>
+</html>

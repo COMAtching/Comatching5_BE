@@ -6,15 +6,15 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.item.AddItemRequest;
-import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.item.domain.item.dto.ItemHistoryResponse;
 import com.comatching.common.domain.enums.ItemType;
-import com.comatching.item.domain.item.dto.ItemResponse;
+import com.comatching.item.domain.item.dto.MyItemsResponse;
 import com.comatching.item.domain.item.enums.ItemHistoryType;
 import com.comatching.item.domain.item.service.ItemHistoryService;
 import com.comatching.item.domain.item.service.ItemService;
+import com.comatching.common.dto.response.PagingResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,23 +35,21 @@ public class ItemController {
 		itemService.useItem(memberId, itemType, count);
 	}
 
-	@PostMapping("/items/add")
-	public ResponseEntity<ApiResponse<Void>> addItem(
+	@PostMapping("/internal/items/add")
+	public void addItem(
 		@RequestHeader("X-Member-Id") Long memberId,
-		@RequestBody AddItemRequest request) {
-
+		@RequestBody AddItemRequest request
+	) {
 		itemService.addItem(memberId, request);
-
-		return ResponseEntity.ok(ApiResponse.ok());
 	}
 
 	@GetMapping("/items")
-	public ResponseEntity<ApiResponse<PagingResponse<ItemResponse>>> getMyItems(
+	public ResponseEntity<ApiResponse<MyItemsResponse>> getMyItems(
 		@RequestHeader("X-Member-Id") Long memberId,
 		@RequestParam(required = false) ItemType type,
 		@PageableDefault(size = 10, sort = "expiredAt", direction = Sort.Direction.ASC) Pageable pageable
 	) {
-		PagingResponse<ItemResponse> result = itemService.getMyItems(memberId, type, pageable);
+		MyItemsResponse result = itemService.getMyItems(memberId, type, pageable);
 		return ResponseEntity.ok(ApiResponse.ok(result));
 	}
 

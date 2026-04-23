@@ -10,6 +10,7 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
 import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
+import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
 import com.comatching.item.domain.notice.entity.Notice;
 import com.comatching.item.domain.notice.repository.NoticeRepository;
 
@@ -37,6 +38,20 @@ public class NoticeServiceImpl implements NoticeService {
 	}
 
 	@Override
+	public void updateNotice(Long noticeId, NoticeUpdateRequest request) {
+		validatePeriod(request.startTime(), request.endTime());
+
+		Notice notice = findNoticeOrThrow(noticeId);
+		notice.update(request.title(), request.content(), request.startTime(), request.endTime());
+	}
+
+	@Override
+	public void deleteNotice(Long noticeId) {
+		Notice notice = findNoticeOrThrow(noticeId);
+		noticeRepository.delete(notice);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public List<ActiveNoticeResponse> getActiveNotices() {
 		LocalDateTime currentTime = LocalDateTime.now();
@@ -45,6 +60,11 @@ public class NoticeServiceImpl implements NoticeService {
 			.stream()
 			.map(ActiveNoticeResponse::from)
 			.toList();
+	}
+
+	private Notice findNoticeOrThrow(Long noticeId) {
+		return noticeRepository.findById(noticeId)
+			.orElseThrow(() -> new BusinessException(GeneralErrorCode.NOT_FOUND, "공지사항을 찾을 수 없습니다."));
 	}
 
 	private void validatePeriod(LocalDateTime startTime, LocalDateTime endTime) {
