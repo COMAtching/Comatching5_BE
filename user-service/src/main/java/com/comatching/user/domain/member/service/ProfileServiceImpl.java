@@ -1,14 +1,17 @@
 package com.comatching.user.domain.member.service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriUtils;
 
+import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.ProfileTagItem;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
@@ -38,9 +41,34 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	private static final String DEFAULT_IMAGE_VALUE = "default";
 	private static final String DEFAULT_IMAGE_PREFIX = "default_";
-	private static final String DEFAULT_IMAGE_EXTENSION = ".png";
-	private static final Set<String> DEFAULT_IMAGE_ANIMALS = Set.of(
-		"dog", "cat", "dinosaur", "otter", "bear", "fox", "penguin", "wolf", "rabbit", "snake", "horse", "frog"
+	private static final String DEFAULT_MALE_IMAGE_FILENAME = "dog_male 1.png";
+	private static final String DEFAULT_FEMALE_IMAGE_FILENAME = "cat_female 1.png";
+	private static final String DEFAULT_NEUTRAL_IMAGE_FILENAME = "dinosaur 1.png";
+
+	private static final Map<String, String> MALE_ANIMAL_IMAGE_FILENAMES = Map.of(
+		"dog", "dog_male 1.png",
+		"cat", "cat_male 1.png",
+		"bear", "bear_male 1.png",
+		"fox", "fox_male 1.png",
+		"rabbit", "rabbit_male 1.png",
+		"otter", "otter_male 1.png",
+		"wolf", "Wolf_male 1.png",
+		"horse", "horse_male.png"
+	);
+
+	private static final Map<String, String> FEMALE_ANIMAL_IMAGE_FILENAMES = Map.of(
+		"dog", "dog_female 1.png",
+		"cat", "cat_female 1.png",
+		"bear", "bear_female 1.png",
+		"fox", "fox_female 1.png",
+		"rabbit", "rabbit_female 1.png",
+		"otter", "otter_female 1.png",
+		"wolf", "Wolf_female 1.png",
+		"snake", "snake_female.png"
+	);
+
+	private static final Map<String, String> NEUTRAL_ANIMAL_IMAGE_FILENAMES = Map.of(
+		"dinosaur", "dinosaur 1.png"
 	);
 
 	private final MemberRepository memberRepository;
@@ -104,7 +132,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.orElseThrow(() -> new BusinessException(UserErrorCode.PROFILE_NOT_EXISTS));
 
 		String normalizedNickname = normalizeNicknameForUpdate(request.nickname(), profile.getNickname(), memberId);
-		String profileImageUrl = resolveProfileImageUrlForUpdate(request.profileImageUrl());
+		Gender effectiveGender = request.gender() != null ? request.gender() : profile.getGender();
+		String profileImageUrl = resolveProfileImageUrlForUpdate(request.profileImageUrl(), effectiveGender);
 
 		profile.update(
 			normalizedNickname,
@@ -160,7 +189,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		String finalNickname = normalizeNickname(request.nickname());
 		validateNicknameDuplicateOnCreate(finalNickname);
-		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey());
+		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey(), request.gender());
 
 		Profile profile = Profile.builder()
 			.member(member)
@@ -211,30 +240,28 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		}
 	}
 
-	private String resolveProfileImageUrlForUpdate(String profileImageValue) {
+	private String resolveProfileImageUrlForUpdate(String profileImageValue, Gender effectiveGender) {
 		if (profileImageValue == null) {
 			return null;
 		}
-		return resolveProfileImageUrl(profileImageValue);
+		return resolveProfileImageUrl(profileImageValue, effectiveGender);
 	}
 
-	private String resolveProfileImageUrl(String profileImageValue) {
+	private String resolveProfileImageUrl(String profileImageValue, Gender gender) {
 		if (!StringUtils.hasText(profileImageValue)) {
-			return buildDefaultProfileImageUrl(DEFAULT_IMAGE_VALUE + DEFAULT_IMAGE_EXTENSION);
+			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename(gender));
 		}
 
 		String normalizedValue = profileImageValue.trim();
 		String loweredValue = normalizedValue.toLowerCase(Locale.ROOT);
 
 		if (DEFAULT_IMAGE_VALUE.equals(loweredValue)) {
-			return buildDefaultProfileImageUrl(DEFAULT_IMAGE_VALUE + DEFAULT_IMAGE_EXTENSION);
+			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename(gender));
 		}
 
 		if (loweredValue.startsWith(DEFAULT_IMAGE_PREFIX)) {
 			String animalName = loweredValue.substring(DEFAULT_IMAGE_PREFIX.length());
-			if (DEFAULT_IMAGE_ANIMALS.contains(animalName)) {
-				return buildDefaultProfileImageUrl(animalName + DEFAULT_IMAGE_EXTENSION);
-			}
+			return buildDefaultProfileImageUrl(resolveAnimalProfileImageFilename(animalName, gender));
 		}
 
 		if (normalizedValue.startsWith("http://") || normalizedValue.startsWith("https://")) {
@@ -248,7 +275,43 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		if (!StringUtils.hasText(profileImageProperties.baseUrl())) {
 			return null;
 		}
-		return profileImageProperties.baseUrl() + filename;
+		String encodedFilename = UriUtils.encodePathSegment(filename, StandardCharsets.UTF_8);
+		return profileImageProperties.baseUrl() + encodedFilename;
+	}
+
+	private String resolveDefaultProfileImageFilename(Gender gender) {
+		if (gender == Gender.FEMALE) {
+			return DEFAULT_FEMALE_IMAGE_FILENAME;
+		}
+		return DEFAULT_MALE_IMAGE_FILENAME;
+	}
+
+	private String resolveAnimalProfileImageFilename(String animalName, Gender gender) {
+		String normalizedAnimalName = animalName.toLowerCase(Locale.ROOT);
+		String filename = findAnimalProfileImageByGender(normalizedAnimalName, gender);
+		if (StringUtils.hasText(filename)) {
+			return filename;
+		}
+		return resolveDefaultProfileImageFilename(gender);
+	}
+
+	private String findAnimalProfileImageByGender(String animalName, Gender gender) {
+		if (gender == Gender.FEMALE) {
+			if (FEMALE_ANIMAL_IMAGE_FILENAMES.containsKey(animalName)) {
+				return FEMALE_ANIMAL_IMAGE_FILENAMES.get(animalName);
+			}
+			if (MALE_ANIMAL_IMAGE_FILENAMES.containsKey(animalName)) {
+				return MALE_ANIMAL_IMAGE_FILENAMES.get(animalName);
+			}
+		}
+
+		if (MALE_ANIMAL_IMAGE_FILENAMES.containsKey(animalName)) {
+			return MALE_ANIMAL_IMAGE_FILENAMES.get(animalName);
+		}
+		if (FEMALE_ANIMAL_IMAGE_FILENAMES.containsKey(animalName)) {
+			return FEMALE_ANIMAL_IMAGE_FILENAMES.get(animalName);
+		}
+		return NEUTRAL_ANIMAL_IMAGE_FILENAMES.get(animalName);
 	}
 
 	private static List<ProfileHobby> getProfileHobbies(List<HobbyDto> hobbies) {
@@ -265,10 +328,22 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		List<ProfileTag> newTags = null;
 		if (tags != null) {
 			newTags = tags.stream()
-				.map(dto -> new ProfileTag(ProfileTagItem.valueOf(dto.tag())))
+				.map(dto -> new ProfileTag(parseProfileTagItem(dto.tag())))
 				.toList();
 		}
 		return newTags;
+	}
+
+	private static ProfileTagItem parseProfileTagItem(String tagValue) {
+		try {
+			return ProfileTagItem.fromCodeOrLabel(tagValue);
+		} catch (IllegalArgumentException e) {
+			throw new BusinessException(
+				UserErrorCode.INVALID_PROFILE_TAG,
+				Map.of("invalidTag", String.valueOf(tagValue)),
+				UserErrorCode.INVALID_PROFILE_TAG.getMessage()
+			);
+		}
 	}
 
 	private ProfileResponse toProfileResponse(Profile profile) {

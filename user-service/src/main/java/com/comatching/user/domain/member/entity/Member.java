@@ -59,6 +59,8 @@ public class Member {
 
 	private LocalDateTime deletedAt;
 
+	private String realName;
+
 	@Setter
 	@OneToOne(mappedBy = "member", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
 	private Profile profile;
@@ -98,5 +100,9 @@ public class Member {
 
 	public void changePassword(String newEncodedPassword) {
 		this.password = newEncodedPassword;
+	}
+
+	public void updateRealName(String realName) {
+		this.realName = realName;
 	}
 }

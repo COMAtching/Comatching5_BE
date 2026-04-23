@@ -16,11 +16,13 @@ import com.comatching.user.domain.auth.dto.ChangePasswordRequest;
 import com.comatching.user.domain.auth.dto.CompleteSignupResponse;
 import com.comatching.user.domain.auth.dto.NicknameAvailabilityResponse;
 import com.comatching.user.domain.auth.dto.PasswordResetCodeRequest;
+import com.comatching.user.domain.auth.dto.ParticipantCountResponse;
 import com.comatching.user.domain.auth.dto.ResetPasswordRequest;
 import com.comatching.user.domain.auth.dto.TokenResponse;
 import com.comatching.user.domain.auth.service.AuthService;
 import com.comatching.user.domain.auth.service.SignupService;
 import com.comatching.user.domain.mail.service.EmailService;
+import com.comatching.user.domain.member.service.MemberService;
 import com.comatching.user.domain.member.service.ProfileManageService;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.annotation.RequireRole;
@@ -29,7 +31,7 @@ import com.comatching.common.dto.auth.SignupRequest;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.response.ApiResponse;
-import com.comatching.common.util.CookieUtil;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -44,6 +46,8 @@ public class AuthController {
 	private final SignupService signupService;
 	private final EmailService emailService;
 	private final ProfileManageService profileManageService;
+	private final MemberService memberService;
+	private final AuthCookieFactory authCookieFactory;
 
 	@PostMapping("/signup")
 	public ResponseEntity<ApiResponse<Void>> signup(@RequestBody @Valid SignupRequest request) {
@@ -69,6 +73,12 @@ public class AuthController {
 		return ResponseEntity.ok(ApiResponse.ok(new NicknameAvailabilityResponse(available)));
 	}
 
+	@GetMapping("/participants")
+	public ResponseEntity<ApiResponse<ParticipantCountResponse>> getParticipantCount() {
+		long count = memberService.getActiveUserCount();
+		return ResponseEntity.ok(ApiResponse.ok(new ParticipantCountResponse(count)));
+	}
+
 	@PostMapping("/reissue")
 	public ResponseEntity<ApiResponse<Void>> reissue(
 		@CookieValue(name = "refreshToken") String refreshToken,
@@ -77,8 +87,8 @@ public class AuthController {
 
 		TokenResponse tokenResponse = authService.reissue(refreshToken);
 
-		ResponseCookie accessCookie = CookieUtil.createAccessTokenCookie(tokenResponse.accessToken());
-		ResponseCookie refreshCookie = CookieUtil.createRefreshTokenCookie(tokenResponse.refreshToken());
+		ResponseCookie accessCookie = authCookieFactory.createAccessTokenCookie(tokenResponse.accessToken());
+		ResponseCookie refreshCookie = authCookieFactory.createRefreshTokenCookie(tokenResponse.refreshToken());
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
@@ -93,8 +103,8 @@ public class AuthController {
 
 		authService.logout(refreshToken);
 
-		ResponseCookie accessCookie = CookieUtil.createExpiredCookie("accessToken");
-		ResponseCookie refreshCookie = CookieUtil.createExpiredCookie("refreshToken");
+		ResponseCookie accessCookie = authCookieFactory.createExpiredCookie("accessToken");
+		ResponseCookie refreshCookie = authCookieFactory.createExpiredCookie("refreshToken");
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());
@@ -133,8 +143,8 @@ public class AuthController {
 	) {
 		authService.withdraw(memberInfo.memberId());
 
-		ResponseCookie accessCookie = CookieUtil.createExpiredCookie("accessToken");
-		ResponseCookie refreshCookie = CookieUtil.createExpiredCookie("refreshToken");
+		ResponseCookie accessCookie = authCookieFactory.createExpiredCookie("accessToken");
+		ResponseCookie refreshCookie = authCookieFactory.createExpiredCookie("refreshToken");
 
 		response.addHeader("Set-Cookie", accessCookie.toString());
 		response.addHeader("Set-Cookie", refreshCookie.toString());

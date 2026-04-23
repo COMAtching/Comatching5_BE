@@ -104,6 +104,77 @@ class ProfileServiceImplTest {
 		}
 
 		@Test
+		@DisplayName("한글 라벨 태그로 프로필을 생성할 수 있다")
+		void shouldCreateProfileWithKoreanTagLabels() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("테스트유저")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(List.of(
+					new ProfileTagDto("밝은 분위기"),
+					new ProfileTagDto("경청형")
+				))
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
+			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendSignupEvent(any());
+
+			// when
+			ProfileResponse response = profileService.createProfile(memberId, request);
+
+			// then
+			assertThat(response).isNotNull();
+			assertThat(response.tags()).hasSize(2);
+			assertThat(response.tags()).extracting(ProfileTagDto::tag)
+				.containsExactly("BRIGHT", "GOOD_LISTENER");
+		}
+
+		@Test
+		@DisplayName("유효하지 않은 한글 태그로 생성 시 예외가 발생한다")
+		void shouldThrowWhenCreatingProfileWithInvalidKoreanTag() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("테스트유저")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(List.of(new ProfileTagDto("없는 태그")))
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
+
+			// when & then
+			assertThatThrownBy(() -> profileService.createProfile(memberId, request))
+				.isInstanceOf(BusinessException.class)
+				.extracting("errorCode")
+				.isEqualTo(UserErrorCode.INVALID_PROFILE_TAG);
+		}
+
+		@Test
 		@DisplayName("태그 없이 프로필을 생성할 수 있다")
 		void shouldCreateProfileWithoutTags() {
 			// given
@@ -207,7 +278,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.createProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
 		}
 
 		@Test
@@ -320,7 +391,30 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/default.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
+		}
+
+		@Test
+		@DisplayName("프로필 이미지 값이 default_동물이름이고 성별이 FEMALE이면 female 이미지를 사용한다")
+		void shouldUseFemaleAnimalImageOnUpdateWhenGenderIsFemale() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, "default_fox", Gender.FEMALE, null, null, null,
+				null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/fox_female%201.png");
 		}
 	}
 

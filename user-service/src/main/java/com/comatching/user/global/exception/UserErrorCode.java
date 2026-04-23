@@ -30,6 +30,8 @@ public enum UserErrorCode implements ErrorCode {
 	TAG_LIMIT_PER_CATEGORY_EXCEEDED("MEM-007", HttpStatus.BAD_REQUEST, "장점 태그는 전체 최대 5개까지 선택 가능합니다."),
 	DUPLICATE_NICKNAME("MEM-008", HttpStatus.BAD_REQUEST, "이미 사용 중인 닉네임입니다."),
 	INVALID_NICKNAME("MEM-009", HttpStatus.BAD_REQUEST, "닉네임은 공백일 수 없습니다."),
+	INVALID_PROFILE_TAG("MEM-010", HttpStatus.BAD_REQUEST, "유효하지 않은 장점 태그입니다."),
+	INVALID_REAL_NAME("MEM-011", HttpStatus.BAD_REQUEST, "실명은 공백일 수 없습니다."),
 	;
 
 	private final String code;

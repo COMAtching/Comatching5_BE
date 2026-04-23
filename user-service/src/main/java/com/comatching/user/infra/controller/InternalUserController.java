@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.common.dto.auth.MemberLoginDto;
+import com.comatching.common.dto.member.OrdererInfoDto;
+import com.comatching.common.dto.member.RealNameUpdateRequestDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.service.MemberService;
@@ -49,6 +51,16 @@ public class InternalUserController {
 	@DeleteMapping("/{memberId}")
 	public void withdrawMember(@PathVariable Long memberId) {
 		memberService.withdrawMember(memberId);
+	}
+
+	@GetMapping("/{memberId}/orderer-info")
+	public OrdererInfoDto getOrdererInfo(@PathVariable Long memberId) {
+		return memberService.getOrdererInfo(memberId);
+	}
+
+	@PatchMapping("/{memberId}/real-name")
+	public void updateRealName(@PathVariable Long memberId, @RequestBody RealNameUpdateRequestDto request) {
+		memberService.updateRealName(memberId, request.realName());
 	}
 
 	private MemberLoginDto toLoginDto(Member member) {

@@ -1,6 +1,7 @@
 package com.comatching.user.domain.member.service;
 
 import com.comatching.common.dto.auth.MemberLoginDto;
+import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.user.domain.member.entity.Member;
 
@@ -17,4 +18,10 @@ public interface MemberService {
 	void updatePassword(String email, String encryptedPassword);
 
 	void withdrawMember(Long memberId);
+
+	long getActiveUserCount();
+
+	void updateRealName(Long memberId, String realName);
+
+	OrdererInfoDto getOrdererInfo(Long memberId);
 }
