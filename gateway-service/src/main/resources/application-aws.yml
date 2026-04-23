@@ -74,7 +74,7 @@ spring:
             - id: item-service
               uri: http://item-service:9006
               predicates:
-                - Path=/api/items/**, /api/internal/items/**
+                - Path=/api/items/**, /api/internal/items/**, /api/v1/**
               filters:
                 - AuthorizationHeaderFilter
 
