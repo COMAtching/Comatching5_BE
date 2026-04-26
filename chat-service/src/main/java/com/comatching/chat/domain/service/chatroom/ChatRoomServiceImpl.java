@@ -2,6 +2,7 @@ package com.comatching.chat.domain.service.chatroom;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.data.domain.Sort;
@@ -12,6 +13,7 @@ import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.entity.ChatRoom;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
+import com.comatching.chat.domain.repository.UnreadCountCondition;
 import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 
@@ -52,21 +54,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
 		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
-		return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
+		List<ChatRoom> visibleRooms = chatRoomRepository.findMyChatRooms(memberId, sort).stream()
 			.filter(room -> {
 				Long otherUserId = getOtherUserId(room, memberId);
 				return !blockedUserIds.contains(otherUserId);
 			})
-			.map(room -> {
-				LocalDateTime myLastRead = (memberId.equals(room.getInitiatorUserId()))
-					? room.getInitiatorLastReadAt()
-					: room.getTargetLastReadAt();
+			.toList();
 
-				// 안 읽은 개수 쿼리
-				long count = chatMessageRepository.countUnreadMessages(room.getId(), myLastRead, memberId);
+		Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId);
 
-				return (ChatRoomResponse.from(room, count));
-			})
+		return visibleRooms.stream()
+			.map(room -> ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L)))
 			.toList();
 	}
 
@@ -84,20 +82,33 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId, sort);
 		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
-		long totalUnread = 0;
-		for (ChatRoom room : myRooms) {
-			Long otherUserId = getOtherUserId(room, memberId);
-			if (blockedUserIds.contains(otherUserId)) {
-				continue;
-			}
+		List<ChatRoom> visibleRooms = myRooms.stream()
+			.filter(room -> {
+				Long otherUserId = getOtherUserId(room, memberId);
+				return !blockedUserIds.contains(otherUserId);
+			})
+			.toList();
 
-			LocalDateTime myReadTime = (memberId.equals(room.getInitiatorUserId()))
-				? room.getInitiatorLastReadAt()
-				: room.getTargetLastReadAt();
+		return getUnreadCountsByRoom(visibleRooms, memberId).values().stream()
+			.mapToLong(Long::longValue)
+			.sum();
+	}
 
-			totalUnread += chatMessageRepository.countUnreadMessages(room.getId(), myReadTime, memberId);
+	private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {
+		if (rooms.isEmpty()) {
+			return Map.of();
 		}
 
-		return totalUnread;
+		List<UnreadCountCondition> unreadCountConditions = rooms.stream()
+			.map(room -> new UnreadCountCondition(room.getId(), getMyLastReadAt(room, memberId)))
+			.toList();
+
+		return chatMessageRepository.countUnreadMessagesByRoom(unreadCountConditions, memberId);
+	}
+
+	private LocalDateTime getMyLastReadAt(ChatRoom room, Long memberId) {
+		return memberId.equals(room.getInitiatorUserId())
+			? room.getInitiatorLastReadAt()
+			: room.getTargetLastReadAt();
 	}
 }

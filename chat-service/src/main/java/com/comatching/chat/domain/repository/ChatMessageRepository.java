@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.comatching.chat.domain.entity.ChatMessage;
 
 @Repository
-public interface ChatMessageRepository extends MongoRepository<ChatMessage, String> {
+public interface ChatMessageRepository extends MongoRepository<ChatMessage, String>, ChatMessageRepositoryCustom {
 
 	List<ChatMessage> findByRoomIdOrderByCreatedAtDesc(String roomId, Pageable pageable);
 
