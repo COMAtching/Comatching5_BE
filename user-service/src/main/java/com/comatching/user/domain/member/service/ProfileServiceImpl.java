@@ -369,7 +369,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 				.map(h -> new HobbyDto(h.getCategory(), h.getName()))
 				.toList())
 			.tags(profile.getTags().stream()
-				.map(t -> new ProfileTagDto(t.getTag().name()))
+				.map(t -> new ProfileTagDto(t.getTag().getLabel()))
 				.toList())
 			.build();
 
