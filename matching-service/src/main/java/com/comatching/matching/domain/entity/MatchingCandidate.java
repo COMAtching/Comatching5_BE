@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
@@ -65,6 +67,7 @@ public class MatchingCandidate {
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(name = "candidate_hobby_categories", joinColumns = @JoinColumn(name = "member_id"))
 	@Enumerated(EnumType.STRING)
+	@BatchSize(size = 100)
 	private List<HobbyCategory> hobbyCategories = new ArrayList<>();
 
 	public void syncProfile(
