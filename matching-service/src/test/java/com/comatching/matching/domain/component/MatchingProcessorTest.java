@@ -6,11 +6,13 @@ import static org.mockito.BDDMockito.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.LongStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -279,6 +281,39 @@ class MatchingProcessorTest {
 					&& condition.requiredContactFrequency() == null
 					&& condition.limit() == 500
 			));
+		}
+
+		@Test
+		@DisplayName("첫 후보 페이지에 매칭 대상이 없어도 다음 페이지를 조회한다")
+		void shouldContinueSearchWhenFirstPageHasNoFinalCandidate() {
+			// given
+			Long memberId = 1L;
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
+			MatchingRequest request = new MatchingRequest(
+				null, null, null, null, false, null,
+				-1, 1
+			);
+			List<MatchingCandidate> firstPage = LongStream.rangeClosed(2L, 501L)
+				.mapToObj(id -> createCandidate(id, "ISTJ", 19))
+				.toList();
+			MatchingCandidate secondPageCandidate = createCandidate(600L, "ENFP", 23);
+
+			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+				.willReturn(firstPage, List.of(secondPageCandidate));
+			given(conditionCheckerFactory.check(isNull(), eq(secondPageCandidate), eq(request), any())).willReturn(true);
+			given(scoreCalculator.calculate(eq(secondPageCandidate), eq(request), any(KoreanAge.class))).willReturn(30);
+
+			// when
+			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
+
+			// then
+			assertThat(result.getMemberId()).isEqualTo(600L);
+			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
+				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
+			verify(candidateRepository, times(2)).findPotentialCandidates(conditionCaptor.capture());
+			assertThat(conditionCaptor.getAllValues().get(0).lastMemberIdExclusive()).isNull();
+			assertThat(conditionCaptor.getAllValues().get(1).lastMemberIdExclusive()).isEqualTo(501L);
 		}
 
 		@Test

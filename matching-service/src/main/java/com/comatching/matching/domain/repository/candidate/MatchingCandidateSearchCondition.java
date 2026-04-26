@@ -15,6 +15,7 @@ public record MatchingCandidateSearchCondition(
 	String requiredMbtiTraits,
 	ContactFrequency requiredContactFrequency,
 	HobbyCategory requiredHobbyCategory,
+	Long lastMemberIdExclusive,
 	int limit
 ) {
 }

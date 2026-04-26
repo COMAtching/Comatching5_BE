@@ -38,9 +38,25 @@ public class MatchingProcessor {
 
 	public MatchingCandidate process(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
 		KoreanAge myAge = KoreanAge.fromBirthDate(myProfile.birthDate());
-		List<MatchingCandidate> candidates = findCandidates(memberId, myProfile, request, myAge);
+		List<Long> excludeMemberIds = historyRepository.findPartnerIdsByMemberId(memberId);
+		MatchingCandidateSearchSeed searchSeed = createSearchSeed(myProfile, request, myAge, excludeMemberIds);
+		List<MatchingCandidate> bestCandidates = new ArrayList<>();
+		int maxScore = -1;
+		Long lastMemberId = null;
 
-		List<MatchingCandidate> bestCandidates = filterAndScore(candidates, request, myAge);
+		while (true) {
+			List<MatchingCandidate> candidates = candidateRepository.findPotentialCandidates(searchSeed.toCondition(lastMemberId));
+			if (candidates.isEmpty()) {
+				break;
+			}
+
+			maxScore = filterAndScore(candidates, request, myAge, bestCandidates, maxScore);
+			lastMemberId = candidates.get(candidates.size() - 1).getMemberId();
+
+			if (candidates.size() < MAX_CANDIDATE_FETCH_SIZE) {
+				break;
+			}
+		}
 
 		if (bestCandidates.isEmpty()) {
 			throw new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE);
@@ -49,16 +65,15 @@ public class MatchingProcessor {
 		return selectRandomCandidate(bestCandidates);
 	}
 
-	private List<MatchingCandidate> findCandidates(
-		Long memberId,
+	private MatchingCandidateSearchSeed createSearchSeed(
 		ProfileResponse myProfile,
 		MatchingRequest request,
-		KoreanAge myAge
+		KoreanAge myAge,
+		List<Long> excludeMemberIds
 	) {
-		List<Long> excludeMemberIds = historyRepository.findPartnerIdsByMemberId(memberId);
 		String excludeMajor = request.sameMajorOption() ? myProfile.major() : null;
 		Gender targetGender = (myProfile.gender() == Gender.MALE) ? Gender.FEMALE : Gender.MALE;
-		MatchingCandidateSearchCondition condition = new MatchingCandidateSearchCondition(
+		return new MatchingCandidateSearchSeed(
 			targetGender,
 			excludeMajor,
 			excludeMemberIds,
@@ -69,8 +84,6 @@ public class MatchingProcessor {
 			requiredHobbyCategory(request),
 			MAX_CANDIDATE_FETCH_SIZE
 		);
-
-		return candidateRepository.findPotentialCandidates(condition);
 	}
 
 	private Integer minAge(MatchingRequest request, KoreanAge myAge) {
@@ -125,12 +138,13 @@ public class MatchingProcessor {
 		return request.importantOption() == ImportantOption.HOBBY ? request.hobbyOption() : null;
 	}
 
-	private List<MatchingCandidate> filterAndScore(List<MatchingCandidate> candidates,
-		MatchingRequest request, KoreanAge myAge) {
-
-		List<MatchingCandidate> bestCandidates = new ArrayList<>();
-		int maxScore = -1;
-
+	private int filterAndScore(
+		List<MatchingCandidate> candidates,
+		MatchingRequest request,
+		KoreanAge myAge,
+		List<MatchingCandidate> bestCandidates,
+		int maxScore
+	) {
 		for (MatchingCandidate candidate : candidates) {
 			if (!matchesAgeLimit(candidate, request, myAge)) {
 				continue;
@@ -151,7 +165,7 @@ public class MatchingProcessor {
 			}
 		}
 
-		return bestCandidates;
+		return maxScore;
 	}
 
 	private boolean matchesAgeLimit(MatchingCandidate candidate, MatchingRequest request, KoreanAge myAge) {
@@ -177,5 +191,33 @@ public class MatchingProcessor {
 	private MatchingCandidate selectRandomCandidate(List<MatchingCandidate> candidates) {
 		int randomIndex = (int) (Math.random() * candidates.size());
 		return candidates.get(randomIndex);
+	}
+
+	private record MatchingCandidateSearchSeed(
+		Gender targetGender,
+		String excludeMajor,
+		List<Long> excludeMemberIds,
+		Integer minAge,
+		Integer maxAge,
+		String requiredMbtiTraits,
+		ContactFrequency requiredContactFrequency,
+		HobbyCategory requiredHobbyCategory,
+		int limit
+	) {
+
+		private MatchingCandidateSearchCondition toCondition(Long lastMemberId) {
+			return new MatchingCandidateSearchCondition(
+				targetGender,
+				excludeMajor,
+				excludeMemberIds,
+				minAge,
+				maxAge,
+				requiredMbtiTraits,
+				requiredContactFrequency,
+				requiredHobbyCategory,
+				lastMemberId,
+				limit
+			);
+		}
 	}
 }

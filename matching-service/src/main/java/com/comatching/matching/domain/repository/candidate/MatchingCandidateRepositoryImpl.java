@@ -31,8 +31,10 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 				ageLoe(condition.maxAge()),
 				containsAllMbtiTraits(condition.requiredMbtiTraits()),
 				eqContactFrequency(condition.requiredContactFrequency()),
-				hasHobbyCategory(condition.requiredHobbyCategory())
+				hasHobbyCategory(condition.requiredHobbyCategory()),
+				memberIdGt(condition.lastMemberIdExclusive())
 			)
+			.orderBy(matchingCandidate.memberId.asc())
 			.limit(condition.limit())
 			.fetch();
 	}
@@ -74,5 +76,9 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 
 	private BooleanExpression hasHobbyCategory(HobbyCategory hobbyCategory) {
 		return hobbyCategory != null ? matchingCandidate.hobbyCategories.any().eq(hobbyCategory) : null;
+	}
+
+	private BooleanExpression memberIdGt(Long memberId) {
+		return memberId != null ? matchingCandidate.memberId.gt(memberId) : null;
 	}
 }
