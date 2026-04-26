@@ -46,25 +46,24 @@ public class MatchingServiceImpl implements MatchingService {
 	private final MatchingProcessor matchingProcessor;
 
 	@Override
-	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId")
+	@DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId", leaseTime = 15L)
 	public MatchingResponse match(Long memberId, MatchingRequest request) {
 		ProfileResponse myProfile = memberClient.getProfile(memberId);
 		validateAgeLimitRequest(request, myProfile);
 
 		List<ItemConsumption> consumedConsumptions = consumeItems(memberId, request);
 
-		MatchingCandidate matchedCandidate;
 		try {
-			matchedCandidate = matchingProcessor.process(memberId, myProfile, request);
+			MatchingCandidate matchedCandidate = matchingProcessor.process(memberId, myProfile, request);
+			ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
+
+			saveHistoryAndPublishEvent(memberId, matchedCandidate, request);
+
+			return MatchingResponse.of(matchedCandidate, partnerProfile);
 		} catch (Exception e) {
 			refundItems(memberId, consumedConsumptions);
 			throw e;
 		}
-
-		saveHistoryAndPublishEvent(memberId, matchedCandidate, request);
-
-		ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
-		return MatchingResponse.of(matchedCandidate, partnerProfile);
 	}
 
 	private List<ItemConsumption> consumeItems(Long memberId, MatchingRequest request) {

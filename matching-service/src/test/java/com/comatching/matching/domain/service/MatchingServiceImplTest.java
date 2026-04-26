@@ -184,6 +184,92 @@ class MatchingServiceImplTest {
 		}
 
 		@Test
+		@DisplayName("상대 프로필 조회 실패시 아이템을 환불하고 히스토리를 저장하지 않는다")
+		void shouldRefundItemsAndSkipHistoryWhenPartnerProfileLookupFails() {
+			// given
+			Long memberId = 1L;
+			Long partnerId = 2L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			MatchingCandidate partner = createCandidate(partnerId);
+			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
+
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+			given(memberClient.getProfile(partnerId))
+				.willThrow(new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request)).willReturn(partner);
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(BusinessException.class);
+
+			verify(itemClient).addItem(eq(memberId), any());
+			verify(historyRepository, never()).save(any());
+			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+		}
+
+		@Test
+		@DisplayName("히스토리 저장 실패시 아이템을 환불한다")
+		void shouldRefundItemsWhenHistorySaveFails() {
+			// given
+			Long memberId = 1L;
+			Long partnerId = 2L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			ProfileResponse partnerProfile = createProfile(partnerId, Gender.FEMALE);
+			MatchingCandidate partner = createCandidate(partnerId);
+			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
+
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+			given(memberClient.getProfile(partnerId)).willReturn(partnerProfile);
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request)).willReturn(partner);
+			given(historyRepository.save(any(MatchingHistory.class))).willThrow(new RuntimeException("history save failed"));
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(RuntimeException.class);
+
+			verify(itemClient).addItem(eq(memberId), any());
+			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+		}
+
+		@Test
+		@DisplayName("매칭 성공 이벤트 발행 실패시 아이템을 환불한다")
+		void shouldRefundItemsWhenEventPublishFails() {
+			// given
+			Long memberId = 1L;
+			Long partnerId = 2L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			ProfileResponse partnerProfile = createProfile(partnerId, Gender.FEMALE);
+			MatchingCandidate partner = createCandidate(partnerId);
+			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
+			MatchingHistory savedHistory = MatchingHistory.builder()
+				.memberId(memberId)
+				.partnerId(partnerId)
+				.build();
+
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+			given(memberClient.getProfile(partnerId)).willReturn(partnerProfile);
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request)).willReturn(partner);
+			given(historyRepository.save(any(MatchingHistory.class))).willReturn(savedHistory);
+			willThrow(new RuntimeException("event publish failed"))
+				.given(matchingEventProducer).sendMatchingSuccess(any());
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(RuntimeException.class);
+
+			verify(itemClient).addItem(eq(memberId), any());
+		}
+
+		@Test
 		@DisplayName("매칭 성공시 히스토리를 저장하고 이벤트를 발행한다")
 		void shouldSaveHistoryAndPublishEventOnSuccess() {
 			// given
