@@ -121,7 +121,14 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			return List.of();
 		}
 
-		return profileRepository.findAllByMemberIdIn(memberIds).stream()
+		List<Profile> profiles = profileRepository.findAllByMemberIdIn(memberIds);
+		if (profiles.isEmpty()) {
+			return List.of();
+		}
+
+		profileRepository.findAllWithHobbiesByMemberIdIn(memberIds);
+
+		return profiles.stream()
 			.map(this::toProfileResponse)
 			.toList();
 	}
