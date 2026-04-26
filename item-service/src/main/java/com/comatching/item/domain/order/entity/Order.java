@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.comatching.item.domain.order.enums.OrderStatus;
 
 import jakarta.persistence.CascadeType;
@@ -68,6 +70,7 @@ public class Order {
 
 	private LocalDateTime decidedAt;
 
+	@BatchSize(size = 100)
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<OrderItem> orderItems = new ArrayList<>();
 
