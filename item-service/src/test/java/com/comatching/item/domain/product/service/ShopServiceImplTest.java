@@ -103,7 +103,7 @@ class ShopServiceImplTest {
 		Product second = product("두 번째 상품", 2000, true);
 		ReflectionTestUtils.setField(first, "id", 1L);
 		ReflectionTestUtils.setField(second, "id", 2L);
-		given(productRepository.findByIsActiveTrueOrderByDisplayOrderAscIdAsc()).willReturn(List.of(first, second));
+		given(productRepository.findActiveProductsWithRewards()).willReturn(List.of(first, second));
 
 		// when
 		List<ProductResponse> responses = shopService.getActiveProducts();
@@ -111,6 +111,7 @@ class ShopServiceImplTest {
 		// then
 		assertThat(responses).extracting(ProductResponse::id).containsExactly(1L, 2L);
 		assertThat(responses).extracting(ProductResponse::isActive).containsExactly(true, true);
+		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L, 2L));
 	}
 
 	@Test

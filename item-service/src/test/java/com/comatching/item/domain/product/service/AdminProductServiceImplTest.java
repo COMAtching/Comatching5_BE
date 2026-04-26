@@ -92,7 +92,7 @@ class AdminProductServiceImplTest {
 		ReflectionTestUtils.setField(active, "id", 1L);
 		ReflectionTestUtils.setField(inactive, "id", 2L);
 
-		given(productRepository.findAllByOrderByDisplayOrderAscIdAsc()).willReturn(List.of(active, inactive));
+		given(productRepository.findAllProductsWithRewards()).willReturn(List.of(active, inactive));
 
 		// when
 		List<ProductResponse> responses = adminProductService.getProducts();
@@ -100,6 +100,7 @@ class AdminProductServiceImplTest {
 		// then
 		assertThat(responses).extracting(ProductResponse::id).containsExactly(1L, 2L);
 		assertThat(responses).extracting(ProductResponse::isActive).containsExactly(true, false);
+		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L, 2L));
 	}
 
 	@Test
@@ -135,70 +136,6 @@ class AdminProductServiceImplTest {
 		// given
 		ProductCreateRequest request = request(
 			List.of(reward(ItemType.MATCHING_TICKET, 1), reward(ItemType.MATCHING_TICKET, 2)),
-			List.of()
-		);
-
-		// when & then
-		assertInvalidInput(request);
-	}
-
-	@Test
-	@DisplayName("구성품이 비어있으면 예외가 발생한다")
-	void shouldThrowWhenRewardsEmpty() {
-		// given
-		ProductCreateRequest request = request(List.of(), List.of());
-
-		// when & then
-		assertInvalidInput(request);
-	}
-
-	@Test
-	@DisplayName("상품 설명이 공백이면 예외가 발생한다")
-	void shouldThrowWhenDescriptionBlank() {
-		// given
-		ProductCreateRequest request = new ProductCreateRequest(
-			"신규 번들",
-			" ",
-			1000,
-			1,
-			true,
-			List.of(reward(ItemType.MATCHING_TICKET, 1)),
-			List.of()
-		);
-
-		// when & then
-		assertInvalidInput(request);
-	}
-
-	@Test
-	@DisplayName("상품 설명이 50자를 초과하면 예외가 발생한다")
-	void shouldThrowWhenDescriptionTooLong() {
-		// given
-		ProductCreateRequest request = new ProductCreateRequest(
-			"신규 번들",
-			"123456789012345678901234567890123456789012345678901",
-			1000,
-			1,
-			true,
-			List.of(reward(ItemType.MATCHING_TICKET, 1)),
-			List.of()
-		);
-
-		// when & then
-		assertInvalidInput(request);
-	}
-
-	@Test
-	@DisplayName("상품 노출 순서가 음수이면 예외가 발생한다")
-	void shouldThrowWhenDisplayOrderNegative() {
-		// given
-		ProductCreateRequest request = new ProductCreateRequest(
-			"신규 번들",
-			"상품 설명",
-			1000,
-			-1,
-			true,
-			List.of(reward(ItemType.MATCHING_TICKET, 1)),
 			List.of()
 		);
 

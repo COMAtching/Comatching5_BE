@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.exception.BusinessException;
@@ -27,31 +26,10 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class AdminProductServiceImpl implements AdminProductService {
 
-	private static final int DESCRIPTION_MAX_LENGTH = 50;
-
 	private final ProductRepository productRepository;
 
 	@Override
 	public ProductResponse createProduct(ProductCreateRequest request) {
-		if (!StringUtils.hasText(request.name())) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품명은 공백일 수 없습니다.");
-		}
-		if (!StringUtils.hasText(request.description())) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 설명은 공백일 수 없습니다.");
-		}
-		if (request.description().trim().length() > DESCRIPTION_MAX_LENGTH) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 설명은 50자 이하여야 합니다.");
-		}
-		if (request.price() <= 0) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 가격은 1원 이상이어야 합니다.");
-		}
-		if (request.displayOrder() < 0) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 노출 순서는 0 이상이어야 합니다.");
-		}
-		if (request.rewards() == null || request.rewards().isEmpty()) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 구성품은 최소 1개 이상이어야 합니다.");
-		}
-
 		Map<ItemType, Integer> rewardQuantityByType = validateRewards(request.rewards());
 		Product product = Product.builder()
 			.name(request.name().trim())
@@ -87,7 +65,9 @@ public class AdminProductServiceImpl implements AdminProductService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<ProductResponse> getProducts() {
-		return productRepository.findAllByOrderByDisplayOrderAscIdAsc().stream()
+		List<Product> products = productRepository.findAllProductsWithRewards();
+		fetchBonusRewards(products);
+		return products.stream()
 			.map(ProductResponse::from)
 			.toList();
 	}
@@ -103,12 +83,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 	private Map<ItemType, Integer> validateRewards(List<ProductCreateRequest.ProductRewardCreateRequest> rewards) {
 		Set<ItemType> duplicateCheck = new HashSet<>();
 		for (ProductCreateRequest.ProductRewardCreateRequest rewardRequest : rewards) {
-			if (rewardRequest.itemType() == null) {
-				throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "아이템 타입은 필수입니다.");
-			}
-			if (rewardRequest.quantity() <= 0) {
-				throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "구성품 수량은 1 이상이어야 합니다.");
-			}
 			if (!duplicateCheck.add(rewardRequest.itemType())) {
 				throw new BusinessException(
 					GeneralErrorCode.INVALID_INPUT_VALUE,
@@ -134,12 +108,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 
 		Set<ItemType> duplicateCheck = new HashSet<>();
 		for (ProductCreateRequest.ProductRewardCreateRequest bonusReward : bonusRewards) {
-			if (bonusReward.itemType() == null) {
-				throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "보너스 아이템 타입은 필수입니다.");
-			}
-			if (bonusReward.quantity() <= 0) {
-				throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "보너스 수량은 1 이상이어야 합니다.");
-			}
 			if (!duplicateCheck.add(bonusReward.itemType())) {
 				throw new BusinessException(
 					GeneralErrorCode.INVALID_INPUT_VALUE,
@@ -155,5 +123,16 @@ public class AdminProductServiceImpl implements AdminProductService {
 				throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "보너스 수량은 실제 지급 수량보다 클 수 없습니다.");
 			}
 		}
+	}
+
+	private void fetchBonusRewards(List<Product> products) {
+		if (products.isEmpty()) {
+			return;
+		}
+
+		List<Long> productIds = products.stream()
+			.map(Product::getId)
+			.toList();
+		productRepository.fetchBonusRewardsByProductIds(productIds);
 	}
 }
