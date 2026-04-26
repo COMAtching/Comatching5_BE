@@ -6,5 +6,7 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 	// 판매 중인 상품만 조회
-	List<Product> findByIsActiveTrue();
+	List<Product> findByIsActiveTrueOrderByDisplayOrderAscIdAsc();
+
+	List<Product> findAllByOrderByDisplayOrderAscIdAsc();
 }

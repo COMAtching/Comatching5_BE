@@ -39,7 +39,7 @@ public class ShopServiceImpl implements ShopService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<ProductResponse> getActiveProducts() {
-		return productRepository.findByIsActiveTrue().stream()
+		return productRepository.findByIsActiveTrueOrderByDisplayOrderAscIdAsc().stream()
 			.map(ProductResponse::from)
 			.toList();
 	}

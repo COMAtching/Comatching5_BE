@@ -28,7 +28,10 @@ public class ShopController {
 
 	private final ShopService shopService;
 
-	@Operation(summary = "상품 목록 조회", description = "현재 판매 중인 모든 아이템 패키지 목록을 조회합니다.")
+	@Operation(
+		summary = "상품 목록 조회",
+		description = "현재 판매 중인 활성 상품만 displayOrder 오름차순, id 오름차순으로 조회합니다. 응답에는 실제 지급 rewards와 프론트 표시용 bonusRewards가 함께 포함됩니다."
+	)
 	@GetMapping("/products")
 	public ResponseEntity<ApiResponse<List<ProductResponse>>> getActiveProducts() {
 		return ResponseEntity.ok(ApiResponse.ok(shopService.getActiveProducts()));
