@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
@@ -473,15 +474,55 @@ class ProfileServiceImplTest {
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("계란형 얼굴", "밝은 분위기");
 		}
+
+		@Test
+		@DisplayName("bulk 프로필 조회 전에 취미 목록을 한 번에 초기화한다")
+		void shouldFetchHobbiesWhenGettingProfilesBulk() {
+			// given
+			List<Long> memberIds = List.of(1L, 2L);
+			Profile firstProfile = createProfileWithTags(1L);
+			Profile secondProfile = createProfileWithTags(2L);
+
+			given(profileRepository.findAllByMemberIdIn(memberIds))
+				.willReturn(List.of(firstProfile, secondProfile));
+			given(profileRepository.findAllWithHobbiesByMemberIdIn(memberIds))
+				.willReturn(List.of(firstProfile, secondProfile));
+
+			// when
+			List<ProfileResponse> responses = profileService.getProfilesByIds(memberIds);
+
+			// then
+			assertThat(responses).hasSize(2);
+			assertThat(responses)
+				.allSatisfy(response -> assertThat(response.hobbies()).hasSize(2));
+			then(profileRepository).should().findAllWithHobbiesByMemberIdIn(memberIds);
+		}
+
+		@Test
+		@DisplayName("bulk 프로필 조회 결과가 비어 있으면 취미 초기화 쿼리를 실행하지 않는다")
+		void shouldSkipHobbyFetchWhenBulkProfilesEmpty() {
+			// given
+			List<Long> memberIds = List.of(1L, 2L);
+			given(profileRepository.findAllByMemberIdIn(memberIds)).willReturn(List.of());
+
+			// when
+			List<ProfileResponse> responses = profileService.getProfilesByIds(memberIds);
+
+			// then
+			assertThat(responses).isEmpty();
+			then(profileRepository).should(never()).findAllWithHobbiesByMemberIdIn(anyList());
+		}
 	}
 
 	private Member createMember(Long memberId) {
-		return Member.builder()
+		Member member = Member.builder()
 			.email("test@test.com")
 			.password("1234")
 			.role(MemberRole.ROLE_GUEST)
 			.status(MemberStatus.ACTIVE)
 			.build();
+		ReflectionTestUtils.setField(member, "id", memberId);
+		return member;
 	}
 
 	private Profile createProfileWithTags(Long memberId) {
