@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.item.domain.product.entity.Product;
+import com.comatching.item.domain.product.entity.ProductBonusReward;
 import com.comatching.item.domain.product.entity.ProductReward;
 import com.comatching.item.domain.product.repository.ProductRepository;
 
@@ -34,7 +35,9 @@ public class ShopDataInitializer implements CommandLineRunner {
 		// 1. 뽑기권 X1 (1,000원)
 		Product p1 = Product.builder()
 			.name("매칭권 1개")
+			.description("기본 매칭을 1회 이용할 수 있어요.")
 			.price(1000)
+			.displayOrder(1)
 			.isActive(true)
 			.build();
 		p1.addReward(ProductReward.builder()
@@ -45,7 +48,9 @@ public class ShopDataInitializer implements CommandLineRunner {
 		// 2. 뽑기권 X5 + 옵션권 X1 (5,000원)
 		Product p2 = Product.builder()
 			.name("매칭권 5개 (+옵션권 1개)")
+			.description("매칭권 5개와 옵션권 1개 패키지예요.")
 			.price(5000)
+			.displayOrder(2)
 			.isActive(true)
 			.build();
 		p2.addReward(ProductReward.builder()
@@ -56,11 +61,17 @@ public class ShopDataInitializer implements CommandLineRunner {
 			.itemType(ItemType.OPTION_TICKET)
 			.quantity(1)
 			.build());
+		p2.addBonusReward(ProductBonusReward.builder()
+			.itemType(ItemType.OPTION_TICKET)
+			.quantity(1)
+			.build());
 
 		// 3. 뽑기권 X10 (9,000원) - 할인 상품
 		Product p3 = Product.builder()
 			.name("매칭권 10개 (10% 할인)")
+			.description("매칭권 10개를 할인된 가격으로 충전해요.")
 			.price(9000)
+			.displayOrder(3)
 			.isActive(true)
 			.build();
 		p3.addReward(ProductReward.builder()
@@ -71,7 +82,9 @@ public class ShopDataInitializer implements CommandLineRunner {
 		// 4. 옵션권 X1 (300원)
 		Product p4 = Product.builder()
 			.name("옵션권 1개")
+			.description("중요 조건 옵션을 1회 사용할 수 있어요.")
 			.price(300)
+			.displayOrder(4)
 			.isActive(true)
 			.build();
 		p4.addReward(ProductReward.builder()

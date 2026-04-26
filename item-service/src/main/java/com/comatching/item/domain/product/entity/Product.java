@@ -20,8 +20,14 @@ public class Product {
 	@Column(nullable = false)
 	private String name;
 
+	@Column(nullable = false, length = 50)
+	private String description;
+
 	@Column(nullable = false)
 	private int price;
+
+	@Column(nullable = false)
+	private int displayOrder;
 
 	@Column(nullable = false)
 	private boolean isActive;
@@ -29,10 +35,15 @@ public class Product {
 	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ProductReward> rewards = new ArrayList<>();
 
+	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<ProductBonusReward> bonusRewards = new ArrayList<>();
+
 	@Builder
-	public Product(String name, int price, boolean isActive) {
+	public Product(String name, String description, int price, int displayOrder, boolean isActive) {
 		this.name = name;
+		this.description = description;
 		this.price = price;
+		this.displayOrder = displayOrder;
 		this.isActive = isActive;
 	}
 
@@ -40,5 +51,14 @@ public class Product {
 	public void addReward(ProductReward reward) {
 		this.rewards.add(reward);
 		reward.setProduct(this);
+	}
+
+	public void addBonusReward(ProductBonusReward bonusReward) {
+		this.bonusRewards.add(bonusReward);
+		bonusReward.setProduct(this);
+	}
+
+	public void deactivate() {
+		this.isActive = false;
 	}
 }

@@ -100,7 +100,8 @@ class ProfileServiceImplTest {
 			// then
 			assertThat(response).isNotNull();
 			assertThat(response.tags()).hasSize(2);
-			assertThat(response.tags().get(0).tag()).isEqualTo("EGG_FACE");
+			assertThat(response.tags()).extracting(ProfileTagDto::tag)
+				.containsExactly("계란형 얼굴", "밝은 분위기");
 		}
 
 		@Test
@@ -140,7 +141,7 @@ class ProfileServiceImplTest {
 			assertThat(response).isNotNull();
 			assertThat(response.tags()).hasSize(2);
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
-				.containsExactly("BRIGHT", "GOOD_LISTENER");
+				.containsExactly("밝은 분위기", "경청형");
 		}
 
 		@Test
@@ -340,6 +341,8 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response.tags()).hasSize(2);
+			assertThat(response.tags()).extracting(ProfileTagDto::tag)
+				.containsExactly("마른 체형", "근육질");
 		}
 
 		@Test
@@ -467,7 +470,8 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response).isNotNull();
-			assertThat(response.tags()).isNotEmpty();
+			assertThat(response.tags()).extracting(ProfileTagDto::tag)
+				.containsExactly("계란형 얼굴", "밝은 분위기");
 		}
 	}
 

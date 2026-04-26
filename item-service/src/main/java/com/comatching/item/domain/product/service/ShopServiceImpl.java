@@ -39,7 +39,9 @@ public class ShopServiceImpl implements ShopService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<ProductResponse> getActiveProducts() {
-		return productRepository.findByIsActiveTrue().stream()
+		List<Product> products = productRepository.findActiveProductsWithRewards();
+		fetchBonusRewards(products);
+		return products.stream()
 			.map(ProductResponse::from)
 			.toList();
 	}
@@ -98,5 +100,16 @@ public class ShopServiceImpl implements ShopService {
 			throw new BusinessException(errorCode);
 		}
 		return value.trim();
+	}
+
+	private void fetchBonusRewards(List<Product> products) {
+		if (products.isEmpty()) {
+			return;
+		}
+
+		List<Long> productIds = products.stream()
+			.map(Product::getId)
+			.toList();
+		productRepository.fetchBonusRewardsByProductIds(productIds);
 	}
 }

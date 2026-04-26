@@ -20,6 +20,7 @@ import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.item.ItemConsumption;
 import com.comatching.common.dto.member.ProfileResponse;
+import com.comatching.common.dto.member.ProfileTagDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.matching.domain.component.MatchingItemPolicy;
 import com.comatching.matching.domain.component.MatchingProcessor;
@@ -67,6 +68,20 @@ class MatchingServiceImplTest {
 			.build();
 	}
 
+	private ProfileResponse createProfileWithTags(Long memberId, Gender gender) {
+		return ProfileResponse.builder()
+			.memberId(memberId)
+			.gender(gender)
+			.mbti("ISTJ")
+			.major("컴퓨터공학과")
+			.birthDate(LocalDate.of(2000, 1, 1))
+			.tags(List.of(
+				new ProfileTagDto("계란형 얼굴"),
+				new ProfileTagDto("밝은 분위기")
+			))
+			.build();
+	}
+
 	private MatchingCandidate createCandidate(Long memberId) {
 		return MatchingCandidate.create(
 			memberId, 1L, Gender.FEMALE, "ENFP", "디자인학과",
@@ -88,7 +103,7 @@ class MatchingServiceImplTest {
 			MatchingRequest request = new MatchingRequest(null, "IS", null, null, false, null);
 
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
-			ProfileResponse partnerProfile = createProfile(partnerId, Gender.FEMALE);
+			ProfileResponse partnerProfile = createProfileWithTags(partnerId, Gender.FEMALE);
 			MatchingCandidate partner = createCandidate(partnerId);
 
 			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
@@ -114,6 +129,8 @@ class MatchingServiceImplTest {
 			// then
 			assertThat(response).isNotNull();
 			assertThat(response.memberId()).isEqualTo(partnerId);
+			assertThat(response.tags()).extracting(ProfileTagDto::tag)
+				.containsExactly("계란형 얼굴", "밝은 분위기");
 			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
 			verify(matchingEventProducer).sendMatchingSuccess(any());
 		}
