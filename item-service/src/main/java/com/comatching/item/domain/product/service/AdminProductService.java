@@ -9,7 +9,7 @@ public interface AdminProductService {
 
 	ProductResponse createProduct(ProductCreateRequest request);
 
-	List<ProductResponse> getProducts();
+	List<ProductResponse> getProducts(Boolean isBundle);
 
 	void deleteProduct(Long productId);
 }

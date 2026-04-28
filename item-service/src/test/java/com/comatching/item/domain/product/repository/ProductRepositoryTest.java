@@ -36,16 +36,16 @@ class ProductRepositoryTest {
 	@DisplayName("활성 상품은 rewards와 bonusRewards를 N+1 없이 단계적으로 조회한다")
 	void shouldFetchActiveProductsWithRewardsAndBonusRewards() {
 		// given
-		Product second = product("두 번째 상품", 2, true);
+		Product second = product("두 번째 상품", 2, true, false);
 		second.addReward(reward(ItemType.MATCHING_TICKET, 1));
 		second.addBonusReward(bonusReward(ItemType.MATCHING_TICKET, 1));
 
-		Product first = product("첫 번째 상품", 1, true);
+		Product first = product("첫 번째 상품", 1, true, true);
 		first.addReward(reward(ItemType.MATCHING_TICKET, 2));
 		first.addReward(reward(ItemType.OPTION_TICKET, 1));
 		first.addBonusReward(bonusReward(ItemType.OPTION_TICKET, 1));
 
-		Product inactive = product("비활성 상품", 3, false);
+		Product inactive = product("비활성 상품", 3, false, true);
 		inactive.addReward(reward(ItemType.MATCHING_TICKET, 1));
 
 		entityManager.persist(second);
@@ -55,7 +55,7 @@ class ProductRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<Product> products = productRepository.findActiveProductsWithRewards();
+		List<Product> products = productRepository.findActiveProductsWithRewards(null);
 		productRepository.fetchBonusRewardsByProductIds(products.stream().map(Product::getId).toList());
 
 		// then
@@ -72,10 +72,10 @@ class ProductRepositoryTest {
 	@DisplayName("관리자 상품 목록은 비활성 상품까지 정렬하여 조회한다")
 	void shouldFetchAllProductsOrdered() {
 		// given
-		Product inactive = product("비활성 상품", 2, false);
+		Product inactive = product("비활성 상품", 2, false, false);
 		inactive.addReward(reward(ItemType.MATCHING_TICKET, 1));
 
-		Product active = product("활성 상품", 1, true);
+		Product active = product("활성 상품", 1, true, true);
 		active.addReward(reward(ItemType.MATCHING_TICKET, 1));
 
 		entityManager.persist(inactive);
@@ -84,7 +84,7 @@ class ProductRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<Product> products = productRepository.findAllProductsWithRewards();
+		List<Product> products = productRepository.findAllProductsWithRewards(null);
 		productRepository.fetchBonusRewardsByProductIds(products.stream().map(Product::getId).toList());
 
 		// then
@@ -95,13 +95,60 @@ class ProductRepositoryTest {
 		});
 	}
 
-	private Product product(String name, int displayOrder, boolean isActive) {
+	@Test
+	@DisplayName("활성 상품 목록은 번들 여부로 필터링한다")
+	void shouldFetchActiveProductsFilteredByBundleFlag() {
+		// given
+		Product bundle = product("번들 상품", 1, true, true);
+		bundle.addReward(reward(ItemType.MATCHING_TICKET, 1));
+
+		Product single = product("단품 상품", 2, true, false);
+		single.addReward(reward(ItemType.MATCHING_TICKET, 1));
+
+		entityManager.persist(bundle);
+		entityManager.persist(single);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<Product> products = productRepository.findActiveProductsWithRewards(true);
+
+		// then
+		assertThat(products).extracting(Product::getName).containsExactly("번들 상품");
+		assertThat(products).allSatisfy(product -> assertThat(product.isBundle()).isTrue());
+	}
+
+	@Test
+	@DisplayName("관리자 상품 목록은 번들 여부로 필터링한다")
+	void shouldFetchAllProductsFilteredByBundleFlag() {
+		// given
+		Product bundle = product("번들 상품", 1, true, true);
+		bundle.addReward(reward(ItemType.MATCHING_TICKET, 1));
+
+		Product single = product("비번들 상품", 2, false, false);
+		single.addReward(reward(ItemType.MATCHING_TICKET, 1));
+
+		entityManager.persist(bundle);
+		entityManager.persist(single);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<Product> products = productRepository.findAllProductsWithRewards(false);
+
+		// then
+		assertThat(products).extracting(Product::getName).containsExactly("비번들 상품");
+		assertThat(products).allSatisfy(product -> assertThat(product.isBundle()).isFalse());
+	}
+
+	private Product product(String name, int displayOrder, boolean isActive, boolean isBundle) {
 		return Product.builder()
 			.name(name)
 			.description("상품 설명")
 			.price(1000)
 			.displayOrder(displayOrder)
 			.isActive(isActive)
+			.isBundle(isBundle)
 			.build();
 	}
 

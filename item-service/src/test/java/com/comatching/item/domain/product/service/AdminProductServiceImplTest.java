@@ -48,6 +48,7 @@ class AdminProductServiceImplTest {
 			3300,
 			7,
 			true,
+			true,
 			List.of(
 				reward(ItemType.MATCHING_TICKET, 3),
 				reward(ItemType.OPTION_TICKET, 1)
@@ -70,6 +71,7 @@ class AdminProductServiceImplTest {
 		assertThat(saved.getPrice()).isEqualTo(3300);
 		assertThat(saved.getDisplayOrder()).isEqualTo(7);
 		assertThat(saved.isActive()).isTrue();
+		assertThat(saved.isBundle()).isTrue();
 		assertThat(saved.getRewards()).hasSize(2);
 		assertThat(saved.getBonusRewards()).hasSize(1);
 		assertThat(response.name()).isEqualTo("신규 번들");
@@ -77,6 +79,7 @@ class AdminProductServiceImplTest {
 		assertThat(response.price()).isEqualTo(3300);
 		assertThat(response.displayOrder()).isEqualTo(7);
 		assertThat(response.isActive()).isTrue();
+		assertThat(response.isBundle()).isTrue();
 		assertThat(response.rewards()).hasSize(2);
 		assertThat(response.bonusRewards()).hasSize(1);
 		assertThat(response.bonusRewards().get(0).itemType()).isEqualTo(ItemType.OPTION_TICKET);
@@ -87,27 +90,45 @@ class AdminProductServiceImplTest {
 	@DisplayName("관리자 상품 목록은 비활성 상품도 포함한다")
 	void shouldGetAllProductsForAdmin() {
 		// given
-		Product active = product("활성 상품", "활성 설명", 1000, 1, true);
-		Product inactive = product("비활성 상품", "비활성 설명", 2000, 2, false);
+		Product active = product("활성 상품", "활성 설명", 1000, 1, true, true);
+		Product inactive = product("비활성 상품", "비활성 설명", 2000, 2, false, false);
 		ReflectionTestUtils.setField(active, "id", 1L);
 		ReflectionTestUtils.setField(inactive, "id", 2L);
 
-		given(productRepository.findAllProductsWithRewards()).willReturn(List.of(active, inactive));
+		given(productRepository.findAllProductsWithRewards(null)).willReturn(List.of(active, inactive));
 
 		// when
-		List<ProductResponse> responses = adminProductService.getProducts();
+		List<ProductResponse> responses = adminProductService.getProducts(null);
 
 		// then
 		assertThat(responses).extracting(ProductResponse::id).containsExactly(1L, 2L);
 		assertThat(responses).extracting(ProductResponse::isActive).containsExactly(true, false);
+		assertThat(responses).extracting(ProductResponse::isBundle).containsExactly(true, false);
 		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L, 2L));
+	}
+
+	@Test
+	@DisplayName("관리자 상품 목록은 번들 여부로 필터링할 수 있다")
+	void shouldGetProductsFilteredByBundleFlagForAdmin() {
+		// given
+		Product bundle = product("번들 상품", "번들 설명", 1000, 1, true, true);
+		ReflectionTestUtils.setField(bundle, "id", 1L);
+		given(productRepository.findAllProductsWithRewards(true)).willReturn(List.of(bundle));
+
+		// when
+		List<ProductResponse> responses = adminProductService.getProducts(true);
+
+		// then
+		assertThat(responses).extracting(ProductResponse::isBundle).containsExactly(true);
+		then(productRepository).should().findAllProductsWithRewards(true);
+		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L));
 	}
 
 	@Test
 	@DisplayName("상품 삭제는 실제 삭제가 아니라 비활성화한다")
 	void shouldDeactivateProductWhenDeleted() {
 		// given
-		Product product = product("판매 상품", "판매 설명", 1000, 1, true);
+		Product product = product("판매 상품", "판매 설명", 1000, 1, true, false);
 		given(productRepository.findById(1L)).willReturn(Optional.of(product));
 
 		// when
@@ -193,20 +214,21 @@ class AdminProductServiceImplTest {
 		List<ProductCreateRequest.ProductRewardCreateRequest> rewards,
 		List<ProductCreateRequest.ProductRewardCreateRequest> bonusRewards
 	) {
-		return new ProductCreateRequest("신규 번들", "상품 설명", 1000, 1, true, rewards, bonusRewards);
+		return new ProductCreateRequest("신규 번들", "상품 설명", 1000, 1, true, true, rewards, bonusRewards);
 	}
 
 	private ProductCreateRequest.ProductRewardCreateRequest reward(ItemType itemType, int quantity) {
 		return new ProductCreateRequest.ProductRewardCreateRequest(itemType, quantity);
 	}
 
-	private Product product(String name, String description, int price, int displayOrder, boolean isActive) {
+	private Product product(String name, String description, int price, int displayOrder, boolean isActive, boolean isBundle) {
 		Product product = Product.builder()
 			.name(name)
 			.description(description)
 			.price(price)
 			.displayOrder(displayOrder)
 			.isActive(isActive)
+			.isBundle(isBundle)
 			.build();
 		product.addReward(ProductReward.builder().itemType(ItemType.MATCHING_TICKET).quantity(1).build());
 		product.addBonusReward(ProductBonusReward.builder().itemType(ItemType.MATCHING_TICKET).quantity(1).build());

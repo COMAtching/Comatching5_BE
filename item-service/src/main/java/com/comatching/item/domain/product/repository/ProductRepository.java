@@ -13,17 +13,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		FROM Product p
 		LEFT JOIN FETCH p.rewards
 		WHERE p.isActive = true
+		AND (:isBundle IS NULL OR p.isBundle = :isBundle)
 		ORDER BY p.displayOrder ASC, p.id ASC
 		""")
-	List<Product> findActiveProductsWithRewards();
+	List<Product> findActiveProductsWithRewards(@Param("isBundle") Boolean isBundle);
 
 	@Query("""
 		SELECT DISTINCT p
 		FROM Product p
 		LEFT JOIN FETCH p.rewards
+		WHERE (:isBundle IS NULL OR p.isBundle = :isBundle)
 		ORDER BY p.displayOrder ASC, p.id ASC
 		""")
-	List<Product> findAllProductsWithRewards();
+	List<Product> findAllProductsWithRewards(@Param("isBundle") Boolean isBundle);
 
 	@Query("""
 		SELECT DISTINCT p

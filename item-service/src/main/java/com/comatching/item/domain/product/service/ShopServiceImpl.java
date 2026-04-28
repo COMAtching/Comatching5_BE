@@ -38,8 +38,8 @@ public class ShopServiceImpl implements ShopService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<ProductResponse> getActiveProducts() {
-		List<Product> products = productRepository.findActiveProductsWithRewards();
+	public List<ProductResponse> getActiveProducts(Boolean isBundle) {
+		List<Product> products = productRepository.findActiveProductsWithRewards(isBundle);
 		fetchBonusRewards(products);
 		return products.stream()
 			.map(ProductResponse::from)

@@ -7,7 +7,7 @@ import com.comatching.item.domain.product.dto.PurchasePendingStatusResponse;
 
 public interface ShopService {
 
-	List<ProductResponse> getActiveProducts();
+	List<ProductResponse> getActiveProducts(Boolean isBundle);
 
 	void requestPurchase(Long memberId, Long productId);
 

@@ -29,6 +29,9 @@ public record ProductResponse(
 	@Schema(description = "판매 활성 여부. 사용자 상품 목록은 true 상품만 반환합니다.", example = "true")
 	boolean isActive,
 
+	@Schema(description = "번들 상품 여부. isBundle 필터 조회에 사용됩니다.", example = "true")
+	boolean isBundle,
+
 	@Schema(description = "실제 지급 구성품 목록. 구매 승인 시 이 수량이 지급됩니다.")
 	List<ProductRewardDto> rewards,
 
@@ -43,6 +46,7 @@ public record ProductResponse(
 			product.getPrice(),
 			product.getDisplayOrder(),
 			product.isActive(),
+			product.isBundle(),
 			product.getRewards().stream()
 				.map(ProductRewardDto::from)
 				.toList(),

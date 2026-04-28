@@ -39,6 +39,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			.price(1000)
 			.displayOrder(1)
 			.isActive(true)
+			.isBundle(false)
 			.build();
 		p1.addReward(ProductReward.builder()
 			.itemType(ItemType.MATCHING_TICKET)
@@ -52,6 +53,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			.price(5000)
 			.displayOrder(2)
 			.isActive(true)
+			.isBundle(true)
 			.build();
 		p2.addReward(ProductReward.builder()
 			.itemType(ItemType.MATCHING_TICKET)
@@ -73,6 +75,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			.price(9000)
 			.displayOrder(3)
 			.isActive(true)
+			.isBundle(true)
 			.build();
 		p3.addReward(ProductReward.builder()
 			.itemType(ItemType.MATCHING_TICKET)
@@ -86,6 +89,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			.price(300)
 			.displayOrder(4)
 			.isActive(true)
+			.isBundle(false)
 			.build();
 		p4.addReward(ProductReward.builder()
 			.itemType(ItemType.OPTION_TICKET)
