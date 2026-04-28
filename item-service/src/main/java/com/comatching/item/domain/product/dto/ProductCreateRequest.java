@@ -34,6 +34,9 @@ public record ProductCreateRequest(
 		@Schema(description = "판매 활성 여부. false이면 사용자 상품 목록과 구매 대상에서 제외됩니다.", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
 		boolean isActive,
 
+		@Schema(description = "번들 상품 여부. true이면 번들 상품 필터에 포함됩니다.", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+		boolean isBundle,
+
 		@Schema(description = "실제 지급 구성품 목록. 구매 승인 시 이 수량이 그대로 지급됩니다.", requiredMode = Schema.RequiredMode.REQUIRED)
 		@NotEmpty(message = "구성품은 최소 1개 이상이어야 합니다.")
 		List<@Valid ProductRewardCreateRequest> rewards,

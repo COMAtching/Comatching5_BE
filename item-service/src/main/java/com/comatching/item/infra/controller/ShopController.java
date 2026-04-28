@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.common.annotation.CurrentMember;
@@ -30,11 +31,13 @@ public class ShopController {
 
 	@Operation(
 		summary = "상품 목록 조회",
-		description = "현재 판매 중인 활성 상품만 displayOrder 오름차순, id 오름차순으로 조회합니다. 응답에는 실제 지급 rewards와 프론트 표시용 bonusRewards가 함께 포함됩니다."
+		description = "현재 판매 중인 활성 상품만 displayOrder 오름차순, id 오름차순으로 조회합니다. isBundle query parameter로 번들/비번들 상품을 필터링할 수 있습니다. 응답에는 실제 지급 rewards와 프론트 표시용 bonusRewards가 함께 포함됩니다."
 	)
 	@GetMapping("/products")
-	public ResponseEntity<ApiResponse<List<ProductResponse>>> getActiveProducts() {
-		return ResponseEntity.ok(ApiResponse.ok(shopService.getActiveProducts()));
+	public ResponseEntity<ApiResponse<List<ProductResponse>>> getActiveProducts(
+		@RequestParam(required = false) Boolean isBundle
+	) {
+		return ResponseEntity.ok(ApiResponse.ok(shopService.getActiveProducts(isBundle)));
 	}
 
 	@Operation(summary = "아이템 구매 요청", description = "상품 ID 기반으로 구매 요청(입금 대기)을 생성합니다.")

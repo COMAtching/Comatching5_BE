@@ -37,6 +37,7 @@ public class AdminProductServiceImpl implements AdminProductService {
 			.price(request.price())
 			.displayOrder(request.displayOrder())
 			.isActive(request.isActive())
+			.isBundle(request.isBundle())
 			.build();
 
 		request.rewards().forEach(rewardRequest -> {
@@ -64,8 +65,8 @@ public class AdminProductServiceImpl implements AdminProductService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<ProductResponse> getProducts() {
-		List<Product> products = productRepository.findAllProductsWithRewards();
+	public List<ProductResponse> getProducts(Boolean isBundle) {
+		List<Product> products = productRepository.findAllProductsWithRewards(isBundle);
 		fetchBonusRewards(products);
 		return products.stream()
 			.map(ProductResponse::from)

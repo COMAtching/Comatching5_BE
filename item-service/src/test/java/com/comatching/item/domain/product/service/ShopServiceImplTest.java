@@ -103,15 +103,32 @@ class ShopServiceImplTest {
 		Product second = product("두 번째 상품", 2000, true);
 		ReflectionTestUtils.setField(first, "id", 1L);
 		ReflectionTestUtils.setField(second, "id", 2L);
-		given(productRepository.findActiveProductsWithRewards()).willReturn(List.of(first, second));
+		given(productRepository.findActiveProductsWithRewards(null)).willReturn(List.of(first, second));
 
 		// when
-		List<ProductResponse> responses = shopService.getActiveProducts();
+		List<ProductResponse> responses = shopService.getActiveProducts(null);
 
 		// then
 		assertThat(responses).extracting(ProductResponse::id).containsExactly(1L, 2L);
 		assertThat(responses).extracting(ProductResponse::isActive).containsExactly(true, true);
 		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L, 2L));
+	}
+
+	@Test
+	@DisplayName("활성 상품 목록은 번들 여부로 필터링할 수 있다")
+	void shouldGetActiveProductsFilteredByBundleFlag() {
+		// given
+		Product bundle = product("번들 상품", 2000, true, true);
+		ReflectionTestUtils.setField(bundle, "id", 1L);
+		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(bundle));
+
+		// when
+		List<ProductResponse> responses = shopService.getActiveProducts(true);
+
+		// then
+		assertThat(responses).extracting(ProductResponse::isBundle).containsExactly(true);
+		then(productRepository).should().findActiveProductsWithRewards(true);
+		then(productRepository).should().fetchBonusRewardsByProductIds(List.of(1L));
 	}
 
 	@Test
@@ -216,12 +233,17 @@ class ShopServiceImplTest {
 	}
 
 	private Product product(String name, int price, boolean isActive) {
+		return product(name, price, isActive, false);
+	}
+
+	private Product product(String name, int price, boolean isActive, boolean isBundle) {
 		return Product.builder()
 			.name(name)
 			.description("상품 설명")
 			.price(price)
 			.displayOrder(1)
 			.isActive(isActive)
+			.isBundle(isBundle)
 			.build();
 	}
 }

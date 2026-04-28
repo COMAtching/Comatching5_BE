@@ -45,6 +45,7 @@ class ProductCreateRequestTest {
 			1000,
 			1,
 			true,
+			true,
 			List.of(reward(ItemType.MATCHING_TICKET, 1)),
 			null
 		);
@@ -140,7 +141,7 @@ class ProductCreateRequestTest {
 		List<ProductCreateRequest.ProductRewardCreateRequest> rewards,
 		List<ProductCreateRequest.ProductRewardCreateRequest> bonusRewards
 	) {
-		return new ProductCreateRequest(name, description, price, displayOrder, true, rewards, bonusRewards);
+		return new ProductCreateRequest(name, description, price, displayOrder, true, true, rewards, bonusRewards);
 	}
 
 	private static ProductCreateRequest.ProductRewardCreateRequest reward(ItemType itemType, int quantity) {

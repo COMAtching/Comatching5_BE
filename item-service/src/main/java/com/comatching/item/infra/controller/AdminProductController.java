@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.common.annotation.CurrentMember;
@@ -36,7 +37,7 @@ public class AdminProductController {
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(
 		summary = "상품 등록",
-		description = "상품명, 50자 이하 설명, 가격, 노출 순서, 활성 여부, 실제 지급 구성품, 프론트 표시용 보너스 구성품을 입력받아 신규 상품을 등록합니다. 실제 지급은 rewards 기준이며 bonusRewards는 표시용입니다."
+		description = "상품명, 50자 이하 설명, 가격, 노출 순서, 활성 여부, 번들 여부, 실제 지급 구성품, 프론트 표시용 보너스 구성품을 입력받아 신규 상품을 등록합니다. 실제 지급은 rewards 기준이며 bonusRewards는 표시용입니다."
 	)
 	@PostMapping("/products")
 	public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
@@ -50,13 +51,14 @@ public class AdminProductController {
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(
 		summary = "관리자 상품 목록 조회",
-		description = "활성/비활성 전체 상품 목록을 displayOrder 오름차순, id 오름차순으로 조회합니다."
+		description = "활성/비활성 전체 상품 목록을 displayOrder 오름차순, id 오름차순으로 조회합니다. isBundle query parameter로 번들/비번들 상품을 필터링할 수 있습니다."
 	)
 	@GetMapping("/products")
 	public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts(
-		@CurrentMember MemberInfo memberInfo
+		@CurrentMember MemberInfo memberInfo,
+		@RequestParam(required = false) Boolean isBundle
 	) {
-		return ResponseEntity.ok(ApiResponse.ok(adminProductService.getProducts()));
+		return ResponseEntity.ok(ApiResponse.ok(adminProductService.getProducts(isBundle)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
