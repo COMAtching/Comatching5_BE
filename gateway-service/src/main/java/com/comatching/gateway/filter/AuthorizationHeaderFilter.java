@@ -60,14 +60,21 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 			try {
 				Claims claims = jwtUtil.parseToken(accessToken);
 				ServerHttpRequest.Builder requestBuilder = request.mutate()
-					.header("X-Member-Id", claims.getSubject())
-					.header("X-Member-Email", claims.get("email", String.class))
-					.header("X-Member-Role", claims.get("role", String.class));
+					.headers(headers -> {
+						headers.remove("X-Member-Id");
+						headers.remove("X-Member-Email");
+						headers.remove("X-Member-Role");
+						headers.remove("X-Member-Nickname");
+
+						headers.set("X-Member-Id", claims.getSubject());
+						headers.set("X-Member-Email", claims.get("email", String.class));
+						headers.set("X-Member-Role", claims.get("role", String.class));
+					});
 
 				String nickname = claims.get("nickname", String.class);
 				if (nickname != null && !nickname.isBlank()) {
-					nickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
-					requestBuilder.header("X-Member-Nickname", nickname);
+					String encodedNickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
+					requestBuilder.headers(headers -> headers.set("X-Member-Nickname", encodedNickname));
 				}
 
 				return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
