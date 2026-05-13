@@ -2,6 +2,9 @@
 server:
   port: 9003
 
+user-service:
+  url: http://user-service:9000
+
 spring:
   application:
     name: chat-service
