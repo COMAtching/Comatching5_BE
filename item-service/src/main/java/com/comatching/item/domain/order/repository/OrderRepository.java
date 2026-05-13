@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.comatching.common.domain.enums.ItemType;
 import com.comatching.item.domain.order.entity.Order;
 import com.comatching.item.domain.order.enums.OrderStatus;
 
@@ -22,6 +23,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 		AND o.expiresAt > :now
 		""")
 	boolean existsActivePendingOrder(@Param("memberId") Long memberId, @Param("now") LocalDateTime now);
+
+	@Query("""
+		SELECT COALESCE(SUM(oi.quantity), 0)
+		FROM Order o
+		JOIN o.orderItems oi
+		WHERE o.memberId = :memberId
+		AND o.status = com.comatching.item.domain.order.enums.OrderStatus.PENDING
+		AND o.expiresAt > :now
+		AND oi.itemType = :itemType
+		""")
+	long sumActivePendingQuantityByMemberIdAndItemType(
+		@Param("memberId") Long memberId,
+		@Param("itemType") ItemType itemType,
+		@Param("now") LocalDateTime now
+	);
 
 	List<Order> findAllByStatusOrderByRequestedAtDesc(OrderStatus status);
 

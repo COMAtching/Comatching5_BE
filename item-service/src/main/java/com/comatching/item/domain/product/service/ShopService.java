@@ -3,6 +3,7 @@ package com.comatching.item.domain.product.service;
 import java.util.List;
 
 import com.comatching.item.domain.product.dto.ProductResponse;
+import com.comatching.item.domain.product.dto.PurchaseLimitResponse;
 import com.comatching.item.domain.product.dto.PurchasePendingStatusResponse;
 
 public interface ShopService {
@@ -12,4 +13,6 @@ public interface ShopService {
 	void requestPurchase(Long memberId, Long productId);
 
 	PurchasePendingStatusResponse getMyPurchaseRequestStatus(Long memberId);
+
+	PurchaseLimitResponse getMyPurchaseLimits(Long memberId);
 }
