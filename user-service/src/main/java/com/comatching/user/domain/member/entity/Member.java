@@ -89,6 +89,7 @@ public class Member {
 		this.email = "withdrawn_" + this.id + "_" + uuid + "@deleted.com";
 
 		this.password = null;
+		this.realName = null;
 
 		this.socialType = null;
 		this.socialId = null;

@@ -100,6 +100,8 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response).isNotNull();
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/default.png");
+			assertThat(response.contactFrequency()).isEqualTo("FREQUENT");
 			assertThat(response.tags()).hasSize(2);
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("계란형 얼굴", "밝은 분위기");
@@ -280,7 +282,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.createProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_dog_male1.png");
 		}
 
 		@Test
@@ -376,7 +378,7 @@ class ProfileServiceImplTest {
 		}
 
 		@Test
-		@DisplayName("프로필 이미지 값이 default면 기본 프로필 이미지로 변경된다")
+		@DisplayName("프로필 이미지 값이 default면 공용 기본 프로필 이미지로 변경된다")
 		void shouldSetDefaultProfileImageOnUpdateWhenDefaultValueProvided() {
 			// given
 			Long memberId = 1L;
@@ -395,7 +397,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/default.png");
 		}
 
 		@Test
@@ -418,7 +420,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/fox_female%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_fox_female1.png");
 		}
 	}
 
@@ -471,6 +473,7 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response).isNotNull();
+			assertThat(response.contactFrequency()).isEqualTo("FREQUENT");
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("계란형 얼굴", "밝은 분위기");
 		}

@@ -13,14 +13,21 @@ server:
 client:
   url: ${CLIENT_URL:https://comatching.site}
 
+auth:
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:true}
+    domain: ${AUTH_COOKIE_DOMAIN:comatching.site}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+
 comatching:
   profile:
     default-images:
       base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:https://comatching.site/api/public/profile-images/}
       filenames:
-        - "dog_male 1.png"
-        - "cat_female 1.png"
-        - "dinosaur 1.png"
+        - "default.png"
+        - "animal_dog_male1.png"
+        - "animal_cat_female1.png"
+        - "animal_dinosaur1.png"
 
 spring:
   application:

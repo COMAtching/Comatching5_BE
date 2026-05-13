@@ -2,13 +2,15 @@ package com.comatching.user.domain.member.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.auth.MemberLoginDto;
-import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
+import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.entity.Member;
@@ -77,8 +79,21 @@ public class MemberServiceImpl implements MemberService {
 		String email = member.getEmail();
 		member.withdraw();
 
-		// Kafka 이벤트 발행
-		eventPublisher.sendWithdrawEvent(memberId, email);
+		publishWithdrawEventAfterCommit(memberId, email);
+	}
+
+	private void publishWithdrawEventAfterCommit(Long memberId, String email) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			eventPublisher.sendWithdrawEvent(memberId, email);
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				eventPublisher.sendWithdrawEvent(memberId, email);
+			}
+		});
 	}
 
 	@Override
@@ -97,6 +112,14 @@ public class MemberServiceImpl implements MemberService {
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
 
 		member.updateRealName(realName.trim());
+	}
+
+	@Override
+	public String getRealName(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+
+		return member.getRealName();
 	}
 
 	@Override

@@ -8,11 +8,13 @@ import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileTagDto;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 public record ProfileUpdateRequest(
 	String nickname,
 	String intro,
 	String mbti,
+	@JsonAlias("profileImageKey")
 	String profileImageUrl,
 	Gender gender,
 	LocalDate birthDate,

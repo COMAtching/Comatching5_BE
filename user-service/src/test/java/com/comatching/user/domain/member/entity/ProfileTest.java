@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.ProfileTagItem;
+import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.exception.BusinessException;
 
 @DisplayName("Profile 태그 관리 테스트")
@@ -31,6 +32,42 @@ class ProfileTest {
 			.major("컴퓨터공학과")
 			.contactFrequency(ContactFrequency.FREQUENT)
 			.build();
+	}
+
+	@Test
+	@DisplayName("탈퇴 프로필 마스킹은 필수 컬럼을 null로 만들지 않는다")
+	void shouldMaskWithdrawnProfileWithoutNullingRequiredFields() {
+		// given
+		Profile profile = Profile.builder()
+			.nickname("손뻗는 조향사")
+			.gender(Gender.MALE)
+			.birthDate(LocalDate.of(2000, 1, 1))
+			.intro("intro")
+			.mbti("INTJ")
+			.profileImageUrl("https://example.com/profile.png")
+			.socialAccountType(SocialAccountType.INSTAGRAM)
+			.socialAccountId("@id")
+			.university("가톨릭대학교")
+			.major("정보통신전자공학부")
+			.contactFrequency(ContactFrequency.FREQUENT)
+			.song("song")
+			.build();
+
+		// when
+		profile.clearProfileData();
+
+		// then
+		assertThat(profile.getNickname()).isEqualTo("탈퇴한 사용자");
+		assertThat(profile.getBirthDate()).isEqualTo(LocalDate.of(1970, 1, 1));
+		assertThat(profile.getMbti()).isEqualTo("UNKNOWN");
+		assertThat(profile.getUniversity()).isEqualTo("(알 수 없음)");
+		assertThat(profile.getMajor()).isEqualTo("(알 수 없음)");
+		assertThat(profile.isMatchable()).isFalse();
+		assertThat(profile.getIntro()).isNull();
+		assertThat(profile.getProfileImageUrl()).isNull();
+		assertThat(profile.getSocialAccountType()).isNull();
+		assertThat(profile.getSocialAccountId()).isNull();
+		assertThat(profile.getSong()).isNull();
 	}
 
 	@Nested

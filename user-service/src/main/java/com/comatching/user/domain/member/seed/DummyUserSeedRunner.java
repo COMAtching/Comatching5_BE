@@ -22,6 +22,7 @@ import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.DefaultHobby;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.ProfileTagItem;
+import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileTagDto;
@@ -98,14 +99,19 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 		"자유전공학부"
 	);
 	private static final List<String> IMAGE_KEY_POOL = List.of(
-		"default_dog", "default_cat", "default_bear", "default_fox", "default_rabbit", "default_otter"
+		"default",
+		"default_dog", "default_cat", "default_bear", "default_fox", "default_rabbit", "default_otter",
+		"default_wolf", "default_horse", "default_snake", "default_dinosaur"
 	);
 	private static final List<String> INTRO_POOL = List.of(
-		"hello there",
-		"coffee and coding",
-		"weekend hiking",
-		"always learning",
-		"music and books"
+		"새로운 사람을 알아가는 시간을 좋아해요.",
+		"대화가 잘 통하는 사람과 편하게 친해지고 싶어요.",
+		"주말에는 카페나 산책으로 기분 전환하는 편이에요.",
+		"취향을 나누고 같이 웃을 수 있는 만남을 기대해요.",
+		"천천히 알아가면서 좋은 인연을 만들고 싶어요.",
+		"맛있는 음식과 좋은 음악 이야기를 좋아해요.",
+		"처음엔 조용해도 친해지면 장난기가 많아요.",
+		"서로의 일상을 자연스럽게 응원하는 관계가 좋아요."
 	);
 
 	private final DummyUserSeedService dummyUserSeedService;
@@ -136,6 +142,12 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 	@Value("${dummy.seed.raw-password:Dummy!1234}")
 	private String rawPassword;
 
+	@Value("${dummy.seed.balanced-gender:false}")
+	private boolean balancedGender;
+
+	@Value("${dummy.seed.instagram-account-ratio:0.0}")
+	private double instagramAccountRatio;
+
 	@Value("${dummy.seed.require-allowed-profile:true}")
 	private boolean requireAllowedProfile;
 
@@ -160,6 +172,8 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 		List<String> universities = resolveValuePool(universitiesRaw, DEFAULT_UNIVERSITIES);
 		List<String> majors = resolveValuePool(majorsRaw, DEFAULT_MAJORS);
 		Random random = new Random();
+		List<Gender> genderPlan = createGenderPlan(random, targetCount);
+		List<Boolean> instagramAccountPlan = createInstagramAccountPlan(random, targetCount);
 		String encodedPassword = passwordEncoder.encode(rawPassword);
 
 		int created = 0;
@@ -179,7 +193,11 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 			sequence++;
 
 			try {
-				createSingleDummyUser(random, email, nickname, encodedPassword, universities, majors);
+				Gender gender = resolveGender(random, genderPlan, created);
+				boolean useInstagramAccount = resolveInstagramAccount(instagramAccountPlan, created);
+				createSingleDummyUser(
+					random, email, nickname, encodedPassword, universities, majors, gender, useInstagramAccount
+				);
 				created++;
 
 				if (created % 100 == 0) {
@@ -215,17 +233,19 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 		String nickname,
 		String encodedPassword,
 		List<String> universities,
-		List<String> majors
+		List<String> majors,
+		Gender gender,
+		boolean useInstagramAccount
 	) {
 		ProfileCreateRequest request = ProfileCreateRequest.builder()
 			.nickname(nickname)
-			.gender(randomEnum(random, Gender.values()))
+			.gender(gender)
 			.birthDate(randomBirthDate(random))
 			.mbti(randomElement(random, MBTI_POOL))
 			.intro(randomElement(random, INTRO_POOL))
 			.profileImageKey(randomElement(random, IMAGE_KEY_POOL))
-			.socialType(null)
-			.socialAccountId(null)
+			.socialType(useInstagramAccount ? SocialAccountType.INSTAGRAM : null)
+			.socialAccountId(useInstagramAccount ? buildInstagramAccountId(nickname) : null)
 			.university(randomElement(random, universities))
 			.major(randomElement(random, majors))
 			.contactFrequency(randomEnum(random, ContactFrequency.values()))
@@ -243,8 +263,65 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 
 		int hobbyCount = 2 + random.nextInt(4); // 2~5
 		return pool.subList(0, hobbyCount).stream()
-			.map(hobby -> new HobbyDto(hobby.getCategory(), hobby.name()))
+			.map(hobby -> new HobbyDto(hobby.getCategory(), removeLeadingEmoji(hobby.getDisplayName())))
 			.toList();
+	}
+
+	private List<Gender> createGenderPlan(Random random, int count) {
+		if (!balancedGender) {
+			return List.of();
+		}
+
+		List<Gender> genders = new ArrayList<>(count);
+		int maleCount = count / 2;
+		int femaleCount = count / 2;
+		if (count % 2 == 1) {
+			if (random.nextBoolean()) {
+				maleCount++;
+			} else {
+				femaleCount++;
+			}
+		}
+
+		for (int i = 0; i < maleCount; i++) {
+			genders.add(Gender.MALE);
+		}
+		for (int i = 0; i < femaleCount; i++) {
+			genders.add(Gender.FEMALE);
+		}
+		Collections.shuffle(genders, random);
+		return genders;
+	}
+
+	private Gender resolveGender(Random random, List<Gender> genderPlan, int createdCount) {
+		if (!balancedGender) {
+			return randomEnum(random, Gender.values());
+		}
+		return genderPlan.get(createdCount);
+	}
+
+	private List<Boolean> createInstagramAccountPlan(Random random, int count) {
+		if (instagramAccountRatio <= 0) {
+			return List.of();
+		}
+
+		int instagramAccountCount = (int) Math.round(count * Math.min(instagramAccountRatio, 1.0));
+		List<Boolean> instagramAccountPlan = new ArrayList<>(count);
+		for (int i = 0; i < instagramAccountCount; i++) {
+			instagramAccountPlan.add(true);
+		}
+		for (int i = instagramAccountCount; i < count; i++) {
+			instagramAccountPlan.add(false);
+		}
+		Collections.shuffle(instagramAccountPlan, random);
+		return instagramAccountPlan;
+	}
+
+	private boolean resolveInstagramAccount(List<Boolean> instagramAccountPlan, int createdCount) {
+		if (instagramAccountRatio <= 0) {
+			return false;
+		}
+		return instagramAccountPlan.get(createdCount);
 	}
 
 	private List<ProfileTagDto> randomTags(Random random) {
@@ -319,6 +396,18 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 
 	private String buildNickname(long sequence) {
 		return String.format("%s_%06d", nicknamePrefix, sequence);
+	}
+
+	private static String buildInstagramAccountId(String nickname) {
+		return nickname.toLowerCase(Locale.ROOT).replace("_", ".") + ".ig";
+	}
+
+	private static String removeLeadingEmoji(String displayName) {
+		int firstSpaceIndex = displayName.indexOf(' ');
+		if (firstSpaceIndex < 0) {
+			return displayName;
+		}
+		return displayName.substring(firstSpaceIndex + 1).trim();
 	}
 
 	private static <T> T randomElement(Random random, List<T> list) {
