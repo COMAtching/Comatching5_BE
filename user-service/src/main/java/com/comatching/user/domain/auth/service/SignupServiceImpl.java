@@ -82,7 +82,7 @@ public class SignupServiceImpl implements SignupService {
 
 		return CompleteSignupResponse.builder()
 			.profile(profileResponse)
-			.isOnboardingFinished(false)
+			.isOnboardingFinished(true)
 			.build();
 	}
 }
