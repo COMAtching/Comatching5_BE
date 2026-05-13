@@ -14,6 +14,7 @@ import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.item.domain.product.dto.ProductResponse;
+import com.comatching.item.domain.product.dto.PurchaseLimitResponse;
 import com.comatching.item.domain.product.dto.PurchasePendingStatusResponse;
 import com.comatching.item.domain.product.service.ShopService;
 
@@ -56,5 +57,13 @@ public class ShopController {
 		@CurrentMember MemberInfo memberInfo
 	) {
 		return ResponseEntity.ok(ApiResponse.ok(shopService.getMyPurchaseRequestStatus(memberInfo.memberId())));
+	}
+
+	@Operation(summary = "내 아이템 구매 한도 조회", description = "현재 사용자의 매칭권/옵션권 보유 수량, 진행 중인 구매 요청 수량, 최대 구매 한도와 남은 구매 가능 수량을 조회합니다.")
+	@GetMapping("/purchase/limits")
+	public ResponseEntity<ApiResponse<PurchaseLimitResponse>> getMyPurchaseLimits(
+		@CurrentMember MemberInfo memberInfo
+	) {
+		return ResponseEntity.ok(ApiResponse.ok(shopService.getMyPurchaseLimits(memberInfo.memberId())));
 	}
 }

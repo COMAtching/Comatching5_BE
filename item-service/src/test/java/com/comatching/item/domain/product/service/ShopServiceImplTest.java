@@ -23,10 +23,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.item.domain.item.repository.ItemRepository;
 import com.comatching.item.domain.order.entity.Order;
 import com.comatching.item.domain.order.enums.OrderStatus;
 import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.order.service.OrderOutboxService;
+import com.comatching.item.domain.product.dto.PurchaseLimitResponse;
 import com.comatching.item.domain.product.dto.PurchasePendingStatusResponse;
 import com.comatching.item.domain.product.dto.ProductResponse;
 import com.comatching.item.domain.product.entity.Product;
@@ -49,6 +51,9 @@ class ShopServiceImplTest {
 
 	@Mock
 	private OrderRepository orderRepository;
+
+	@Mock
+	private ItemRepository itemRepository;
 
 	@Mock
 	private UserOrderClient userOrderClient;
@@ -175,6 +180,28 @@ class ShopServiceImplTest {
 	}
 
 	@Test
+	@DisplayName("상품 구매 후 아이템 보유 수량이 구매 한도를 초과하면 요청을 막는다")
+	void shouldThrowWhenPurchaseLimitExceeded() {
+		// given
+		Product product = product("매칭권 패키지", 9900, true);
+		product.addReward(ProductReward.builder().itemType(ItemType.MATCHING_TICKET).quantity(10).build());
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
+		given(itemRepository.sumUsableQuantityByMemberIdAndItemType(100L, ItemType.MATCHING_TICKET))
+			.willReturn(25L);
+		given(orderRepository.sumActivePendingQuantityByMemberIdAndItemType(eq(100L), eq(ItemType.MATCHING_TICKET), any()))
+			.willReturn(0L);
+
+		// when & then
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(PaymentErrorCode.PURCHASE_LIMIT_EXCEEDED);
+		then(userOrderClient).should(never()).getOrdererInfo(any());
+		then(orderRepository).should(never()).save(any());
+	}
+
+	@Test
 	@DisplayName("회원 실명이 없으면 예외가 발생한다")
 	void shouldThrowWhenRealNameMissing() {
 		// given
@@ -230,6 +257,38 @@ class ShopServiceImplTest {
 
 		// then
 		assertThat(response.status()).isEqualTo("NONE");
+	}
+
+	@Test
+	@DisplayName("내 구매 한도 조회 시 보유 수량, 대기 수량, 최대치와 잔여 수량을 반환한다")
+	void shouldReturnMyPurchaseLimits() {
+		// given
+		given(itemRepository.sumUsableQuantityByMemberIdAndItemType(100L, ItemType.MATCHING_TICKET))
+			.willReturn(12L);
+		given(itemRepository.sumUsableQuantityByMemberIdAndItemType(100L, ItemType.OPTION_TICKET))
+			.willReturn(80L);
+		given(orderRepository.sumActivePendingQuantityByMemberIdAndItemType(eq(100L), eq(ItemType.MATCHING_TICKET), any()))
+			.willReturn(5L);
+		given(orderRepository.sumActivePendingQuantityByMemberIdAndItemType(eq(100L), eq(ItemType.OPTION_TICKET), any()))
+			.willReturn(20L);
+
+		// when
+		PurchaseLimitResponse response = shopService.getMyPurchaseLimits(100L);
+
+		// then
+		assertThat(response.limits()).hasSize(2);
+		assertThat(response.limits().get(0).itemType()).isEqualTo(ItemType.MATCHING_TICKET);
+		assertThat(response.limits().get(0).ownedQuantity()).isEqualTo(12);
+		assertThat(response.limits().get(0).pendingQuantity()).isEqualTo(5);
+		assertThat(response.limits().get(0).maxQuantity()).isEqualTo(30);
+		assertThat(response.limits().get(0).remainingQuantity()).isEqualTo(13);
+		assertThat(response.limits().get(0).purchasable()).isTrue();
+		assertThat(response.limits().get(1).itemType()).isEqualTo(ItemType.OPTION_TICKET);
+		assertThat(response.limits().get(1).ownedQuantity()).isEqualTo(80);
+		assertThat(response.limits().get(1).pendingQuantity()).isEqualTo(20);
+		assertThat(response.limits().get(1).maxQuantity()).isEqualTo(90);
+		assertThat(response.limits().get(1).remainingQuantity()).isZero();
+		assertThat(response.limits().get(1).purchasable()).isFalse();
 	}
 
 	private Product product(String name, int price, boolean isActive) {
