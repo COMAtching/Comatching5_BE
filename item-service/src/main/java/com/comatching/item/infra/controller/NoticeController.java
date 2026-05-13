@@ -17,6 +17,7 @@ import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
 import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
 import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
 import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
@@ -34,6 +35,15 @@ import lombok.RequiredArgsConstructor;
 public class NoticeController {
 
 	private final NoticeService noticeService;
+
+	@RequireRole(MemberRole.ROLE_ADMIN)
+	@Operation(summary = "관리자 공지사항 목록 조회", description = "관리자가 등록된 전체 공지사항을 노출 시작시간 내림차순으로 조회합니다.")
+	@GetMapping("/admin/notices")
+	public ResponseEntity<ApiResponse<List<AdminNoticeResponse>>> getAdminNotices(
+		@CurrentMember MemberInfo memberInfo
+	) {
+		return ResponseEntity.ok(ApiResponse.ok(noticeService.getAdminNotices()));
+	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(summary = "공지사항 등록", description = "관리자가 제목, 내용, 시작시간, 종료시간으로 공지사항을 등록합니다.")

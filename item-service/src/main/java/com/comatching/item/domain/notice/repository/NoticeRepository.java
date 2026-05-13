@@ -9,6 +9,8 @@ import com.comatching.item.domain.notice.entity.Notice;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
+	List<Notice> findAllByOrderByStartTimeDescIdDesc();
+
 	List<Notice> findAllByStartTimeLessThanEqualAndEndTimeGreaterThanEqualOrderByStartTimeDescIdDesc(
 		LocalDateTime currentTime,
 		LocalDateTime currentTime2
