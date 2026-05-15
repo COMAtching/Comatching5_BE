@@ -219,19 +219,20 @@ class MatchingProcessorTest {
 		}
 
 		@Test
-		@DisplayName("나이 제한 옵션이 있으면 20~27세 경계 내에서 후보를 필터링한다")
-		void shouldFilterCandidatesByAgeLimitOffsetWithin20To27() {
+		@DisplayName("나이 제한 옵션이 있으면 요청받은 실제 나이 범위를 27세 상한 내에서 필터링한다")
+		void shouldFilterCandidatesByActualAgeLimitWithinMaxAllowedAge() {
 			// given
 			Long memberId = 1L;
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
 			MatchingRequest request = new MatchingRequest(
 				null, null, null, null, false, null,
-				-10, 10
+				20, 29
 			);
 
 			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);
 			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
-			List<MatchingCandidate> candidates = List.of(age19, age27);
+			MatchingCandidate age29 = createCandidate(4L, "ISTJ", 29);
+			List<MatchingCandidate> candidates = List.of(age19, age27, age29);
 
 			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
@@ -250,6 +251,7 @@ class MatchingProcessorTest {
 					&& condition.limit() == 500
 			));
 			verify(scoreCalculator, never()).calculate(eq(age19), eq(request), any(KoreanAge.class));
+			verify(scoreCalculator, never()).calculate(eq(age29), eq(request), any(KoreanAge.class));
 		}
 
 		@Test
@@ -291,7 +293,7 @@ class MatchingProcessorTest {
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
 			MatchingRequest request = new MatchingRequest(
 				null, null, null, null, false, null,
-				-1, 1
+				22, 24
 			);
 			List<MatchingCandidate> firstPage = LongStream.rangeClosed(2L, 501L)
 				.mapToObj(id -> createCandidate(id, "ISTJ", 19))
@@ -324,7 +326,7 @@ class MatchingProcessorTest {
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
 			MatchingRequest request = new MatchingRequest(
 				null, null, null, null, false, null,
-				-1, 1
+				22, 24
 			);
 
 			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);

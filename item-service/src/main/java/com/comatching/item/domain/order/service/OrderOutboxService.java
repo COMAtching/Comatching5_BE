@@ -31,6 +31,8 @@ public class OrderOutboxService {
 		OrderCreatedOutboxPayload payload = new OrderCreatedOutboxPayload(
 			order.getId(),
 			order.getMemberId(),
+			order.getProductId(),
+			order.getProductCode(),
 			order.getRequestedItemName(),
 			order.getRequesterRealName(),
 			order.getRequesterUsername(),

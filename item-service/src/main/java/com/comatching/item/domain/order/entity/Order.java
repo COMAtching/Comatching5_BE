@@ -29,7 +29,8 @@ import lombok.NoArgsConstructor;
 	name = "purchase_order",
 	indexes = {
 		@Index(name = "idx_order_member_status", columnList = "memberId, status"),
-		@Index(name = "idx_order_status_expires", columnList = "status, expiresAt")
+		@Index(name = "idx_order_status_expires", columnList = "status, expiresAt"),
+		@Index(name = "idx_order_member_product_status", columnList = "memberId, productCode, status")
 	}
 )
 public class Order {
@@ -40,6 +41,10 @@ public class Order {
 
 	@Column(nullable = false)
 	private Long memberId;
+
+	private Long productId;
+
+	private String productCode;
 
 	@Column(nullable = false)
 	private String requestedItemName;
@@ -74,6 +79,8 @@ public class Order {
 	@Builder
 	public Order(
 		Long memberId,
+		Long productId,
+		String productCode,
 		String requestedItemName,
 		String requesterRealName,
 		String requesterUsername,
@@ -83,6 +90,8 @@ public class Order {
 		LocalDateTime expiresAt
 	) {
 		this.memberId = memberId;
+		this.productId = productId;
+		this.productCode = productCode;
 		this.requestedItemName = requestedItemName;
 		this.requesterRealName = requesterRealName;
 		this.requesterUsername = requesterUsername;

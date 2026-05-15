@@ -27,7 +27,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MatchingProcessor {
 
-	private static final int MIN_ALLOWED_AGE = 20;
 	private static final int MAX_ALLOWED_AGE = 27;
 	private static final int MAX_CANDIDATE_FETCH_SIZE = 500;
 
@@ -88,8 +87,8 @@ public class MatchingProcessor {
 
 	private Integer minAge(MatchingRequest request, KoreanAge myAge) {
 		Integer minAge = null;
-		if (request.hasCompleteAgeLimit() && myAge != null) {
-			minAge = Math.max(MIN_ALLOWED_AGE, myAge.getValue() + request.minAgeOffset());
+		if (request.hasCompleteAgeLimit()) {
+			minAge = request.minAgeLimit();
 		}
 		if (request.importantOption() == ImportantOption.AGE && request.ageOption() == AgeOption.EQUAL && myAge != null) {
 			minAge = max(minAge, myAge.getValue());
@@ -102,8 +101,8 @@ public class MatchingProcessor {
 
 	private Integer maxAge(MatchingRequest request, KoreanAge myAge) {
 		Integer maxAge = null;
-		if (request.hasCompleteAgeLimit() && myAge != null) {
-			maxAge = Math.min(MAX_ALLOWED_AGE, myAge.getValue() + request.maxAgeOffset());
+		if (request.hasCompleteAgeLimit()) {
+			maxAge = Math.min(MAX_ALLOWED_AGE, request.maxAgeLimit());
 		}
 		if (request.importantOption() == ImportantOption.AGE && request.ageOption() == AgeOption.EQUAL && myAge != null) {
 			maxAge = min(maxAge, myAge.getValue());
@@ -146,7 +145,7 @@ public class MatchingProcessor {
 		int maxScore
 	) {
 		for (MatchingCandidate candidate : candidates) {
-			if (!matchesAgeLimit(candidate, request, myAge)) {
+			if (!matchesAgeLimit(candidate, request)) {
 				continue;
 			}
 
@@ -168,17 +167,17 @@ public class MatchingProcessor {
 		return maxScore;
 	}
 
-	private boolean matchesAgeLimit(MatchingCandidate candidate, MatchingRequest request, KoreanAge myAge) {
+	private boolean matchesAgeLimit(MatchingCandidate candidate, MatchingRequest request) {
 		if (!request.hasAgeLimit()) {
 			return true;
 		}
 
-		if (!request.hasCompleteAgeLimit() || candidate.getAge() == null || myAge == null) {
+		if (!request.hasCompleteAgeLimit() || candidate.getAge() == null) {
 			return false;
 		}
 
-		int minAge = Math.max(MIN_ALLOWED_AGE, myAge.getValue() + request.minAgeOffset());
-		int maxAge = Math.min(MAX_ALLOWED_AGE, myAge.getValue() + request.maxAgeOffset());
+		int minAge = request.minAgeLimit();
+		int maxAge = Math.min(MAX_ALLOWED_AGE, request.maxAgeLimit());
 
 		if (minAge > maxAge) {
 			return false;

@@ -44,10 +44,13 @@ class AdminProductServiceImplTest {
 		// given
 		ProductCreateRequest request = new ProductCreateRequest(
 			"신규 번들",
+			"NEW_BUNDLE",
 			"매칭권과 옵션권을 함께 충전해요.",
 			3300,
 			7,
 			true,
+			true,
+			1,
 			true,
 			List.of(
 				reward(ItemType.MATCHING_TICKET, 3),
@@ -67,19 +70,25 @@ class AdminProductServiceImplTest {
 		Product saved = productCaptor.getValue();
 
 		assertThat(saved.getName()).isEqualTo("신규 번들");
+		assertThat(saved.getCode()).isEqualTo("NEW_BUNDLE");
 		assertThat(saved.getDescription()).isEqualTo("매칭권과 옵션권을 함께 충전해요.");
 		assertThat(saved.getPrice()).isEqualTo(3300);
 		assertThat(saved.getDisplayOrder()).isEqualTo(7);
 		assertThat(saved.isActive()).isTrue();
 		assertThat(saved.isBundle()).isTrue();
+		assertThat(saved.getPurchaseLimitPerMember()).isEqualTo(1);
+		assertThat(saved.isFirstPurchaseOnly()).isTrue();
 		assertThat(saved.getRewards()).hasSize(2);
 		assertThat(saved.getBonusRewards()).hasSize(1);
 		assertThat(response.name()).isEqualTo("신규 번들");
+		assertThat(response.code()).isEqualTo("NEW_BUNDLE");
 		assertThat(response.description()).isEqualTo("매칭권과 옵션권을 함께 충전해요.");
 		assertThat(response.price()).isEqualTo(3300);
 		assertThat(response.displayOrder()).isEqualTo(7);
 		assertThat(response.isActive()).isTrue();
 		assertThat(response.isBundle()).isTrue();
+		assertThat(response.purchaseLimitPerMember()).isEqualTo(1);
+		assertThat(response.firstPurchaseOnly()).isTrue();
 		assertThat(response.rewards()).hasSize(2);
 		assertThat(response.bonusRewards()).hasSize(1);
 		assertThat(response.bonusRewards().get(0).itemType()).isEqualTo(ItemType.OPTION_TICKET);
@@ -203,6 +212,66 @@ class AdminProductServiceImplTest {
 		assertInvalidInput(request);
 	}
 
+	@Test
+	@DisplayName("중복 상품 코드면 예외가 발생한다")
+	void shouldThrowWhenProductCodeDuplicated() {
+		// given
+		ProductCreateRequest request = request(
+			List.of(reward(ItemType.MATCHING_TICKET, 1)),
+			List.of()
+		);
+		given(productRepository.existsByCode("NEW_BUNDLE")).willReturn(true);
+
+		// when & then
+		assertInvalidInput(request);
+	}
+
+	@Test
+	@DisplayName("첫 구매 전용 상품의 구매 제한이 없으면 예외가 발생한다")
+	void shouldThrowWhenFirstPurchaseProductHasNoLimit() {
+		// given
+		ProductCreateRequest request = request(null, true);
+
+		// when & then
+		assertInvalidInput(request);
+	}
+
+	@Test
+	@DisplayName("첫 구매 전용 상품의 구매 제한이 1이 아니면 예외가 발생한다")
+	void shouldThrowWhenFirstPurchaseProductLimitIsNotOne() {
+		// given
+		ProductCreateRequest request = request(2, true);
+
+		// when & then
+		assertInvalidInput(request);
+	}
+
+	@Test
+	@DisplayName("활성 첫 구매 전용 상품이 이미 있으면 예외가 발생한다")
+	void shouldThrowWhenActiveFirstPurchaseProductAlreadyExists() {
+		// given
+		ProductCreateRequest request = request(1, true);
+		given(productRepository.existsByFirstPurchaseOnlyTrueAndIsActiveTrue()).willReturn(true);
+
+		// when & then
+		assertInvalidInput(request);
+	}
+
+	@Test
+	@DisplayName("일반 상품은 계정당 구매 제한을 2로 등록할 수 있다")
+	void shouldCreateNormalProductWithPurchaseLimitTwo() {
+		// given
+		ProductCreateRequest request = request(2, false);
+		given(productRepository.save(any(Product.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+		// when
+		ProductResponse response = adminProductService.createProduct(request);
+
+		// then
+		assertThat(response.purchaseLimitPerMember()).isEqualTo(2);
+		assertThat(response.firstPurchaseOnly()).isFalse();
+	}
+
 	private void assertInvalidInput(ProductCreateRequest request) {
 		assertThatThrownBy(() -> adminProductService.createProduct(request))
 			.isInstanceOf(BusinessException.class)
@@ -214,7 +283,35 @@ class AdminProductServiceImplTest {
 		List<ProductCreateRequest.ProductRewardCreateRequest> rewards,
 		List<ProductCreateRequest.ProductRewardCreateRequest> bonusRewards
 	) {
-		return new ProductCreateRequest("신규 번들", "상품 설명", 1000, 1, true, true, rewards, bonusRewards);
+		return new ProductCreateRequest(
+			"신규 번들",
+			"NEW_BUNDLE",
+			"상품 설명",
+			1000,
+			1,
+			true,
+			true,
+			null,
+			false,
+			rewards,
+			bonusRewards
+		);
+	}
+
+	private ProductCreateRequest request(Integer purchaseLimitPerMember, boolean firstPurchaseOnly) {
+		return new ProductCreateRequest(
+			"신규 번들",
+			"NEW_BUNDLE",
+			"상품 설명",
+			1000,
+			1,
+			true,
+			true,
+			purchaseLimitPerMember,
+			firstPurchaseOnly,
+			List.of(reward(ItemType.MATCHING_TICKET, 1)),
+			List.of()
+		);
 	}
 
 	private ProductCreateRequest.ProductRewardCreateRequest reward(ItemType itemType, int quantity) {
@@ -224,6 +321,7 @@ class AdminProductServiceImplTest {
 	private Product product(String name, String description, int price, int displayOrder, boolean isActive, boolean isBundle) {
 		Product product = Product.builder()
 			.name(name)
+			.code(name.replace(" ", "_"))
 			.description(description)
 			.price(price)
 			.displayOrder(displayOrder)

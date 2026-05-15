@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
 import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
 import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
 import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
@@ -59,6 +60,16 @@ public class NoticeServiceImpl implements NoticeService {
 			.findAllByStartTimeLessThanEqualAndEndTimeGreaterThanEqualOrderByStartTimeDescIdDesc(currentTime, currentTime)
 			.stream()
 			.map(ActiveNoticeResponse::from)
+			.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<AdminNoticeResponse> getAdminNotices() {
+		LocalDateTime currentTime = LocalDateTime.now();
+		return noticeRepository.findAllByOrderByStartTimeDescIdDesc()
+			.stream()
+			.map(notice -> AdminNoticeResponse.from(notice, currentTime))
 			.toList();
 	}
 

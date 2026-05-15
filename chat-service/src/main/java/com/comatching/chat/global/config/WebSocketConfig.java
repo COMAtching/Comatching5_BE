@@ -30,7 +30,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 		// 프론트엔드에서 맨 처음 연결할 때 "ws://localhost:8080/ws/chat"으로 요청을 보냄
 		registry.addEndpoint("/ws/chat")
-			.setAllowedOrigins("http://localhost:5500")
+			.setAllowedOrigins(
+				"https://comatching.site",
+				"http://localhost:3000",
+				"http://localhost:5173",
+				"http://localhost:5500"
+			)
 			.addInterceptors(handshakeInterceptor)
 			.setHandshakeHandler(new DefaultHandshakeHandler() {
 				@Override

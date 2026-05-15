@@ -36,6 +36,7 @@ class JwtUtilTest {
 		//then
 		assertThat(token).isNotNull();
 		assertThat(claims.getSubject()).isEqualTo("1");
+		assertThat(claims.getId()).isNotBlank();
 		assertThat(claims.get("email")).isEqualTo("test@test.com");
 	}
 

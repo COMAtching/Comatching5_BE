@@ -7,6 +7,8 @@ import com.comatching.item.domain.order.enums.OrderStatus;
 public record OrderCreatedOutboxPayload(
 	Long orderId,
 	Long memberId,
+	Long productId,
+	String productCode,
 	String requestedItemName,
 	String requesterRealName,
 	String requesterUsername,

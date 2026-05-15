@@ -23,5 +23,7 @@ public interface MemberService {
 
 	void updateRealName(Long memberId, String realName);
 
+	String getRealName(Long memberId);
+
 	OrdererInfoDto getOrdererInfo(Long memberId);
 }

@@ -98,10 +98,11 @@ public class AuthController {
 
 	@PostMapping("/logout")
 	public ResponseEntity<ApiResponse<Void>> logout(
+		@CookieValue(name = "accessToken", required = false) String accessToken,
 		@CookieValue(name = "refreshToken", required = false) String refreshToken,
 		HttpServletResponse response) {
 
-		authService.logout(refreshToken);
+		authService.logout(accessToken, refreshToken);
 
 		ResponseCookie accessCookie = authCookieFactory.createExpiredCookie("accessToken");
 		ResponseCookie refreshCookie = authCookieFactory.createExpiredCookie("refreshToken");
@@ -113,13 +114,13 @@ public class AuthController {
 	}
 
 	@PostMapping("/password/code")
-	public ResponseEntity<ApiResponse<Void>> sendPasswordResetCode(@RequestBody PasswordResetCodeRequest request) {
+	public ResponseEntity<ApiResponse<Void>> sendPasswordResetCode(@RequestBody @Valid PasswordResetCodeRequest request) {
 		emailService.sendPasswordResetCode(request.email());
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 
 	@PatchMapping("/password/code")
-	public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody ResetPasswordRequest request) {
+	public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
 		authService.resetPassword(request);
 
 		return ResponseEntity.ok(ApiResponse.ok());
@@ -139,9 +140,10 @@ public class AuthController {
 	@DeleteMapping("/withdraw")
 	public ResponseEntity<ApiResponse<Void>> withdraw(
 		@CurrentMember MemberInfo memberInfo,
+		@CookieValue(name = "accessToken", required = false) String accessToken,
 		HttpServletResponse response
 	) {
-		authService.withdraw(memberInfo.memberId());
+		authService.withdraw(memberInfo.memberId(), accessToken);
 
 		ResponseCookie accessCookie = authCookieFactory.createExpiredCookie("accessToken");
 		ResponseCookie refreshCookie = authCookieFactory.createExpiredCookie("refreshToken");

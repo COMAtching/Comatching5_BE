@@ -311,7 +311,7 @@ class MatchingServiceImplTest {
 			Long memberId = 1L;
 			MatchingRequest request = new MatchingRequest(
 				null, null, null, null, false, null,
-				2, -1
+				29, 20
 			);
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
 			given(memberClient.getProfile(memberId)).willReturn(myProfile);
@@ -330,7 +330,7 @@ class MatchingServiceImplTest {
 			Long memberId = 1L;
 			MatchingRequest request = new MatchingRequest(
 				null, null, null, null, false, null,
-				-1, 1
+				22, 24
 			);
 
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);

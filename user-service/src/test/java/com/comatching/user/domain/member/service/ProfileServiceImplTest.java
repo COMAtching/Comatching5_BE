@@ -280,7 +280,43 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.createProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_dog_male1.png");
+		}
+
+		@Test
+		@DisplayName("프로필 이미지 값이 default_dinosaur이면 animal_dinosaur1 기본 이미지 URL을 저장한다")
+		void shouldUseDinosaurDefaultImageWhenCreatingProfile() {
+			// given
+			Long memberId = 1L;
+			Member member = createMember(memberId);
+			ProfileCreateRequest request = ProfileCreateRequest.builder()
+				.nickname("테스트유저")
+				.gender(Gender.MALE)
+				.birthDate(LocalDate.of(2000, 1, 1))
+				.mbti("ENFP")
+				.university("한국대학교")
+				.major("컴퓨터공학과")
+				.contactFrequency(ContactFrequency.FREQUENT)
+				.profileImageKey("default_dinosaur")
+				.hobbies(List.of(
+					new HobbyDto(HobbyCategory.SPORTS, "축구"),
+					new HobbyDto(HobbyCategory.CULTURE, "영화감상")
+				))
+				.tags(null)
+				.build();
+
+			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendSignupEvent(any());
+
+			// when
+			ProfileResponse response = profileService.createProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl())
+				.isEqualTo("https://img.com/defaults/profile/animal_dinosaur1.png");
 		}
 
 		@Test
@@ -395,7 +431,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/dog_male%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/default.png");
 		}
 
 		@Test
@@ -418,7 +454,7 @@ class ProfileServiceImplTest {
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
-			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/fox_female%201.png");
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_fox_female1.png");
 		}
 	}
 

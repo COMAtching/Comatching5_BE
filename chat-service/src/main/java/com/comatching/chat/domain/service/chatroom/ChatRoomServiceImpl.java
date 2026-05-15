@@ -4,18 +4,26 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.chat.domain.dto.ChatRoomResponse;
+import com.comatching.chat.domain.dto.ChatRoomResponse.UserSummary;
 import com.comatching.chat.domain.entity.ChatRoom;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UnreadCountCondition;
 import com.comatching.chat.domain.service.block.BlockService;
+import com.comatching.chat.global.exception.ChatErrorCode;
+import com.comatching.chat.infra.client.MemberClient;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
+import com.comatching.common.dto.member.ProfileResponse;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +37,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatMessageRepository chatMessageRepository;
 	private final BlockService blockService;
+	private final MemberClient memberClient;
 
 	@Override
 	public void createChatRoom(MatchingSuccessEvent event) {
@@ -45,6 +54,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			.build();
 
 		chatRoomRepository.save(newRoom);
+		log.info("Created chat room. matchingId={}, roomId={}", event.matchingId(), newRoom.getId());
 
 	}
 
@@ -62,9 +72,14 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			.toList();
 
 		Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId);
+		Map<Long, ProfileResponse> profilesByMemberId = getProfilesByMemberId(visibleRooms, memberId);
 
 		return visibleRooms.stream()
-			.map(room -> ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L)))
+			.map(room -> {
+				Long otherUserId = getOtherUserId(room, memberId);
+				UserSummary otherUser = toUserSummary(otherUserId, profilesByMemberId.get(otherUserId));
+				return ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L), otherUser);
+			})
 			.toList();
 	}
 
@@ -94,6 +109,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			.sum();
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public void validateRoomMember(String roomId, Long memberId) {
+		ChatRoom room = chatRoomRepository.findById(roomId)
+			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+
+		if (!isRoomMember(room, memberId)) {
+			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
+		}
+	}
+
 	private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {
 		if (rooms.isEmpty()) {
 			return Map.of();
@@ -106,9 +132,39 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		return chatMessageRepository.countUnreadMessagesByRoom(unreadCountConditions, memberId);
 	}
 
+	private Map<Long, ProfileResponse> getProfilesByMemberId(List<ChatRoom> rooms, Long memberId) {
+		if (rooms.isEmpty()) {
+			return Map.of();
+		}
+
+		List<Long> otherUserIds = rooms.stream()
+			.map(room -> getOtherUserId(room, memberId))
+			.distinct()
+			.toList();
+
+		List<ProfileResponse> profiles = memberClient.getProfiles(otherUserIds);
+		if (profiles == null || profiles.isEmpty()) {
+			return Map.of();
+		}
+
+		return profiles.stream()
+			.collect(Collectors.toMap(ProfileResponse::memberId, Function.identity(), (left, right) -> left));
+	}
+
+	private UserSummary toUserSummary(Long memberId, ProfileResponse profile) {
+		if (profile == null) {
+			return UserSummary.memberOnly(memberId);
+		}
+		return UserSummary.from(profile);
+	}
+
 	private LocalDateTime getMyLastReadAt(ChatRoom room, Long memberId) {
 		return memberId.equals(room.getInitiatorUserId())
 			? room.getInitiatorLastReadAt()
 			: room.getTargetLastReadAt();
+	}
+
+	private boolean isRoomMember(ChatRoom room, Long memberId) {
+		return room.getInitiatorUserId().equals(memberId) || room.getTargetUserId().equals(memberId);
 	}
 }

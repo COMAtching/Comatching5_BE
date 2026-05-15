@@ -35,4 +35,12 @@ public record MatchingRequest(
 	public boolean hasCompleteAgeLimit() {
 		return minAgeOffset != null && maxAgeOffset != null;
 	}
+
+	public Integer minAgeLimit() {
+		return minAgeOffset;
+	}
+
+	public Integer maxAgeLimit() {
+		return maxAgeOffset;
+	}
 }

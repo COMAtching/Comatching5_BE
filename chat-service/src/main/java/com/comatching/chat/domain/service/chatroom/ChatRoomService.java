@@ -12,4 +12,6 @@ public interface ChatRoomService {
 	List<ChatRoomResponse> getMyChatRooms(Long memberId);
 
 	long getTotalUnreadCount(Long memberId);
+
+	void validateRoomMember(String roomId, Long memberId);
 }

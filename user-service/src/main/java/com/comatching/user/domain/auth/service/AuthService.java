@@ -8,11 +8,11 @@ public interface AuthService {
 
 	TokenResponse reissue(String refreshToken);
 
-	void logout(String refreshToken);
+	void logout(String accessToken, String refreshToken);
 
 	void resetPassword(ResetPasswordRequest request);
 
 	void changePassword(Long memberId, ChangePasswordRequest request);
 
-	void withdraw(Long memberId);
+	void withdraw(Long memberId, String accessToken);
 }

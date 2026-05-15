@@ -41,34 +41,32 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	private static final String DEFAULT_IMAGE_VALUE = "default";
 	private static final String DEFAULT_IMAGE_PREFIX = "default_";
-	private static final String DEFAULT_MALE_IMAGE_FILENAME = "dog_male 1.png";
-	private static final String DEFAULT_FEMALE_IMAGE_FILENAME = "cat_female 1.png";
-	private static final String DEFAULT_NEUTRAL_IMAGE_FILENAME = "dinosaur 1.png";
+	private static final String DEFAULT_IMAGE_FILENAME = "default.png";
 
 	private static final Map<String, String> MALE_ANIMAL_IMAGE_FILENAMES = Map.of(
-		"dog", "dog_male 1.png",
-		"cat", "cat_male 1.png",
-		"bear", "bear_male 1.png",
-		"fox", "fox_male 1.png",
-		"rabbit", "rabbit_male 1.png",
-		"otter", "otter_male 1.png",
-		"wolf", "Wolf_male 1.png",
-		"horse", "horse_male.png"
+		"dog", "animal_dog_male1.png",
+		"cat", "animal_cat_male1.png",
+		"bear", "animal_bear_male1.png",
+		"fox", "animal_fox_male1.png",
+		"rabbit", "animal_rabbit_male1.png",
+		"otter", "animal_otter_male1.png",
+		"wolf", "animal_wolf_male1.png",
+		"horse", "animal_horse_male.png"
 	);
 
 	private static final Map<String, String> FEMALE_ANIMAL_IMAGE_FILENAMES = Map.of(
-		"dog", "dog_female 1.png",
-		"cat", "cat_female 1.png",
-		"bear", "bear_female 1.png",
-		"fox", "fox_female 1.png",
-		"rabbit", "rabbit_female 1.png",
-		"otter", "otter_female 1.png",
-		"wolf", "Wolf_female 1.png",
-		"snake", "snake_female.png"
+		"dog", "animal_dog_female1.png",
+		"cat", "animal_cat_female1.png",
+		"bear", "animal_bear_female1.png",
+		"fox", "animal_fox_female1.png",
+		"rabbit", "animal_rabbit_female1.png",
+		"otter", "animal_otter_female1.png",
+		"wolf", "animal_wolf_female1.png",
+		"snake", "animal_snake_female.png"
 	);
 
 	private static final Map<String, String> NEUTRAL_ANIMAL_IMAGE_FILENAMES = Map.of(
-		"dinosaur", "dinosaur 1.png"
+		"dinosaur", "animal_dinosaur1.png"
 	);
 
 	private final MemberRepository memberRepository;
@@ -256,14 +254,14 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	private String resolveProfileImageUrl(String profileImageValue, Gender gender) {
 		if (!StringUtils.hasText(profileImageValue)) {
-			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename(gender));
+			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename());
 		}
 
 		String normalizedValue = profileImageValue.trim();
 		String loweredValue = normalizedValue.toLowerCase(Locale.ROOT);
 
 		if (DEFAULT_IMAGE_VALUE.equals(loweredValue)) {
-			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename(gender));
+			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename());
 		}
 
 		if (loweredValue.startsWith(DEFAULT_IMAGE_PREFIX)) {
@@ -286,11 +284,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return profileImageProperties.baseUrl() + encodedFilename;
 	}
 
-	private String resolveDefaultProfileImageFilename(Gender gender) {
-		if (gender == Gender.FEMALE) {
-			return DEFAULT_FEMALE_IMAGE_FILENAME;
-		}
-		return DEFAULT_MALE_IMAGE_FILENAME;
+	private String resolveDefaultProfileImageFilename() {
+		return DEFAULT_IMAGE_FILENAME;
 	}
 
 	private String resolveAnimalProfileImageFilename(String animalName, Gender gender) {
@@ -299,7 +294,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		if (StringUtils.hasText(filename)) {
 			return filename;
 		}
-		return resolveDefaultProfileImageFilename(gender);
+		return resolveDefaultProfileImageFilename();
 	}
 
 	private String findAnimalProfileImageByGender(String animalName, Gender gender) {

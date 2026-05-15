@@ -6,6 +6,13 @@ spring:
   application:
     name: gateway-service
 
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: ${REDIS_PORT:6379}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:true}
+
   cloud:
     gateway:
       server:
@@ -18,7 +25,7 @@ spring:
                   - "https://comatching.site"
                   - "http://localhost:3000"
                   - "http://localhost:5173"
-                allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+                allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
                 allowedHeaders: "*"
                 allowCredentials: true
 
@@ -33,18 +40,20 @@ spring:
               uri: http://item-service:9006
               predicates:
                 - Path=/ws/payment, /ws/payment/**
+              filters:
+                - AuthorizationHeaderFilter
 
             - id: user-service-protected
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/reissue, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/internal/users/**
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/password/change, /api/auth/withdraw, /api/members/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: user-service-public
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup/**, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
 
             - id: user-service-swagger
               uri: http://user-service:9000
@@ -56,7 +65,7 @@ spring:
             - id: matching-service
               uri: http://matching-service:9001
               predicates:
-                - Path=/api/matching/**, /api/internal/matching/**
+                - Path=/api/matching/**
               filters:
                 - AuthorizationHeaderFilter
 
@@ -70,7 +79,7 @@ spring:
             - id: chat-service
               uri: http://chat-service:9003
               predicates:
-                - Path=/api/chat/**, /api/internal/chat/**, /ws/**
+                - Path=/api/chat/**, /ws/**
               filters:
                 - AuthorizationHeaderFilter
 
@@ -84,7 +93,7 @@ spring:
             - id: item-service
               uri: http://item-service:9006
               predicates:
-                - Path=/api/items/**, /api/internal/items/**, /api/v1/**
+                - Path=/api/items/**, /api/v1/**
               filters:
                 - AuthorizationHeaderFilter
 

@@ -2,6 +2,7 @@ package com.comatching.common.util;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -43,16 +44,24 @@ public class JwtUtil {
 	public String createAccessToken(Long memberId, String email, String role, String status, String nickname) {
 		MemberRole memberRole = MemberRole.valueOf(role);
 		MemberStatus memberStatus = MemberStatus.valueOf(status);
-		return createToken(memberId, email, memberRole, memberStatus, nickname, accessTokenValidity);
+		return createToken(memberId, email, memberRole, memberStatus, nickname, accessTokenValidity, true);
 	}
 
 	// Refresh Token 생성
 	public String createRefreshToken(Long memberId) {
-		return createToken(memberId, null, null, null, null, refreshTokenValidity);
+		return createToken(memberId, null, null, null, null, refreshTokenValidity, false);
 	}
 
 	// 내부 토큰 생성 로직
-	private String createToken(Long memberId, String email, MemberRole role, MemberStatus status, String nickname, long validity) {
+	private String createToken(
+		Long memberId,
+		String email,
+		MemberRole role,
+		MemberStatus status,
+		String nickname,
+		long validity,
+		boolean includeTokenId
+	) {
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + validity);
 
@@ -62,6 +71,9 @@ public class JwtUtil {
 			.setExpiration(expiration)
 			.signWith(key, SignatureAlgorithm.HS256);
 
+		if (includeTokenId) {
+			builder.setId(UUID.randomUUID().toString());
+		}
 		if (email != null)
 			builder.claim("email", email);
 		if (role != null)
@@ -98,5 +110,14 @@ public class JwtUtil {
 			log.warn("Invalid JWT Token: {}", e.getMessage());
 			return false;
 		}
+	}
+
+	public long getRemainingValidityMillis(String token) {
+		Claims claims = parseToken(token);
+		Date expiration = claims.getExpiration();
+		if (expiration == null) {
+			return 0;
+		}
+		return Math.max(0, expiration.getTime() - System.currentTimeMillis());
 	}
 }

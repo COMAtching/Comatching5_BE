@@ -8,6 +8,10 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+	boolean existsByCode(String code);
+
+	boolean existsByFirstPurchaseOnlyTrueAndIsActiveTrue();
+
 	@Query("""
 		SELECT DISTINCT p
 		FROM Product p

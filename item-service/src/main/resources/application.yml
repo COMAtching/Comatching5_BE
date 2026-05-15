@@ -55,3 +55,6 @@ jwt:
     expiration: ${ACCESS_TOKEN_EXP:86400000}
   refresh-token:
     expiration: ${REFRESH_TOKEN_EXP:604800000}
+
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN:}

@@ -16,11 +16,12 @@ client:
 comatching:
   profile:
     default-images:
-      base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:https://comatching.site/api/public/profile-images/}
+      base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:https://srv.comatching.site/api/public/profile-images/}
       filenames:
-        - "dog_male 1.png"
-        - "cat_female 1.png"
-        - "dinosaur 1.png"
+        - "default.png"
+        - "animal_dog_male1.png"
+        - "animal_cat_female1.png"
+        - "animal_dinosaur1.png"
 
 spring:
   application:
@@ -113,6 +114,9 @@ jwt:
     expiration: ${ACCESS_TOKEN_EXP:86400000}
   refresh-token:
     expiration: ${REFRESH_TOKEN_EXP:604800000}
+
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 kakao:
   auth:

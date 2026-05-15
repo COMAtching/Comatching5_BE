@@ -20,6 +20,7 @@ import com.comatching.chat.domain.dto.ChatMessageRequest;
 import com.comatching.chat.domain.dto.ChatMessageResponse;
 import com.comatching.chat.domain.dto.FileUploadRequest;
 import com.comatching.chat.domain.service.chat.ChatService;
+import com.comatching.chat.domain.service.chatroom.ChatRoomService;
 import com.comatching.chat.domain.service.redis.RedisPublisher;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.dto.member.MemberInfo;
@@ -37,6 +38,7 @@ public class ChatController {
 
 	private final RedisPublisher redisPublisher;
 	private final ChatService chatService;
+	private final ChatRoomService chatRoomService;
 	private final S3Service s3Service;
 
 	private final ChannelTopic topic = new ChannelTopic("chatroom");
@@ -44,8 +46,10 @@ public class ChatController {
 	@PostMapping("/api/chat/rooms/{roomId}/files/presigned-url")
 	public ResponseEntity<ApiResponse<S3UploadResponseDto>> getPresignedUrl(
 		@PathVariable String roomId,
+		@CurrentMember MemberInfo memberInfo,
 		@RequestBody FileUploadRequest request
 	) {
+		chatRoomService.validateRoomMember(roomId, memberInfo.memberId());
 		S3UploadResponseDto response = s3Service.getPresignedPutUrlForChat(roomId, request.filename());
 		return ResponseEntity.ok(ApiResponse.ok(response));
 	}

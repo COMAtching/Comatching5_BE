@@ -52,6 +52,8 @@ public class SecurityConfig {
 		"/v3/api-docs/**",
 		"/api/auth/**",
 		"/api/internal/**",
+		"/api/profile/tags",
+		"/api/hobbies/categories",
 		"/api/public/profile-images/**"
 	);
 

@@ -11,6 +11,7 @@ import com.comatching.common.dto.auth.EmailRequest;
 import com.comatching.common.dto.auth.EmailVerifyRequest;
 import com.comatching.common.dto.response.ApiResponse;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -21,13 +22,13 @@ public class EmailController {
 	private final EmailService emailService;
 
 	@PostMapping("/send")
-	public ResponseEntity<ApiResponse<Void>> sendEmail(@RequestBody EmailRequest request) {
+	public ResponseEntity<ApiResponse<Void>> sendEmail(@RequestBody @Valid EmailRequest request) {
 		emailService.sendAuthCode(request.email());
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 
 	@PostMapping("/verify")
-	public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestBody EmailVerifyRequest request) {
+	public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestBody @Valid EmailVerifyRequest request) {
 		emailService.verifyCode(request.email(), request.code());
 		return ResponseEntity.ok(ApiResponse.ok());
 	}

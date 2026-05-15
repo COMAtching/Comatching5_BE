@@ -17,7 +17,7 @@ public interface ChatRoomRepository extends MongoRepository<ChatRoom, String> {
 
 	@Query("{ '$or': [ " +
 		"{ 'initiatorUserId': ?0 }, " +
-		"{ 'targetUserId': ?0, 'status': 'ACTIVE' } " +
+		"{ 'targetUserId': ?0 } " +
 		"] }")
 	List<ChatRoom> findMyChatRooms(Long userId, Sort sort);
 }

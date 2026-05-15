@@ -100,6 +100,14 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	@Override
+	public String getRealName(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+
+		return member.getRealName();
+	}
+
+	@Override
 	public OrdererInfoDto getOrdererInfo(Long memberId) {
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));

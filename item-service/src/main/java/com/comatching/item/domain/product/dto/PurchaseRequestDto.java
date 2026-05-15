@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 public record PurchaseRequestDto(
 	Long requestId,
 	Long memberId,
+	Long productId,
+	String productCode,
 	String requestedItemName,
 	String requesterRealName,
 	String requesterUsername,
@@ -24,6 +26,8 @@ public record PurchaseRequestDto(
 		return new PurchaseRequestDto(
 			request.getId(),
 			request.getMemberId(),
+			request.getProductId(),
+			request.getProductCode(),
 			request.getRequestedItemName(),
 			request.getRequesterRealName(),
 			request.getRequesterUsername(),

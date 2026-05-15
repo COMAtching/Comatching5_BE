@@ -9,14 +9,14 @@ import lombok.Builder;
 @Builder
 public record MatchingHistoryResponse(
 	Long historyId,
-	ProfileResponse partner,
+	MatchingPartnerResponse partner,
 	boolean favorite,
 	LocalDateTime matchedAt
 ) {
 	public static MatchingHistoryResponse of(MatchingHistory history, ProfileResponse partnerProfile) {
 		return MatchingHistoryResponse.builder()
 			.historyId(history.getId())
-			.partner(partnerProfile)
+			.partner(MatchingPartnerResponse.from(partnerProfile))
 			.favorite(history.isFavorite())
 			.matchedAt(history.getMatchedAt())
 			.build();

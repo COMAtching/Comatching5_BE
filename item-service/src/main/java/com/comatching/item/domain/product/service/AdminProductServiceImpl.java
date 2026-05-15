@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.exception.BusinessException;
@@ -31,13 +32,20 @@ public class AdminProductServiceImpl implements AdminProductService {
 	@Override
 	public ProductResponse createProduct(ProductCreateRequest request) {
 		Map<ItemType, Integer> rewardQuantityByType = validateRewards(request.rewards());
+		String code = normalizeRequiredText(request.code(), "상품 코드는 필수입니다.");
+		validateDuplicateCode(code);
+		validateFirstPurchasePolicy(request);
+
 		Product product = Product.builder()
 			.name(request.name().trim())
+			.code(code)
 			.description(request.description().trim())
 			.price(request.price())
 			.displayOrder(request.displayOrder())
 			.isActive(request.isActive())
 			.isBundle(request.isBundle())
+			.purchaseLimitPerMember(request.purchaseLimitPerMember())
+			.firstPurchaseOnly(request.firstPurchaseOnly())
 			.build();
 
 		request.rewards().forEach(rewardRequest -> {
@@ -97,6 +105,31 @@ public class AdminProductServiceImpl implements AdminProductService {
 				ProductCreateRequest.ProductRewardCreateRequest::itemType,
 				ProductCreateRequest.ProductRewardCreateRequest::quantity
 			));
+	}
+
+	private void validateDuplicateCode(String code) {
+		if (productRepository.existsByCode(code)) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "이미 사용 중인 상품 코드입니다: " + code);
+		}
+	}
+
+	private void validateFirstPurchasePolicy(ProductCreateRequest request) {
+		if (!request.firstPurchaseOnly()) {
+			return;
+		}
+		if (!Integer.valueOf(1).equals(request.purchaseLimitPerMember())) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "첫 구매 전용 상품의 계정당 구매 제한은 1이어야 합니다.");
+		}
+		if (request.isActive() && productRepository.existsByFirstPurchaseOnlyTrueAndIsActiveTrue()) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "활성 첫 구매 전용 상품은 하나만 등록할 수 있습니다.");
+		}
+	}
+
+	private String normalizeRequiredText(String value, String message) {
+		if (!StringUtils.hasText(value)) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, message);
+		}
+		return value.trim();
 	}
 
 	private void validateBonusRewards(

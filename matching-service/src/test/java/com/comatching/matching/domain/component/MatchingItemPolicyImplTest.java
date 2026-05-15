@@ -20,7 +20,7 @@ class MatchingItemPolicyImplTest {
 	void shouldChargeExtraOptionTicketWhenAgeLimitIsUsed() {
 		MatchingRequest request = new MatchingRequest(
 			null, null, null, null, false, null,
-			-2, 3
+			20, 29
 		);
 
 		List<ItemConsumption> consumptions = policy.determine(request);

@@ -19,6 +19,9 @@ public enum PaymentErrorCode implements ErrorCode {
 	INVALID_REQUESTED_PRICE("PAY-008", HttpStatus.BAD_REQUEST, "요청 금액이 서버 계산 금액과 일치하지 않습니다."),
 	ITEM_NAME_REQUIRED("PAY-009", HttpStatus.BAD_REQUEST, "상품명을 입력해주세요."),
 	USERNAME_REQUIRED("PAY-010", HttpStatus.BAD_REQUEST, "사용자명을 입력해주세요."),
+	PURCHASE_LIMIT_EXCEEDED("PAY-011", HttpStatus.BAD_REQUEST, "구매 가능 한도를 초과했습니다."),
+	PRODUCT_PURCHASE_LIMIT_EXCEEDED("PAY-012", HttpStatus.BAD_REQUEST, "상품별 구매 가능 횟수를 초과했습니다."),
+	FIRST_PURCHASE_ONLY("PAY-014", HttpStatus.BAD_REQUEST, "첫 구매 전용 상품입니다."),
 	;
 
 	private final String code;

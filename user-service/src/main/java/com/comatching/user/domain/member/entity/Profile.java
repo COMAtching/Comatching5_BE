@@ -111,12 +111,17 @@ public class Profile {
 		this.nickname = "탈퇴한 사용자";
 		this.intro = null;
 		this.profileImageUrl = null;
-		this.birthDate = null;
+		this.birthDate = LocalDate.of(1970, 1, 1);
 		this.socialAccountType = null;
 		this.socialAccountId = null;
+		this.mbti = "UNKNOWN";
+		this.university = "(알 수 없음)";
 		this.major = "(알 수 없음)";
 		this.song = null;
 		this.point = 0;
+		this.isMatchable = false;
+		this.hobbies.clear();
+		this.tags.clear();
 	}
 
 	public void update(

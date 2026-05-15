@@ -20,6 +20,9 @@ public class Product {
 	@Column(nullable = false)
 	private String name;
 
+	@Column(unique = true)
+	private String code;
+
 	@Column(nullable = false, length = 50)
 	private String description;
 
@@ -35,6 +38,11 @@ public class Product {
 	@Column(nullable = false)
 	private boolean isBundle;
 
+	private Integer purchaseLimitPerMember;
+
+	@Column(nullable = false)
+	private boolean firstPurchaseOnly;
+
 	@OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ProductReward> rewards = new ArrayList<>();
 
@@ -42,13 +50,26 @@ public class Product {
 	private List<ProductBonusReward> bonusRewards = new ArrayList<>();
 
 	@Builder
-	public Product(String name, String description, int price, int displayOrder, boolean isActive, boolean isBundle) {
+	public Product(
+		String name,
+		String code,
+		String description,
+		int price,
+		int displayOrder,
+		boolean isActive,
+		boolean isBundle,
+		Integer purchaseLimitPerMember,
+		boolean firstPurchaseOnly
+	) {
 		this.name = name;
+		this.code = code;
 		this.description = description;
 		this.price = price;
 		this.displayOrder = displayOrder;
 		this.isActive = isActive;
 		this.isBundle = isBundle;
+		this.purchaseLimitPerMember = purchaseLimitPerMember;
+		this.firstPurchaseOnly = firstPurchaseOnly;
 	}
 
 	// 연관관계 편의 메서드 (상품 생성 시 구성품을 쉽게 추가하기 위함)

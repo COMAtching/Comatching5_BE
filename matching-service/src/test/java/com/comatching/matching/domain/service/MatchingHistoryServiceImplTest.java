@@ -3,6 +3,7 @@ package com.comatching.matching.domain.service;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +23,7 @@ import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 import com.comatching.matching.domain.entity.MatchingHistory;
 import com.comatching.matching.domain.repository.history.MatchingHistoryRepository;
 import com.comatching.matching.infra.client.MemberClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MatchingHistoryServiceImpl 테스트")
@@ -49,6 +51,8 @@ class MatchingHistoryServiceImplTest {
 			.build();
 		ProfileResponse partnerProfile = ProfileResponse.builder()
 			.memberId(partnerId)
+			.email("partner@example.com")
+			.birthDate(LocalDate.of(2000, 1, 1))
 			.tags(List.of(
 				new ProfileTagDto("계란형 얼굴"),
 				new ProfileTagDto("밝은 분위기")
@@ -68,5 +72,38 @@ class MatchingHistoryServiceImplTest {
 		assertThat(response.content()).hasSize(1);
 		assertThat(response.content().get(0).partner().tags()).extracting(ProfileTagDto::tag)
 			.containsExactly("계란형 얼굴", "밝은 분위기");
+		assertThat(response.content().get(0).partner().age()).isPositive();
+	}
+
+	@Test
+	@DisplayName("매칭 히스토리 파트너 응답에서 이메일과 생년월일을 노출하지 않는다")
+	void shouldNotExposePartnerEmailOrBirthDateInHistory() throws Exception {
+		// given
+		Long memberId = 1L;
+		Long partnerId = 2L;
+		Pageable pageable = PageRequest.of(0, 10);
+		MatchingHistory history = MatchingHistory.builder()
+			.memberId(memberId)
+			.partnerId(partnerId)
+			.build();
+		ProfileResponse partnerProfile = ProfileResponse.builder()
+			.memberId(partnerId)
+			.email("partner@example.com")
+			.birthDate(LocalDate.of(2000, 1, 1))
+			.build();
+
+		given(historyRepository.searchHistory(memberId, null, null, pageable))
+			.willReturn(new PageImpl<>(List.of(history), pageable, 1));
+		given(memberClient.getProfiles(List.of(partnerId))).willReturn(List.of(partnerProfile));
+
+		// when
+		PagingResponse<MatchingHistoryResponse> response = matchingHistoryService.getMyMatchingHistory(
+			memberId, null, null, pageable, false
+		);
+		String partnerJson = new ObjectMapper().writeValueAsString(response.content().get(0).partner());
+
+		// then
+		assertThat(partnerJson).contains("\"age\"");
+		assertThat(partnerJson).doesNotContain("email", "birthDate", "partner@example.com", "2000-01-01");
 	}
 }

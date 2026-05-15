@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.exception.code.ErrorCode;
 import com.comatching.common.util.JwtUtil;
+import com.comatching.gateway.auth.AccessTokenDenylistService;
 import com.comatching.gateway.exception.GatewayErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,11 +30,17 @@ import reactor.core.publisher.Mono;
 public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config> {
 
 	private final JwtUtil jwtUtil;
+	private final AccessTokenDenylistService accessTokenDenylistService;
 	private final ObjectMapper objectMapper;
 
-	public AuthorizationHeaderFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+	public AuthorizationHeaderFilter(
+		JwtUtil jwtUtil,
+		AccessTokenDenylistService accessTokenDenylistService,
+		ObjectMapper objectMapper
+	) {
 		super(Config.class);
 		this.jwtUtil = jwtUtil;
+		this.accessTokenDenylistService = accessTokenDenylistService;
 		this.objectMapper = objectMapper;
 	}
 
@@ -59,18 +66,38 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 			// 사용자 정보 추출 및 헤더 주입
 			try {
 				Claims claims = jwtUtil.parseToken(accessToken);
-				ServerHttpRequest.Builder requestBuilder = request.mutate()
-					.header("X-Member-Id", claims.getSubject())
-					.header("X-Member-Email", claims.get("email", String.class))
-					.header("X-Member-Role", claims.get("role", String.class));
+				return accessTokenDenylistService.isDenied(claims.getId())
+					.flatMap(denied -> {
+						if (denied) {
+							return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
+						}
 
-				String nickname = claims.get("nickname", String.class);
-				if (nickname != null && !nickname.isBlank()) {
-					nickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
-					requestBuilder.header("X-Member-Nickname", nickname);
-				}
+						ServerHttpRequest.Builder requestBuilder = request.mutate();
+						requestBuilder.headers(headers -> {
+							headers.remove("X-Member-Id");
+							headers.remove("X-Member-Email");
+							headers.remove("X-Member-Role");
+							headers.remove("X-Member-Nickname");
+							headers.remove("X-Internal-Token");
+						});
 
-				return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
+						requestBuilder
+							.header("X-Member-Id", claims.getSubject())
+							.header("X-Member-Email", claims.get("email", String.class))
+							.header("X-Member-Role", claims.get("role", String.class));
+
+						String nickname = claims.get("nickname", String.class);
+						if (nickname != null && !nickname.isBlank()) {
+							nickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
+							requestBuilder.header("X-Member-Nickname", nickname);
+						}
+
+						return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
+					})
+					.onErrorResume(e -> {
+						log.error("Access token denylist lookup failed: {}", e.getMessage());
+						return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
+					});
 			} catch (Exception e) {
 				log.error("Token parsing error: {}", e.getMessage());
 				return onError(exchange, GatewayErrorCode.TOKEN_INVALID);

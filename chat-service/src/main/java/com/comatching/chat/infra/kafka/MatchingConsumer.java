@@ -16,9 +16,23 @@ public class MatchingConsumer {
 
 	private final ChatRoomService chatRoomService;
 
-	@KafkaListener(topics = "matching-success-topic", groupId = "chat-service-group")
+	@KafkaListener(
+		topics = "matching-success-topic",
+		groupId = "chat-service-group",
+		containerFactory = "jsonKafkaListenerContainerFactory"
+	)
 	public void consumeMatchingSuccess(MatchingSuccessEvent event) {
-
-		chatRoomService.createChatRoom(event);
+		try {
+			log.info(
+				"Received matching success event. matchingId={}, initiatorUserId={}, targetUserId={}",
+				event.matchingId(),
+				event.initiatorUserId(),
+				event.targetUserId()
+			);
+			chatRoomService.createChatRoom(event);
+		} catch (Exception e) {
+			log.warn("Failed to handle matching success event. matchingId={}", event.matchingId(), e);
+			throw e;
+		}
 	}
 }

@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
 import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
 import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
 import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
@@ -120,6 +121,40 @@ class NoticeServiceImplTest {
 		assertThat(responses.get(0).noticeId()).isEqualTo(10L);
 		assertThat(responses.get(0).title()).isEqualTo("공지 제목");
 		assertThat(responses.get(0).content()).isEqualTo("한 줄\n두 줄");
+	}
+
+	@Test
+	@DisplayName("관리자 공지사항 목록 조회 시 전체 공지사항과 활성 여부를 반환한다")
+	void shouldReturnAdminNotices() {
+		// given
+		LocalDateTime now = LocalDateTime.now();
+		Notice activeNotice = Notice.builder()
+			.title("활성 공지")
+			.content("활성 내용")
+			.startTime(now.minusDays(1))
+			.endTime(now.plusDays(1))
+			.build();
+		ReflectionTestUtils.setField(activeNotice, "id", 11L);
+
+		Notice expiredNotice = Notice.builder()
+			.title("종료 공지")
+			.content("종료 내용")
+			.startTime(now.minusDays(3))
+			.endTime(now.minusDays(2))
+			.build();
+		ReflectionTestUtils.setField(expiredNotice, "id", 12L);
+
+		given(noticeRepository.findAllByOrderByStartTimeDescIdDesc())
+			.willReturn(List.of(activeNotice, expiredNotice));
+
+		// when
+		List<AdminNoticeResponse> responses = noticeService.getAdminNotices();
+
+		// then
+		assertThat(responses).hasSize(2);
+		assertThat(responses).extracting(AdminNoticeResponse::noticeId).containsExactly(11L, 12L);
+		assertThat(responses).extracting(AdminNoticeResponse::title).containsExactly("활성 공지", "종료 공지");
+		assertThat(responses).extracting(AdminNoticeResponse::active).containsExactly(true, false);
 	}
 
 	@Test

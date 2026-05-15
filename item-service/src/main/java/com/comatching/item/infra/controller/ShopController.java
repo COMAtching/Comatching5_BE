@@ -14,6 +14,7 @@ import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.item.domain.product.dto.ProductResponse;
+import com.comatching.item.domain.product.dto.PurchaseLimitResponse;
 import com.comatching.item.domain.product.dto.PurchasePendingStatusResponse;
 import com.comatching.item.domain.product.service.ShopService;
 
@@ -35,9 +36,18 @@ public class ShopController {
 	)
 	@GetMapping("/products")
 	public ResponseEntity<ApiResponse<List<ProductResponse>>> getActiveProducts(
+		@CurrentMember MemberInfo memberInfo,
 		@RequestParam(required = false) Boolean isBundle
 	) {
-		return ResponseEntity.ok(ApiResponse.ok(shopService.getActiveProducts(isBundle)));
+		return ResponseEntity.ok(ApiResponse.ok(shopService.getActiveProducts(memberInfo.memberId(), isBundle)));
+	}
+
+	@Operation(summary = "내 아이템 구매 한도 조회", description = "현재 보유 수량과 활성 대기 구매 요청을 합산해 구매 가능 한도를 조회합니다.")
+	@GetMapping("/purchase/limits")
+	public ResponseEntity<ApiResponse<PurchaseLimitResponse>> getMyPurchaseLimits(
+		@CurrentMember MemberInfo memberInfo
+	) {
+		return ResponseEntity.ok(ApiResponse.ok(shopService.getMyPurchaseLimits(memberInfo.memberId())));
 	}
 
 	@Operation(summary = "아이템 구매 요청", description = "상품 ID 기반으로 구매 요청(입금 대기)을 생성합니다.")

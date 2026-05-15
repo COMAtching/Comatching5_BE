@@ -12,6 +12,8 @@ import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.exception.BusinessException;
@@ -108,6 +110,18 @@ public class GlobalExceptionHandler {
 		return ResponseEntity
 			.status(GeneralErrorCode.MISSING_REQUEST_PARAMETER.getHttpStatus())
 			.body(ApiResponse.errorResponse(GeneralErrorCode.MISSING_REQUEST_PARAMETER));
+	}
+
+	/**
+	 * 존재하지 않는 API/정적 리소스 요청 (404)
+	 */
+	@ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+	public ResponseEntity<ApiResponse<Void>> handleNotFoundException(Exception e) {
+		log.warn("[Not Found Exception] {}", e.getMessage());
+
+		return ResponseEntity
+			.status(GeneralErrorCode.NOT_FOUND.getHttpStatus())
+			.body(ApiResponse.errorResponse(GeneralErrorCode.NOT_FOUND));
 	}
 
 	/**

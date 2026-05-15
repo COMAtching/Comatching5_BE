@@ -5,6 +5,8 @@ import java.net.URI;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.comatching.user.domain.auth.dto.ChangePasswordRequest;
 import com.comatching.user.domain.auth.dto.ResetPasswordRequest;
@@ -40,6 +42,7 @@ public class AuthServiceImpl implements AuthService{
 	private final PasswordEncoder passwordEncoder;
 	private final KakaoAuthClient kakaoAuthClient;
 	private final KakaoProperties kakaoProperties;
+	private final AccessTokenDenylistService accessTokenDenylistService;
 
 	@Override
 	public TokenResponse reissue(String refreshToken) {
@@ -77,7 +80,9 @@ public class AuthServiceImpl implements AuthService{
 	}
 
 	@Override
-	public void logout(String refreshToken) {
+	public void logout(String accessToken, String refreshToken) {
+		accessTokenDenylistService.revoke(accessToken);
+
 		if (refreshToken == null) {
 			return;
 		}
@@ -121,7 +126,7 @@ public class AuthServiceImpl implements AuthService{
 	}
 
 	@Override
-	public void withdraw(Long memberId) {
+	public void withdraw(Long memberId, String accessToken) {
 		Member member = memberService.getMemberById(memberId);
 
 		if (member.getSocialType() == SocialType.KAKAO) {
@@ -130,7 +135,24 @@ public class AuthServiceImpl implements AuthService{
 
 		memberService.withdrawMember(memberId);
 
-		refreshTokenRepository.deleteById(memberId);
+		afterCommitOrNow(() -> {
+			refreshTokenRepository.deleteById(memberId);
+			accessTokenDenylistService.revoke(accessToken);
+		});
+	}
+
+	private void afterCommitOrNow(Runnable task) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			task.run();
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				task.run();
+			}
+		});
 	}
 
 	private void unlinkKakao(String socialId) {

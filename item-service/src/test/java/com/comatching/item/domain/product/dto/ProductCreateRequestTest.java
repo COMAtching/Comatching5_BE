@@ -41,11 +41,14 @@ class ProductCreateRequestTest {
 		// given
 		ProductCreateRequest request = new ProductCreateRequest(
 			"신규 번들",
+			"NEW_BUNDLE",
 			"상품 설명",
 			1000,
 			1,
 			true,
 			true,
+			null,
+			false,
 			List.of(reward(ItemType.MATCHING_TICKET, 1)),
 			null
 		);
@@ -61,18 +64,29 @@ class ProductCreateRequestTest {
 		return Stream.of(
 			Arguments.of(
 				"상품명 공백",
-				request(" ", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				request(" ", "NEW_BUNDLE", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
 				"상품명은 필수입니다."
 			),
 			Arguments.of(
+				"상품 코드 공백",
+				request("신규 번들", " ", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				"상품 코드는 필수입니다."
+			),
+			Arguments.of(
+				"상품 코드 형식",
+				request("신규 번들", "invalid code", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				"상품 코드는 영문 대문자, 숫자, _, -만 사용할 수 있습니다."
+			),
+			Arguments.of(
 				"상품 설명 공백",
-				request("신규 번들", " ", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				request("신규 번들", "NEW_BUNDLE", " ", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
 				"상품 설명은 필수입니다."
 			),
 			Arguments.of(
 				"상품 설명 길이 초과",
 				request(
 					"신규 번들",
+					"NEW_BUNDLE",
 					"123456789012345678901234567890123456789012345678901",
 					1000,
 					1,
@@ -83,33 +97,39 @@ class ProductCreateRequestTest {
 			),
 			Arguments.of(
 				"가격 최소값",
-				request("신규 번들", "상품 설명", 0, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 0, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
 				"가격은 1원 이상이어야 합니다."
 			),
 			Arguments.of(
 				"노출 순서 최소값",
-				request("신규 번들", "상품 설명", 1000, -1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 1000, -1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
 				"상품 노출 순서는 0 이상이어야 합니다."
 			),
 			Arguments.of(
+				"상품별 구매 제한 최소값",
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 1000, 1, 0, false, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
+				"계정당 상품 구매 제한은 1 이상이어야 합니다."
+			),
+			Arguments.of(
 				"구성품 필수",
-				request("신규 번들", "상품 설명", 1000, 1, List.of(), List.of()),
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 1000, 1, List.of(), List.of()),
 				"구성품은 최소 1개 이상이어야 합니다."
 			),
 			Arguments.of(
 				"구성품 아이템 타입 필수",
-				request("신규 번들", "상품 설명", 1000, 1, List.of(reward(null, 1)), List.of()),
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 1000, 1, List.of(reward(null, 1)), List.of()),
 				"아이템 타입은 필수입니다."
 			),
 			Arguments.of(
 				"구성품 수량 최소값",
-				request("신규 번들", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 0)), List.of()),
+				request("신규 번들", "NEW_BUNDLE", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 0)), List.of()),
 				"구성품 수량은 1 이상이어야 합니다."
 			),
 			Arguments.of(
 				"보너스 아이템 타입 필수",
 				request(
 					"신규 번들",
+					"NEW_BUNDLE",
 					"상품 설명",
 					1000,
 					1,
@@ -122,6 +142,7 @@ class ProductCreateRequestTest {
 				"보너스 수량 최소값",
 				request(
 					"신규 번들",
+					"NEW_BUNDLE",
 					"상품 설명",
 					1000,
 					1,
@@ -135,13 +156,40 @@ class ProductCreateRequestTest {
 
 	private static ProductCreateRequest request(
 		String name,
+		String code,
 		String description,
 		int price,
 		int displayOrder,
 		List<ProductCreateRequest.ProductRewardCreateRequest> rewards,
 		List<ProductCreateRequest.ProductRewardCreateRequest> bonusRewards
 	) {
-		return new ProductCreateRequest(name, description, price, displayOrder, true, true, rewards, bonusRewards);
+		return request(name, code, description, price, displayOrder, null, false, rewards, bonusRewards);
+	}
+
+	private static ProductCreateRequest request(
+		String name,
+		String code,
+		String description,
+		int price,
+		int displayOrder,
+		Integer purchaseLimitPerMember,
+		boolean firstPurchaseOnly,
+		List<ProductCreateRequest.ProductRewardCreateRequest> rewards,
+		List<ProductCreateRequest.ProductRewardCreateRequest> bonusRewards
+	) {
+		return new ProductCreateRequest(
+			name,
+			code,
+			description,
+			price,
+			displayOrder,
+			true,
+			true,
+			purchaseLimitPerMember,
+			firstPurchaseOnly,
+			rewards,
+			bonusRewards
+		);
 	}
 
 	private static ProductCreateRequest.ProductRewardCreateRequest reward(ItemType itemType, int quantity) {
