@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.ProfileTagItem;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberUpdateEvent;
@@ -376,6 +377,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	private ProfileResponse toProfileResponse(Profile profile) {
 
 		Member member = profile.getMember();
+		String profileImageUrl = resolveResponseProfileImageUrl(profile, member);
 
 		return ProfileResponse.builder()
 			.memberId(member.getId())
@@ -385,7 +387,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.birthDate(profile.getBirthDate())
 			.mbti(profile.getMbti())
 			.intro(profile.getIntro())
-			.profileImageUrl(profile.getProfileImageUrl())
+			.profileImageUrl(profileImageUrl)
 			.socialType(profile.getSocialAccountType())
 			.socialAccountId(profile.getSocialAccountId())
 			.university(profile.getUniversity())
@@ -400,6 +402,13 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 				.toList())
 			.build();
 
+	}
+
+	private String resolveResponseProfileImageUrl(Profile profile, Member member) {
+		if (member.getStatus() == MemberStatus.WITHDRAWN) {
+			return buildDefaultProfileImageUrl(DEFAULT_IMAGE_FILENAME);
+		}
+		return profile.getProfileImageUrl();
 	}
 
 	private record ProfileImageInput(String source, String value) {

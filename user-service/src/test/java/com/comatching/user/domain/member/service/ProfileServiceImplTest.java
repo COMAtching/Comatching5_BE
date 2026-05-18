@@ -675,6 +675,32 @@ class ProfileServiceImplTest {
 		}
 
 		@Test
+		@DisplayName("bulk 프로필 조회에서 탈퇴 회원은 저장된 이미지 대신 기본 이미지를 반환한다")
+		void shouldReturnDefaultProfileImageForWithdrawnMemberInBulkProfiles() {
+			// given
+			List<Long> memberIds = List.of(1L);
+			Profile profile = createProfileWithTags(1L);
+			ReflectionTestUtils.setField(profile.getMember(), "status", MemberStatus.WITHDRAWN);
+			ReflectionTestUtils.setField(
+				profile,
+				"profileImageUrl",
+				"https://srv.comatching.site/api/public/profile-imagesdefault.png"
+			);
+
+			given(profileImageProperties.baseUrl()).willReturn("https://srv.comatching.site/api/public/profile-images");
+			given(profileRepository.findAllByMemberIdIn(memberIds)).willReturn(List.of(profile));
+			given(profileRepository.findAllWithHobbiesByMemberIdIn(memberIds)).willReturn(List.of(profile));
+
+			// when
+			List<ProfileResponse> responses = profileService.getProfilesByIds(memberIds);
+
+			// then
+			assertThat(responses).hasSize(1);
+			assertThat(responses.get(0).profileImageUrl())
+				.isEqualTo("https://srv.comatching.site/api/public/profile-images/default.png");
+		}
+
+		@Test
 		@DisplayName("bulk 프로필 조회 결과가 비어 있으면 취미 초기화 쿼리를 실행하지 않는다")
 		void shouldSkipHobbyFetchWhenBulkProfilesEmpty() {
 			// given
