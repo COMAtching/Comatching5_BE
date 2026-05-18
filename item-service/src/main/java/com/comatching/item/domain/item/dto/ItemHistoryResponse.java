@@ -19,7 +19,7 @@ public record ItemHistoryResponse(
 			history.getItemType(),
 			history.getHistoryType(),
 			history.getQuantity(),
-			history.getDescription(),
+			history.getItemType().getName(),
 			history.getCreatedAt()
 		);
 	}

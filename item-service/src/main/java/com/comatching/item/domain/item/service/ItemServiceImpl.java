@@ -65,7 +65,7 @@ public class ItemServiceImpl implements ItemService {
 			itemType,
 			ItemHistoryType.USE,
 			-count,
-			itemType.getDescription() + " 사용"
+			itemType.getName()
 		);
 	}
 
@@ -100,7 +100,7 @@ public class ItemServiceImpl implements ItemService {
 			request.itemType(),
 			historyType,
 			request.quantity(),
-			request.itemType().getDescription() + " " + request.route().getDescription()
+			request.itemType().getName()
 		);
 
 	}
