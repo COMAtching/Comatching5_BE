@@ -14,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.dto.ChatRoomResponse.UserSummary;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UnreadCountCondition;
 import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.chat.infra.client.MemberClient;
+import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
@@ -65,6 +67,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
 		List<ChatRoom> visibleRooms = chatRoomRepository.findMyChatRooms(memberId, sort).stream()
+			.filter(room -> isVisibleToMember(room, memberId))
 			.filter(room -> {
 				Long otherUserId = getOtherUserId(room, memberId);
 				return !blockedUserIds.contains(otherUserId);
@@ -98,6 +101,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
 
 		List<ChatRoom> visibleRooms = myRooms.stream()
+			.filter(room -> isVisibleToMember(room, memberId))
 			.filter(room -> {
 				Long otherUserId = getOtherUserId(room, memberId);
 				return !blockedUserIds.contains(otherUserId);
@@ -118,6 +122,18 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		if (!isRoomMember(room, memberId)) {
 			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
 		}
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<ChatRoomReferenceResponse> getChatRoomReferencesByMatchingIds(List<Long> matchingIds) {
+		if (matchingIds == null || matchingIds.isEmpty()) {
+			return List.of();
+		}
+
+		return chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
+			.map(room -> new ChatRoomReferenceResponse(room.getMatchingId(), room.getId()))
+			.toList();
 	}
 
 	private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {
@@ -166,5 +182,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	private boolean isRoomMember(ChatRoom room, Long memberId) {
 		return room.getInitiatorUserId().equals(memberId) || room.getTargetUserId().equals(memberId);
+	}
+
+	private boolean isVisibleToMember(ChatRoom room, Long memberId) {
+		if (memberId.equals(room.getInitiatorUserId())) {
+			return true;
+		}
+		return memberId.equals(room.getTargetUserId()) && room.getStatus() == ChatRoomStatus.ACTIVE;
 	}
 }

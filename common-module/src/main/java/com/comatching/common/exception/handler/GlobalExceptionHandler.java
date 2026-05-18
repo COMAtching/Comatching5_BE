@@ -9,6 +9,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestCookieException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -106,6 +107,19 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(MissingRequestCookieException.class)
 	public ResponseEntity<ApiResponse<Void>> handleMissingCookieException(MissingRequestCookieException e) {
 		log.warn("[Missing Cookie Exception] Cookie: {}", e.getCookieName());
+
+		return ResponseEntity
+			.status(GeneralErrorCode.MISSING_REQUEST_PARAMETER.getHttpStatus())
+			.body(ApiResponse.errorResponse(GeneralErrorCode.MISSING_REQUEST_PARAMETER));
+	}
+
+	/**
+	 * 필수 요청 파라미터 누락 (400)
+	 */
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingRequestParameterException(
+		MissingServletRequestParameterException e) {
+		log.warn("[Missing Request Parameter Exception] Parameter: {}", e.getParameterName());
 
 		return ResponseEntity
 			.status(GeneralErrorCode.MISSING_REQUEST_PARAMETER.getHttpStatus())

@@ -12,5 +12,5 @@ public interface AdminUserItemService {
 
 	AdminUserDetailResponse getUserDetail(Long memberId);
 
-	void updateUserInventory(Long memberId, AdminInventoryUpdateRequest request);
+	void updateUserInventory(Long adminId, Long memberId, AdminInventoryUpdateRequest request);
 }

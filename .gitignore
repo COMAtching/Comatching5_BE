@@ -60,3 +60,5 @@ application-docker.yml
 application-secret.yml
 serviceAccountKey.json
 MemberDummyDataInitializer.java
+/scripts
+/tools

@@ -77,7 +77,13 @@ public class ChatController {
 
 		ChatMessageResponse response = chatService.processMessage(securedRequest);
 
-		redisPublisher.publish(topic, response);
+		Long publishResult = redisPublisher.publish(topic, response);
+		log.info(
+			"chat.redis.publish roomId={} messageId={} result={}",
+			response.roomId(),
+			response.id(),
+			publishResult
+		);
 	}
 
 	@GetMapping("/api/chat/rooms/{roomId}/messages")

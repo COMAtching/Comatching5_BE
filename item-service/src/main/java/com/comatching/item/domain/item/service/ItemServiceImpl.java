@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.item.AddItemRequest;
@@ -31,6 +32,7 @@ public class ItemServiceImpl implements ItemService {
 	private final ItemHistoryService historyService;
 
 	@Override
+	@DistributedLock(key = "item:inventory", identifier = "#memberId + ':' + #itemType", leaseTime = 10L)
 	public void useItem(Long memberId, ItemType itemType, int count) {
 		if (count <= 0) {
 			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "차감 수량은 1 이상이어야 합니다.");
@@ -68,6 +70,7 @@ public class ItemServiceImpl implements ItemService {
 	}
 
 	@Override
+	@DistributedLock(key = "item:inventory", identifier = "#memberId + ':' + #request.itemType()", leaseTime = 10L)
 	public void addItem(Long memberId, AddItemRequest request) {
 		if (request.quantity() <= 0) {
 			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "지급 수량은 1 이상이어야 합니다.");

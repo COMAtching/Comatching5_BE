@@ -97,8 +97,27 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 		"IT파이낸스학과",
 		"자유전공학부"
 	);
-	private static final List<String> IMAGE_KEY_POOL = List.of(
-		"default_dog", "default_cat", "default_bear", "default_fox", "default_rabbit", "default_otter"
+	private static final List<String> MALE_IMAGE_KEY_POOL = List.of(
+		"default_dog",
+		"default_cat",
+		"default_bear",
+		"default_fox",
+		"default_rabbit",
+		"default_otter",
+		"default_wolf",
+		"default_horse",
+		"default_dinosaur"
+	);
+	private static final List<String> FEMALE_IMAGE_KEY_POOL = List.of(
+		"default_dog",
+		"default_cat",
+		"default_bear",
+		"default_fox",
+		"default_rabbit",
+		"default_otter",
+		"default_wolf",
+		"default_snake",
+		"default_dinosaur"
 	);
 	private static final List<String> INTRO_POOL = List.of(
 		"hello there",
@@ -217,13 +236,14 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 		List<String> universities,
 		List<String> majors
 	) {
+		Gender gender = randomEnum(random, Gender.values());
 		ProfileCreateRequest request = ProfileCreateRequest.builder()
 			.nickname(nickname)
-			.gender(randomEnum(random, Gender.values()))
+			.gender(gender)
 			.birthDate(randomBirthDate(random))
 			.mbti(randomElement(random, MBTI_POOL))
 			.intro(randomElement(random, INTRO_POOL))
-			.profileImageKey(randomElement(random, IMAGE_KEY_POOL))
+			.profileImageKey(randomProfileImageKey(random, gender))
 			.socialType(null)
 			.socialAccountId(null)
 			.university(randomElement(random, universities))
@@ -235,6 +255,11 @@ public class DummyUserSeedRunner implements ApplicationRunner {
 			.build();
 
 		dummyUserSeedService.createSingleDummyUser(email, encodedPassword, request);
+	}
+
+	private String randomProfileImageKey(Random random, Gender gender) {
+		List<String> imageKeyPool = gender == Gender.FEMALE ? FEMALE_IMAGE_KEY_POOL : MALE_IMAGE_KEY_POOL;
+		return randomElement(random, imageKeyPool);
 	}
 
 	private List<HobbyDto> randomHobbies(Random random) {

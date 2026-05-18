@@ -22,6 +22,7 @@ import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.ProfileTagItem;
+import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -456,6 +457,145 @@ class ProfileServiceImplTest {
 			// then
 			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_fox_female1.png");
 		}
+
+		@Test
+		@DisplayName("profileImageKey alias로 default_동물이름을 수정할 수 있다")
+		void shouldUpdateAnimalProfileImageUsingProfileImageKeyAlias() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, null, "default_bear", null, null, null,
+				null, null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_bear_male1.png");
+		}
+
+		@Test
+		@DisplayName("profileImageKey alias가 S3 key면 퍼블릭 URL로 변환해 수정한다")
+		void shouldUpdateS3ProfileImageUsingProfileImageKeyAlias() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			String imageKey = "profiles/1/custom.png";
+			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/custom.png";
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, null, imageKey, null, null, null,
+				null, null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo(imageUrl);
+		}
+
+		@Test
+		@DisplayName("기존 기본 이미지 URL과 새 S3 key가 같이 오면 새 S3 key를 우선한다")
+		void shouldPreferS3ProfileImageKeyOverExistingDefaultImageUrl() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			String imageKey = "profiles/1/custom.png";
+			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/custom.png";
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, "https://img.com/defaults/profile/animal_dinosaur1.png", imageKey, null, null, null,
+				null, null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo(imageUrl);
+		}
+
+		@Test
+		@DisplayName("profileImageUrl과 profileImageKey가 모두 있으면 새 선택값인 profileImageKey를 우선한다")
+		void shouldPreferProfileImageKeyOverProfileImageUrlWhenBothProvided() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest(
+				null, null, null, "default_dinosaur", "default_bear", null, null, null,
+				null, null, null, null, null, null, null, null
+			);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.profileImageUrl()).isEqualTo("https://img.com/defaults/profile/animal_bear_male1.png");
+		}
+
+		@Test
+		@DisplayName("소셜 연락처 필드가 요청에 없으면 기존 연락처를 유지한다")
+		void shouldKeepSocialInfoWhenSocialFieldsAreNotProvided() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithSocialInfo(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest();
+			request.setIntro("수정된 소개");
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.socialType()).isEqualTo(SocialAccountType.INSTAGRAM);
+			assertThat(response.socialAccountId()).isEqualTo("@comatching");
+		}
+
+		@Test
+		@DisplayName("소셜 연락처 필드를 명시적으로 null로 보내면 기존 연락처를 삭제한다")
+		void shouldClearSocialInfoWhenSocialFieldsAreProvidedAsNull() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithSocialInfo(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest();
+			request.setSocialType(null);
+			request.setSocialAccountId(null);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.socialType()).isNull();
+			assertThat(response.socialAccountId()).isNull();
+		}
 	}
 
 	@Nested
@@ -582,6 +722,34 @@ class ProfileServiceImplTest {
 			.university("한국대학교")
 			.major("컴퓨터공학과")
 			.contactFrequency(ContactFrequency.FREQUENT)
+			.hobbies(hobbies)
+			.tags(tags)
+			.build();
+	}
+
+	private Profile createProfileWithSocialInfo(Long memberId) {
+		Member member = createMember(memberId);
+
+		List<ProfileHobby> hobbies = List.of(
+			new ProfileHobby(HobbyCategory.SPORTS, "축구"),
+			new ProfileHobby(HobbyCategory.CULTURE, "영화감상")
+		);
+		List<ProfileTag> tags = List.of(
+			new ProfileTag(ProfileTagItem.EGG_FACE),
+			new ProfileTag(ProfileTagItem.BRIGHT)
+		);
+
+		return Profile.builder()
+			.member(member)
+			.nickname("테스트유저")
+			.gender(Gender.MALE)
+			.birthDate(LocalDate.of(2000, 1, 1))
+			.mbti("ENFP")
+			.university("한국대학교")
+			.major("컴퓨터공학과")
+			.contactFrequency(ContactFrequency.FREQUENT)
+			.socialAccountType(SocialAccountType.INSTAGRAM)
+			.socialAccountId("@comatching")
 			.hobbies(hobbies)
 			.tags(tags)
 			.build();

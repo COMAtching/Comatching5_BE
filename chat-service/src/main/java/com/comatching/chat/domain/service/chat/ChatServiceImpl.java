@@ -1,9 +1,13 @@
 package com.comatching.chat.domain.service.chat;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,9 +45,10 @@ public class ChatServiceImpl implements ChatService {
 	public ChatMessageResponse markAsRead(String roomId, Long memberId) {
 		ChatRoom room = chatRoomRepository.findById(roomId)
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+		validateRoomMember(room, memberId);
 
-		room.updateLastReadAt(memberId, LocalDateTime.now());
-		chatRoomRepository.save(room);
+		LocalDateTime readAt = LocalDateTime.now();
+		chatRoomRepository.touchLastReadAt(roomId, memberId, readAt);
 
 		return new ChatMessageResponse(
 			null,
@@ -51,7 +56,7 @@ public class ChatServiceImpl implements ChatService {
 			memberId,
 			null,
 			MessageType.READ,
-			LocalDateTime.now(),
+			readAt,
 			0
 		);
 	}
@@ -67,19 +72,35 @@ public class ChatServiceImpl implements ChatService {
 
 		ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+		validateRoomMember(chatRoom, request.senderId());
 
 		Long receiverId = getReceiverId(chatRoom, request.senderId());
 		boolean isBlockedByReceiver = blockService.isBlocked(receiverId, request.senderId());
 
 		String finalContent = resolveContent(request);
 		ChatMessage savedMessage = saveChatMessage(request, finalContent);
+		LocalDateTime sentAt = savedMessage.getCreatedAt() != null ? savedMessage.getCreatedAt() : now;
+		log.info(
+			"chat.message.saved roomId={} messageId={} senderId={} type={} createdAt={}",
+			savedMessage.getRoomId(),
+			savedMessage.getId(),
+			savedMessage.getSenderId(),
+			savedMessage.getType(),
+			sentAt
+		);
 
 		if (!isBlockedByReceiver) {
-			updateChatRoomInfo(chatRoom, request, now);
-			publishNotificationEvent(chatRoom, request, now);
+			updateChatRoomInfo(chatRoom, request, savedMessage.getId(), sentAt);
+			publishNotificationEvent(chatRoom, request, sentAt);
 		}
 
 		return ChatMessageResponse.from(savedMessage, 1);
+	}
+
+	private void validateRoomMember(ChatRoom chatRoom, Long memberId) {
+		if (!chatRoom.getInitiatorUserId().equals(memberId) && !chatRoom.getTargetUserId().equals(memberId)) {
+			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
+		}
 	}
 
 	private Long getReceiverId(ChatRoom chatRoom, Long senderId) {
@@ -90,6 +111,13 @@ public class ChatServiceImpl implements ChatService {
 
 	@Transactional(readOnly = true)
 	public List<ChatMessageResponse> getChatHistory(String roomId, Long memberId, Pageable pageable) {
+		log.info(
+			"chat.history.request roomId={} memberId={} page={} size={}",
+			roomId,
+			memberId,
+			getPageNumber(pageable),
+			getPageSize(pageable)
+		);
 
 		ChatRoom room = chatRoomRepository.findById(roomId)
 			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
@@ -99,21 +127,68 @@ public class ChatServiceImpl implements ChatService {
 			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
 		}
 
-		return chatMessageRepository.findByRoomIdOrderByCreatedAtDesc(roomId, pageable).stream()
+		Pageable latestFirstPageable = toLatestFirstPageable(pageable);
+		List<ChatMessage> messages = new ArrayList<>(chatMessageRepository.findByRoomId(roomId, latestFirstPageable));
+		Collections.reverse(messages);
+
+		List<ChatMessageResponse> responses = messages.stream()
 			.map(msg -> {
 				int readCount = msg.getCreatedAt().isBefore(otherUserLastReadAt) ? 0 : 1;
 				return ChatMessageResponse.from(msg, readCount);
 			})
 			.toList();
+
+		log.info(
+			"chat.history.response roomId={} memberId={} count={} firstMessageId={} lastMessageId={}",
+			roomId,
+			memberId,
+			responses.size(),
+			getFirstMessageId(responses),
+			getLastMessageId(responses)
+		);
+
+		return responses;
 	}
 
-	private void updateChatRoomInfo(ChatRoom chatRoom, ChatMessageRequest request, LocalDateTime now) {
+	private Pageable toLatestFirstPageable(Pageable pageable) {
+		Sort latestFirstSort = Sort.by(Sort.Direction.DESC, "createdAt")
+			.and(Sort.by(Sort.Direction.DESC, "id"));
+
+		if (pageable == null || pageable.isUnpaged()) {
+			return Pageable.unpaged(latestFirstSort);
+		}
+
+		return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), latestFirstSort);
+	}
+
+	private int getPageNumber(Pageable pageable) {
+		return pageable == null || pageable.isUnpaged() ? -1 : pageable.getPageNumber();
+	}
+
+	private int getPageSize(Pageable pageable) {
+		return pageable == null || pageable.isUnpaged() ? -1 : pageable.getPageSize();
+	}
+
+	private String getFirstMessageId(List<ChatMessageResponse> responses) {
+		return responses.isEmpty() ? null : responses.get(0).id();
+	}
+
+	private String getLastMessageId(List<ChatMessageResponse> responses) {
+		return responses.isEmpty() ? null : responses.get(responses.size() - 1).id();
+	}
+
+	private void updateChatRoomInfo(ChatRoom chatRoom, ChatMessageRequest request, String messageId, LocalDateTime now) {
 		String previewContent = (request.type() == MessageType.IMAGE) ? "사진을 보냈습니다." : request.content();
 
-		chatRoom.updateLastMessageInfo(previewContent, now);
-		chatRoom.updateLastReadAt(request.senderId(), now);
-
-		chatRoomRepository.save(chatRoom);
+		boolean updated = chatRoomRepository.updateLastMessageIfLatest(chatRoom.getId(), previewContent, now);
+		log.info(
+			"chat.room.summary.updated roomId={} messageId={} updated={} lastMessageTime={}",
+			chatRoom.getId(),
+			messageId,
+			updated,
+			now
+		);
+		chatRoomRepository.touchLastReadAt(chatRoom.getId(), request.senderId(), now);
 	}
 
 	private String resolveContent(ChatMessageRequest request) {
@@ -154,9 +229,12 @@ public class ChatServiceImpl implements ChatService {
 				));
 
 			} catch (Exception e) {
-				log.error("⚠️ 알림 이벤트 발행 실패 (메시지는 정상 저장됨) - RoomId: {}, Error: {}",
-					request.roomId(), e.getMessage());
-
+				log.error(
+					"chat.notification.kafka.send.failure roomId={} targetUserId={} error={}",
+					request.roomId(),
+					getReceiverId(room, request.senderId()),
+					e.getMessage()
+				);
 			}
 		}
 	}

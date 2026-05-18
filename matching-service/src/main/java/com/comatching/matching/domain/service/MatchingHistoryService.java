@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.domain.Pageable;
 
+import com.comatching.common.dto.matching.MatchingHistoryReferenceResponse;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.matching.domain.dto.MatchingHistoryResponse;
 
@@ -18,5 +19,7 @@ public interface MatchingHistoryService {
 	);
 
 	void changeFavorite(Long memberId, Long historyId, boolean favorite);
+
+	MatchingHistoryReferenceResponse getHistoryReference(Long memberId, Long partnerId);
 
 }

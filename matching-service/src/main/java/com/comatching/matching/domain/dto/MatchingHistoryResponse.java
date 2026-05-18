@@ -9,13 +9,23 @@ import lombok.Builder;
 @Builder
 public record MatchingHistoryResponse(
 	Long historyId,
+	String chatRoomId,
 	MatchingPartnerResponse partner,
 	boolean favorite,
 	LocalDateTime matchedAt
 ) {
 	public static MatchingHistoryResponse of(MatchingHistory history, ProfileResponse partnerProfile) {
+		return of(history, partnerProfile, null);
+	}
+
+	public static MatchingHistoryResponse of(
+		MatchingHistory history,
+		ProfileResponse partnerProfile,
+		String chatRoomId
+	) {
 		return MatchingHistoryResponse.builder()
 			.historyId(history.getId())
+			.chatRoomId(chatRoomId)
 			.partner(MatchingPartnerResponse.from(partnerProfile))
 			.favorite(history.isFavorite())
 			.matchedAt(history.getMatchedAt())

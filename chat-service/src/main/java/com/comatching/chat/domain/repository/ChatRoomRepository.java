@@ -11,9 +11,11 @@ import org.springframework.stereotype.Repository;
 import com.comatching.chat.domain.entity.ChatRoom;
 
 @Repository
-public interface ChatRoomRepository extends MongoRepository<ChatRoom, String> {
+public interface ChatRoomRepository extends MongoRepository<ChatRoom, String>, ChatRoomRepositoryCustom {
 
 	Optional<ChatRoom> findByMatchingId(Long matchingId);
+
+	List<ChatRoom> findByMatchingIdIn(List<Long> matchingIds);
 
 	@Query("{ '$or': [ " +
 		"{ 'initiatorUserId': ?0 }, " +

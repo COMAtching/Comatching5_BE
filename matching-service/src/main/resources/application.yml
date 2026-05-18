@@ -7,6 +7,9 @@ user-service:
 item-service:
   url: http://localhost:9006
 
+chat-service:
+  url: http://localhost:9003
+
 spring:
   application:
     name: matching-service

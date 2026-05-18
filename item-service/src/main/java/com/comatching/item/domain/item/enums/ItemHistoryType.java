@@ -10,6 +10,7 @@ public enum ItemHistoryType {
 	EVENT("이벤트 획득"),
 	USE("사용"),
 	REFUND("환불/복구"),
+	ADMIN_ADJUSTMENT("관리자 조정"),
 	EXPIRED("기간 만료");
 
 	private final String description;

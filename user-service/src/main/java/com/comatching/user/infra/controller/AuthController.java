@@ -2,6 +2,7 @@ package com.comatching.user.infra.controller;
 
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +32,8 @@ import com.comatching.common.dto.auth.SignupRequest;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.user.global.security.cookie.AuthCookieFactory;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -81,9 +84,12 @@ public class AuthController {
 
 	@PostMapping("/reissue")
 	public ResponseEntity<ApiResponse<Void>> reissue(
-		@CookieValue(name = "refreshToken") String refreshToken,
+		@CookieValue(name = "refreshToken", required = false) String refreshToken,
 		HttpServletResponse response
 	) {
+		if (!StringUtils.hasText(refreshToken)) {
+			throw new BusinessException(GeneralErrorCode.UNAUTHORIZED, "리프레시 토큰이 없습니다. 다시 로그인해주세요.");
+		}
 
 		TokenResponse tokenResponse = authService.reissue(refreshToken);
 

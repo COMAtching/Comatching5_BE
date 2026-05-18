@@ -40,7 +40,7 @@ public record ChatRoomResponse(
 		Long memberId,
 		String nickname,
 		String profileImageUrl,
-		String university,
+		String major,
 		Integer age
 	) {
 		public static UserSummary from(ProfileResponse profile) {
@@ -49,7 +49,7 @@ public record ChatRoomResponse(
 				profile.memberId(),
 				profile.nickname(),
 				profile.profileImageUrl(),
-				profile.university(),
+				profile.major(),
 				age != null ? age.getValue() : null
 			);
 		}

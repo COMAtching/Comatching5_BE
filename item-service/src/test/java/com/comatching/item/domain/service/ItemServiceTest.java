@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.comatching.item.domain.item.entity.Item;
 import com.comatching.item.domain.item.dto.MyItemsResponse;
 import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.item.domain.item.repository.ItemRepository;
 import com.comatching.item.domain.item.service.ItemHistoryService;
 import com.comatching.item.domain.item.service.ItemServiceImpl;
@@ -71,6 +72,37 @@ class ItemServiceTest {
 			assertThat(itemSoon.getQuantity()).isZero();
 			assertThat(itemLater.getQuantity()).isEqualTo(3);
 			verify(historyService).saveHistory(any(), any(), any(), anyInt(), anyString());
+		}
+
+		@Test
+		@DisplayName("아이템 사용은 사용자/아이템 타입 단위 분산락을 사용한다")
+		void shouldUseDistributedLock() throws NoSuchMethodException {
+			// when
+			var method = ItemServiceImpl.class.getMethod("useItem", Long.class, ItemType.class, int.class);
+
+			// then
+			var lock = method.getAnnotation(com.comatching.common.annotation.DistributedLock.class);
+			assertThat(lock).isNotNull();
+			assertThat(lock.key()).isEqualTo("item:inventory");
+			assertThat(lock.identifier()).isEqualTo("#memberId + ':' + #itemType");
+		}
+	}
+
+	@Nested
+	@DisplayName("addItem 메서드")
+	class AddItem {
+
+		@Test
+		@DisplayName("아이템 지급은 사용자/아이템 타입 단위 분산락을 사용한다")
+		void shouldUseDistributedLock() throws NoSuchMethodException {
+			// when
+			var method = ItemServiceImpl.class.getMethod("addItem", Long.class, AddItemRequest.class);
+
+			// then
+			var lock = method.getAnnotation(com.comatching.common.annotation.DistributedLock.class);
+			assertThat(lock).isNotNull();
+			assertThat(lock.key()).isEqualTo("item:inventory");
+			assertThat(lock.identifier()).isEqualTo("#memberId + ':' + #request.itemType()");
 		}
 	}
 

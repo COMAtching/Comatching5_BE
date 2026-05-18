@@ -14,6 +14,7 @@ public enum ItemErrorCode implements ErrorCode {
 	PRODUCT_NOT_AVAILABLE("ITEM-003", HttpStatus.BAD_REQUEST, "유효하지 않은 상품"),
 	TARGET_USER_NOT_FOUND("ITEM-004", HttpStatus.BAD_REQUEST, "대상 사용자를 찾을 수 없습니다."),
 	USER_QUERY_FAILED("ITEM-005", HttpStatus.INTERNAL_SERVER_ERROR, "사용자 조회 중 오류가 발생했습니다."),
+	DUPLICATE_ADMIN_INVENTORY_ADJUSTMENT("ITEM-006", HttpStatus.CONFLICT, "동일한 관리자 아이템 조정 요청이 처리 중입니다."),
 	;
 
 	private final String code;

@@ -4,6 +4,9 @@ server:
 user-service:
   url: http://localhost:9000
 
+matching-service:
+  url: http://localhost:9001
+
 spring:
   application:
     name: chat-service

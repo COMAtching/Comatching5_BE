@@ -13,7 +13,7 @@ import com.comatching.chat.domain.entity.ChatMessage;
 @Repository
 public interface ChatMessageRepository extends MongoRepository<ChatMessage, String>, ChatMessageRepositoryCustom {
 
-	List<ChatMessage> findByRoomIdOrderByCreatedAtDesc(String roomId, Pageable pageable);
+	List<ChatMessage> findByRoomId(String roomId, Pageable pageable);
 
 	@Query(value = "{ 'roomId': ?0, 'createdAt': { $gt: ?1 }, 'senderId': { $ne: ?2 } }", count = true)
 	long countUnreadMessages(String roomId, LocalDateTime lastReadAt, Long myMemberId);

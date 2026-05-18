@@ -8,15 +8,19 @@ public record AdminUserSummaryResponse(
 	String email,
 	String nickname,
 	Gender gender,
-	String profileImageUrl
+	String profileImageUrl,
+	long matchingTicketCount,
+	long optionTicketCount
 ) {
-	public static AdminUserSummaryResponse from(AdminUserProfileDto dto) {
+	public static AdminUserSummaryResponse from(AdminUserProfileDto dto, AdminInventoryCounts inventoryCounts) {
 		return new AdminUserSummaryResponse(
 			dto.id(),
 			dto.email(),
 			dto.nickname(),
 			dto.gender(),
-			dto.profileImageUrl()
+			dto.profileImageUrl(),
+			inventoryCounts.matchingTicketCount(),
+			inventoryCounts.optionTicketCount()
 		);
 	}
 }

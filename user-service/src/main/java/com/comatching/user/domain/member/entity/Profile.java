@@ -127,7 +127,7 @@ public class Profile {
 	public void update(
 		String nickname, String intro, String mbti,
 		String profileImageUrl, Gender gender, LocalDate birthDate,
-		SocialAccountType socialAccountType, String socialAccountId,
+		SocialAccountType socialAccountType, String socialAccountId, boolean socialInfoProvided,
 		String university, String major, ContactFrequency contactFrequency, String song,
 		List<ProfileHobby> hobbies, List<ProfileTag> tags, Boolean isMatchable) {
 
@@ -154,7 +154,7 @@ public class Profile {
 		if (song != null)
 			this.song = song;
 
-		updateSocialInfo(socialAccountType, socialAccountId);
+		updateSocialInfo(socialAccountType, socialAccountId, socialInfoProvided);
 
 		if (hobbies != null)
 			addHobbies(hobbies);
@@ -192,12 +192,18 @@ public class Profile {
 		}
 	}
 
-	private void updateSocialInfo(SocialAccountType type, String id) {
-		if (type == null && id == null) {
+	private void updateSocialInfo(SocialAccountType type, String id, boolean provided) {
+		if (!provided) {
 			return;
 		}
 
-		if (type == null || id == null) {
+		if (type == null && (id == null || id.isBlank())) {
+			this.socialAccountType = null;
+			this.socialAccountId = null;
+			return;
+		}
+
+		if (type == null || id == null || id.isBlank()) {
 			throw new BusinessException(UserErrorCode.INVALID_SOCIAL_INFO);
 		}
 

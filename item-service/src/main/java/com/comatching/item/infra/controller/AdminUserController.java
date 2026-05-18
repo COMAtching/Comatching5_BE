@@ -62,7 +62,7 @@ public class AdminUserController {
 		@PathVariable Long memberId,
 		@RequestBody @Valid AdminInventoryUpdateRequest request
 	) {
-		adminUserItemService.updateUserInventory(memberId, request);
+		adminUserItemService.updateUserInventory(memberInfo.memberId(), memberId, request);
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

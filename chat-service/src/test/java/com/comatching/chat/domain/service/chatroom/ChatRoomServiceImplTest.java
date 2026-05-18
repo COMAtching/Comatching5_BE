@@ -22,6 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UnreadCountCondition;
@@ -70,8 +71,8 @@ class ChatRoomServiceImplTest {
 			.willReturn(Map.of("room-1", 2L, "room-2", 3L));
 		given(memberClient.getProfiles(anyList()))
 			.willReturn(List.of(
-				profile(OTHER_MEMBER_ID, "첫번째상대", "https://img.example/first.png", "코매칭대", LocalDate.now().minusYears(23)),
-				profile(SECOND_OTHER_MEMBER_ID, "두번째상대", "https://img.example/second.png", "매칭대", LocalDate.now().minusYears(24))
+				profile(OTHER_MEMBER_ID, "첫번째상대", "https://img.example/first.png", "컴퓨터공학과", LocalDate.now().minusYears(23)),
+				profile(SECOND_OTHER_MEMBER_ID, "두번째상대", "https://img.example/second.png", "경영학과", LocalDate.now().minusYears(24))
 			));
 
 		// when
@@ -84,7 +85,7 @@ class ChatRoomServiceImplTest {
 		assertThat(firstOtherUser.memberId()).isEqualTo(OTHER_MEMBER_ID);
 		assertThat(firstOtherUser.nickname()).isEqualTo("첫번째상대");
 		assertThat(firstOtherUser.profileImageUrl()).isEqualTo("https://img.example/first.png");
-		assertThat(firstOtherUser.university()).isEqualTo("코매칭대");
+		assertThat(firstOtherUser.major()).isEqualTo("컴퓨터공학과");
 		assertThat(firstOtherUser.age()).isEqualTo(24);
 		then(chatMessageRepository).should().countUnreadMessagesByRoom(
 			argThat(conditions -> containsCondition(conditions, "room-1", firstReadAt)
@@ -93,6 +94,70 @@ class ChatRoomServiceImplTest {
 		);
 		then(memberClient).should().getProfiles(List.of(OTHER_MEMBER_ID, SECOND_OTHER_MEMBER_ID));
 		then(chatMessageRepository).should(never()).countUnreadMessages(anyString(), any(), anyLong());
+	}
+
+	@Test
+	@DisplayName("매칭을 시작한 사용자는 첫 메시지 전 WAITING 방도 목록에서 볼 수 있다")
+	void getMyChatRooms_showsWaitingRoomToInitiator() {
+		// given
+		LocalDateTime readAt = LocalDateTime.of(2026, 1, 1, 12, 0);
+		ChatRoom waitingRoom = chatRoom("room-waiting", 100L, MEMBER_ID, OTHER_MEMBER_ID, readAt);
+
+		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
+			.willReturn(List.of(waitingRoom));
+		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
+			.willReturn(Map.of("room-waiting", 0L));
+		given(memberClient.getProfiles(anyList()))
+			.willReturn(List.of(
+				profile(OTHER_MEMBER_ID, "상대", "https://img.example/other.png", "컴퓨터공학과", LocalDate.now().minusYears(23))
+			));
+
+		// when
+		List<ChatRoomResponse> result = chatRoomService.getMyChatRooms(MEMBER_ID);
+
+		// then
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).id()).isEqualTo("room-waiting");
+		assertThat(result.get(0).lastMessage()).isNull();
+		assertThat(result.get(0).otherUser().memberId()).isEqualTo(OTHER_MEMBER_ID);
+	}
+
+	@Test
+	@DisplayName("매칭을 받은 사용자는 첫 메시지 전 WAITING 방을 목록에서 볼 수 없다")
+	void getMyChatRooms_hidesWaitingRoomFromTargetUntilActive() {
+		// given
+		LocalDateTime activeReadAt = LocalDateTime.of(2026, 1, 1, 13, 0);
+		ChatRoom waitingRoom = chatRoom("room-waiting", 100L, OTHER_MEMBER_ID, MEMBER_ID, LocalDateTime.now());
+		ChatRoom activeRoom = chatRoom("room-active", 101L, SECOND_OTHER_MEMBER_ID, MEMBER_ID, activeReadAt);
+		markActive(activeRoom);
+		ReflectionTestUtils.setField(activeRoom, "targetLastReadAt", activeReadAt);
+
+		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
+			.willReturn(List.of(waitingRoom, activeRoom));
+		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
+			.willReturn(Map.of("room-active", 4L));
+		given(memberClient.getProfiles(anyList()))
+			.willReturn(List.of(
+				profile(SECOND_OTHER_MEMBER_ID, "활성상대", "https://img.example/active.png", "경영학과", LocalDate.now().minusYears(24))
+			));
+
+		// when
+		List<ChatRoomResponse> result = chatRoomService.getMyChatRooms(MEMBER_ID);
+
+		// then
+		assertThat(result).hasSize(1);
+		assertThat(result.get(0).id()).isEqualTo("room-active");
+		assertThat(result.get(0).otherUser().memberId()).isEqualTo(SECOND_OTHER_MEMBER_ID);
+		assertThat(result.get(0).unreadCount()).isEqualTo(4L);
+		then(chatMessageRepository).should().countUnreadMessagesByRoom(
+			argThat(conditions -> conditions.size() == 1
+				&& containsCondition(conditions, "room-active", activeReadAt)
+				&& !containsRoom(conditions, "room-waiting")),
+			eq(MEMBER_ID)
+		);
+		then(memberClient).should().getProfiles(List.of(SECOND_OTHER_MEMBER_ID));
 	}
 
 	@Test
@@ -111,7 +176,7 @@ class ChatRoomServiceImplTest {
 			.willReturn(Map.of("room-1", 7L));
 		given(memberClient.getProfiles(anyList()))
 			.willReturn(List.of(
-				profile(OTHER_MEMBER_ID, "보이는상대", "https://img.example/visible.png", "코매칭대", LocalDate.now().minusYears(22))
+				profile(OTHER_MEMBER_ID, "보이는상대", "https://img.example/visible.png", "산업공학과", LocalDate.now().minusYears(22))
 			));
 
 		// when
@@ -153,6 +218,35 @@ class ChatRoomServiceImplTest {
 	}
 
 	@Test
+	@DisplayName("전체 안 읽은 메시지 수 조회에서 매칭을 받은 사용자의 WAITING 방은 제외한다")
+	void getTotalUnreadCount_excludesWaitingRoomForTarget() {
+		// given
+		LocalDateTime activeReadAt = LocalDateTime.of(2026, 1, 1, 13, 0);
+		ChatRoom waitingRoom = chatRoom("room-waiting", 100L, OTHER_MEMBER_ID, MEMBER_ID, LocalDateTime.now());
+		ChatRoom activeRoom = chatRoom("room-active", 101L, SECOND_OTHER_MEMBER_ID, MEMBER_ID, activeReadAt);
+		markActive(activeRoom);
+		ReflectionTestUtils.setField(activeRoom, "targetLastReadAt", activeReadAt);
+
+		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
+			.willReturn(List.of(waitingRoom, activeRoom));
+		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
+			.willReturn(Map.of("room-active", 5L));
+
+		// when
+		long result = chatRoomService.getTotalUnreadCount(MEMBER_ID);
+
+		// then
+		assertThat(result).isEqualTo(5L);
+		then(chatMessageRepository).should().countUnreadMessagesByRoom(
+			argThat(conditions -> conditions.size() == 1
+				&& containsCondition(conditions, "room-active", activeReadAt)
+				&& !containsRoom(conditions, "room-waiting")),
+			eq(MEMBER_ID)
+		);
+	}
+
+	@Test
 	@DisplayName("방 참여자는 파일 업로드 권한 검증을 통과한다")
 	void validateRoomMember_allowsParticipant() {
 		// given
@@ -189,6 +283,26 @@ class ChatRoomServiceImplTest {
 				assertThat(e.getErrorCode()).isEqualTo(ChatErrorCode.NOT_EXIST_CHATROOM));
 	}
 
+	@Test
+	@DisplayName("matchingId 목록으로 채팅방 ID를 조회한다")
+	void getChatRoomReferencesByMatchingIds_returnsRoomIds() {
+		// given
+		ChatRoom firstRoom = chatRoom("room-100", 100L, MEMBER_ID, OTHER_MEMBER_ID, LocalDateTime.now());
+		ChatRoom secondRoom = chatRoom("room-101", 101L, MEMBER_ID, SECOND_OTHER_MEMBER_ID, LocalDateTime.now());
+		given(chatRoomRepository.findByMatchingIdIn(List.of(100L, 101L)))
+			.willReturn(List.of(firstRoom, secondRoom));
+
+		// when
+		var result = chatRoomService.getChatRoomReferencesByMatchingIds(List.of(100L, 101L));
+
+		// then
+		assertThat(result).extracting("matchingId", "chatRoomId")
+			.containsExactly(
+				tuple(100L, "room-100"),
+				tuple(101L, "room-101")
+			);
+	}
+
 	private ChatRoom chatRoom(String id, Long matchingId, Long initiatorId, Long targetId, LocalDateTime readAt) {
 		ChatRoom room = ChatRoom.builder()
 			.matchingId(matchingId)
@@ -201,18 +315,22 @@ class ChatRoomServiceImplTest {
 		return room;
 	}
 
+	private void markActive(ChatRoom room) {
+		ReflectionTestUtils.setField(room, "status", ChatRoomStatus.ACTIVE);
+	}
+
 	private ProfileResponse profile(
 		Long memberId,
 		String nickname,
 		String profileImageUrl,
-		String university,
+		String major,
 		LocalDate birthDate
 	) {
 		return ProfileResponse.builder()
 			.memberId(memberId)
 			.nickname(nickname)
 			.profileImageUrl(profileImageUrl)
-			.university(university)
+			.major(major)
 			.birthDate(birthDate)
 			.build();
 	}

@@ -2,6 +2,7 @@ package com.comatching.matching.domain.repository.history;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,8 @@ public interface MatchingHistoryRepository extends JpaRepository<MatchingHistory
 	List<Long> findPartnerIdsByMemberId(@Param("memberId") Long memberId);
 
 	Page<MatchingHistory> findByMemberIdOrderByMatchedAtDesc(Long memberId, Pageable pageable);
+
+	Optional<MatchingHistory> findByMemberIdAndPartnerId(Long memberId, Long partnerId);
 
 	@Query("SELECT m FROM MatchingHistory m " +
 		"WHERE m.memberId = :memberId " +

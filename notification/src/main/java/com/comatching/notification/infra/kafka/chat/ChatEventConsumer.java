@@ -16,8 +16,18 @@ public class ChatEventConsumer {
 
 	private final FCMService fcmService;
 
-	@KafkaListener(topics = "chat-notification", groupId = "notification-group")
+	@KafkaListener(
+		topics = "chat-notification",
+		groupId = "notification-group",
+		containerFactory = "jsonKafkaListenerContainerFactory"
+	)
 	public void handleChatEvent(ChatMessageEvent event) {
+		log.info(
+			"chat.notification.consume roomId={} targetUserId={} type={}",
+			event.roomId(),
+			event.targetUserId(),
+			event.type()
+		);
 		fcmService.sendNotification(event);
 	}
 }

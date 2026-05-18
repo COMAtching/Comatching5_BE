@@ -33,7 +33,9 @@ import com.comatching.user.global.config.ProfileImageProperties;
 import com.comatching.user.global.exception.UserErrorCode;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -42,6 +44,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	private static final String DEFAULT_IMAGE_VALUE = "default";
 	private static final String DEFAULT_IMAGE_PREFIX = "default_";
 	private static final String DEFAULT_IMAGE_FILENAME = "default.png";
+	private static final String PROFILE_IMAGE_URL_SOURCE = "profileImageUrl";
+	private static final String PROFILE_IMAGE_KEY_SOURCE = "profileImageKey";
 
 	private static final Map<String, String> MALE_ANIMAL_IMAGE_FILENAMES = Map.of(
 		"dog", "animal_dog_male1.png",
@@ -138,7 +142,17 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		String normalizedNickname = normalizeNicknameForUpdate(request.nickname(), profile.getNickname(), memberId);
 		Gender effectiveGender = request.gender() != null ? request.gender() : profile.getGender();
-		String profileImageUrl = resolveProfileImageUrlForUpdate(request.profileImageUrl(), effectiveGender);
+		ProfileImageInput profileImageInput = resolveProfileImageInput(request);
+		String profileImageUrl = resolveProfileImageUrlForUpdate(profileImageInput.value(), effectiveGender);
+		if (profileImageInput.isPresent()) {
+			log.info(
+				"profile.image.update memberId={} inputSource={} inputValue={} resolvedUrl={}",
+				memberId,
+				profileImageInput.source(),
+				profileImageInput.value(),
+				profileImageUrl
+			);
+		}
 
 		profile.update(
 			normalizedNickname,
@@ -149,6 +163,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			request.birthDate(),
 			request.socialType(),
 			request.socialAccountId(),
+			request.socialInfoProvided(),
 			request.university(),
 			request.major(),
 			request.contactFrequency(),
@@ -172,6 +187,22 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		eventPublisher.sendUpdateEvent(event);
 
 		return toProfileResponse(profile);
+	}
+
+	private ProfileImageInput resolveProfileImageInput(ProfileUpdateRequest request) {
+		if (StringUtils.hasText(request.profileImageKey())) {
+			return new ProfileImageInput(PROFILE_IMAGE_KEY_SOURCE, request.profileImageKey());
+		}
+		if (StringUtils.hasText(request.profileImageUrl())) {
+			return new ProfileImageInput(PROFILE_IMAGE_URL_SOURCE, request.profileImageUrl());
+		}
+		if (request.profileImageKey() != null) {
+			return new ProfileImageInput(PROFILE_IMAGE_KEY_SOURCE, request.profileImageKey());
+		}
+		if (request.profileImageUrl() != null) {
+			return new ProfileImageInput(PROFILE_IMAGE_URL_SOURCE, request.profileImageUrl());
+		}
+		return ProfileImageInput.empty();
 	}
 
 	private void publishMatchingEvent(Profile profile) {
@@ -375,5 +406,15 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 				.toList())
 			.build();
 
+	}
+
+	private record ProfileImageInput(String source, String value) {
+		private static ProfileImageInput empty() {
+			return new ProfileImageInput(null, null);
+		}
+
+		private boolean isPresent() {
+			return source != null;
+		}
 	}
 }
