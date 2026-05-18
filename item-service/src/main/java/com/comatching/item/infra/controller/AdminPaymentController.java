@@ -1,7 +1,8 @@
 package com.comatching.item.infra.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,7 @@ import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.item.domain.product.dto.PurchaseRequestDto;
 import com.comatching.item.domain.product.service.AdminPaymentService;
 
@@ -30,10 +32,13 @@ public class AdminPaymentController {
 	private final AdminPaymentService adminPaymentService;
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
-	@Operation(summary = "승인 대기 목록 조회", description = "아직 처리되지 않은(PENDING) 구매 요청 목록을 최신순으로 조회합니다.")
+	@Operation(summary = "승인 대기 목록 조회", description = "아직 처리되지 않은(PENDING) 구매 요청 목록을 페이지 단위로 최신순 조회합니다.")
 	@GetMapping("/requests")
-	public ResponseEntity<ApiResponse<List<PurchaseRequestDto>>> getPendingRequests(@CurrentMember MemberInfo memberInfo) {
-		return ResponseEntity.ok(ApiResponse.ok(adminPaymentService.getPendingRequests()));
+	public ResponseEntity<ApiResponse<PagingResponse<PurchaseRequestDto>>> getPendingRequests(
+		@CurrentMember MemberInfo memberInfo,
+		@PageableDefault(size = 20, sort = "requestedAt", direction = Sort.Direction.DESC) Pageable pageable
+	) {
+		return ResponseEntity.ok(ApiResponse.ok(adminPaymentService.getPendingRequests(pageable)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
