@@ -34,7 +34,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product firstPurchaseBundle = product(
 			"첫 구매 특가 번들",
 			"FIRST_PURCHASE_SPECIAL_BUNDLE",
-			"첫 결제를 가볍게 시작하는 특가 번들이에요.",
+			"첫 구매 특가 번들",
 			3000,
 			1,
 			true,
@@ -47,7 +47,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product miniBundle = product(
 			"미니 번들",
 			"MINI_BUNDLE",
-			"옵션권만 가볍게 보충해요.",
+			"미니 번들",
 			500,
 			2,
 			true,
@@ -59,7 +59,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product valueBundle = product(
 			"실속 번들",
 			"VALUE_BUNDLE",
-			"뽑기권과 옵션권을 균형 있게 충전해요.",
+			"실속 번들",
 			5500,
 			3,
 			true,
@@ -72,7 +72,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product fullOptionBundle = product(
 			"풀옵션 번들",
 			"FULL_OPTION_BUNDLE",
-			"옵션권을 넉넉하게 챙기는 번들이에요.",
+			"풀옵션 번들",
 			7000,
 			4,
 			true,
@@ -85,7 +85,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product superBundle = product(
 			"슈퍼 번들",
 			"SUPER_BUNDLE",
-			"계좌이체 특가로 크게 충전하는 번들이에요.",
+			"슈퍼 번들",
 			9500,
 			5,
 			true,
@@ -98,7 +98,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product hyperBundle = product(
 			"하이퍼 번들",
 			"HYPER_BUNDLE",
-			"대용량 뽑기권과 옵션권 번들이에요.",
+			"하이퍼 번들",
 			18000,
 			6,
 			true,
@@ -111,7 +111,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product matchingTicket = product(
 			"뽑기권 1장",
 			"MATCHING_TICKET_1",
-			"뽑기권을 1장 충전해요.",
+			"뽑기권 1장",
 			1000,
 			7,
 			false,
@@ -123,7 +123,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 		Product optionTicket = product(
 			"옵션권 1장",
 			"OPTION_TICKET_1",
-			"옵션권을 1장 충전해요.",
+			"옵션권 1장",
 			200,
 			8,
 			false,

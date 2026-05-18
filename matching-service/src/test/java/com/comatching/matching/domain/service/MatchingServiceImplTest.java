@@ -10,14 +10,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.ItemType;
+import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.item.ItemConsumption;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.dto.member.ProfileTagDto;
@@ -300,8 +303,106 @@ class MatchingServiceImplTest {
 			matchingService.match(memberId, request);
 
 			// then
-			verify(historyRepository).save(any(MatchingHistory.class));
+			ArgumentCaptor<MatchingHistory> historyCaptor = ArgumentCaptor.forClass(MatchingHistory.class);
+			verify(historyRepository).save(historyCaptor.capture());
+			assertThat(historyCaptor.getValue().getPairKey()).isEqualTo("1:2");
 			verify(matchingEventProducer).sendMatchingSuccess(any());
+		}
+
+		@Test
+		@DisplayName("pairKey 중복 충돌이 발생하면 아이템을 추가 소비하지 않고 1회 재시도한다")
+		void shouldRetryOnceWithoutAdditionalItemConsumptionWhenPairKeyConflicts() {
+			// given
+			Long memberId = 1L;
+			Long conflictedPartnerId = 2L;
+			Long retryPartnerId = 3L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			ProfileResponse conflictedPartnerProfile = createProfile(conflictedPartnerId, Gender.FEMALE);
+			ProfileResponse retryPartnerProfile = createProfile(retryPartnerId, Gender.FEMALE);
+			MatchingCandidate conflictedPartner = createCandidate(conflictedPartnerId);
+			MatchingCandidate retryPartner = createCandidate(retryPartnerId);
+			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
+			MatchingHistory savedHistory = MatchingHistory.builder()
+				.memberId(memberId)
+				.partnerId(retryPartnerId)
+				.build();
+
+			given(memberClient.getProfile(anyLong())).willAnswer(invocation -> {
+				Long id = invocation.getArgument(0);
+				if (id.equals(memberId)) {
+					return myProfile;
+				}
+				if (id.equals(conflictedPartnerId)) {
+					return conflictedPartnerProfile;
+				}
+				return retryPartnerProfile;
+			});
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request))
+				.willReturn(conflictedPartner, retryPartner);
+			given(historyRepository.save(any(MatchingHistory.class)))
+				.willThrow(pairKeyConflict())
+				.willReturn(savedHistory);
+
+			// when
+			MatchingResponse response = matchingService.match(memberId, request);
+
+			// then
+			assertThat(response.memberId()).isEqualTo(retryPartnerId);
+			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
+			verify(itemClient, never()).addItem(anyLong(), any());
+			verify(matchingProcessor, times(2)).process(memberId, myProfile, request);
+			verify(historyRepository, times(2)).save(any(MatchingHistory.class));
+			ArgumentCaptor<MatchingSuccessEvent> eventCaptor = ArgumentCaptor.forClass(MatchingSuccessEvent.class);
+			verify(matchingEventProducer).sendMatchingSuccess(eventCaptor.capture());
+			assertThat(eventCaptor.getValue().targetUserId()).isEqualTo(retryPartnerId);
+		}
+
+		@Test
+		@DisplayName("pairKey 중복 충돌 재시도까지 실패하면 아이템을 환불한다")
+		void shouldRefundAndThrowNoCandidateWhenPairKeyConflictRetryAlsoFails() {
+			// given
+			Long memberId = 1L;
+			Long firstPartnerId = 2L;
+			Long secondPartnerId = 3L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			ProfileResponse firstPartnerProfile = createProfile(firstPartnerId, Gender.FEMALE);
+			ProfileResponse secondPartnerProfile = createProfile(secondPartnerId, Gender.FEMALE);
+			MatchingCandidate firstPartner = createCandidate(firstPartnerId);
+			MatchingCandidate secondPartner = createCandidate(secondPartnerId);
+			List<ItemConsumption> consumptions = List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1));
+
+			given(memberClient.getProfile(anyLong())).willAnswer(invocation -> {
+				Long id = invocation.getArgument(0);
+				if (id.equals(memberId)) {
+					return myProfile;
+				}
+				if (id.equals(firstPartnerId)) {
+					return firstPartnerProfile;
+				}
+				return secondPartnerProfile;
+			});
+			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
+			given(matchingProcessor.process(memberId, myProfile, request))
+				.willReturn(firstPartner, secondPartner);
+			given(historyRepository.save(any(MatchingHistory.class)))
+				.willThrow(pairKeyConflict())
+				.willThrow(pairKeyConflict());
+
+			// when & then
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(BusinessException.class)
+				.satisfies(e -> assertThat(((BusinessException)e).getErrorCode())
+					.isEqualTo(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+
+			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
+			verify(itemClient).addItem(eq(memberId), any());
+			verify(matchingProcessor, times(2)).process(memberId, myProfile, request);
+			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
 		}
 
 		@Test
@@ -352,5 +453,9 @@ class MatchingServiceImplTest {
 
 			verify(itemClient, times(2)).addItem(eq(memberId), any());
 		}
+	}
+
+	private DataIntegrityViolationException pairKeyConflict() {
+		return new DataIntegrityViolationException("Duplicate entry for key 'uk_history_pair_key'");
 	}
 }

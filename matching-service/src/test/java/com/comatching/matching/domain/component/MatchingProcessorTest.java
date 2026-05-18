@@ -84,7 +84,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25);
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
@@ -110,7 +110,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25); // 조건 충족
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), eq(candidate1), eq(request), any()))
@@ -138,7 +138,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25);
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
@@ -159,7 +159,7 @@ class MatchingProcessorTest {
 			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
 			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(new ArrayList<>());
 
@@ -179,7 +179,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate1 = createCandidate(2L, "ISTJ", 30);
 			List<MatchingCandidate> candidates = List.of(candidate1);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), any(), eq(request), any()))
@@ -201,7 +201,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate = createCandidate(2L, "ISTJ", 25);
 			List<MatchingCandidate> candidates = List.of(candidate);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
@@ -216,6 +216,33 @@ class MatchingProcessorTest {
 					&& "컴퓨터공학과".equals(condition.excludeMajor())
 			));
 			assertThat(result).isNotNull();
+		}
+
+		@Test
+		@DisplayName("양방향 매칭 이력이 있는 회원 ID를 후보 조회 제외 조건으로 전달한다")
+		void shouldPassBidirectionalMatchedMemberIdsToCandidateSearchCondition() {
+			// given
+			Long memberId = 1L;
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+
+			MatchingCandidate candidate = createCandidate(3L, "ISTJ", 25);
+
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(List.of(2L, 4L));
+			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+				.willReturn(List.of(candidate));
+			given(conditionCheckerFactory.check(isNull(), eq(candidate), eq(request), any())).willReturn(true);
+			given(scoreCalculator.calculate(eq(candidate), eq(request), any(KoreanAge.class))).willReturn(20);
+
+			// when
+			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
+
+			// then
+			assertThat(result.getMemberId()).isEqualTo(3L);
+			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
+				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
+			verify(candidateRepository).findPotentialCandidates(conditionCaptor.capture());
+			assertThat(conditionCaptor.getValue().excludeMemberIds()).containsExactly(2L, 4L);
 		}
 
 		@Test
@@ -234,7 +261,7 @@ class MatchingProcessorTest {
 			MatchingCandidate age29 = createCandidate(4L, "ISTJ", 29);
 			List<MatchingCandidate> candidates = List.of(age19, age27, age29);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
@@ -266,7 +293,7 @@ class MatchingProcessorTest {
 
 			MatchingCandidate candidate = createCandidate(2L, "ISTJ", 25);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(List.of(candidate));
 			given(conditionCheckerFactory.check(eq(ImportantOption.HOBBY), eq(candidate), eq(request), any()))
@@ -300,7 +327,7 @@ class MatchingProcessorTest {
 				.toList();
 			MatchingCandidate secondPageCandidate = createCandidate(600L, "ENFP", 23);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(firstPage, List.of(secondPageCandidate));
 			given(conditionCheckerFactory.check(isNull(), eq(secondPageCandidate), eq(request), any())).willReturn(true);
@@ -333,7 +360,7 @@ class MatchingProcessorTest {
 			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
 			List<MatchingCandidate> candidates = List.of(age19, age27);
 
-			given(historyRepository.findPartnerIdsByMemberId(memberId)).willReturn(new ArrayList<>());
+			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
 			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 

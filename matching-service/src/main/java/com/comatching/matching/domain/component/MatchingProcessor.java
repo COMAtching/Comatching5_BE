@@ -37,7 +37,7 @@ public class MatchingProcessor {
 
 	public MatchingCandidate process(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
 		KoreanAge myAge = KoreanAge.fromBirthDate(myProfile.birthDate());
-		List<Long> excludeMemberIds = historyRepository.findPartnerIdsByMemberId(memberId);
+		List<Long> excludeMemberIds = historyRepository.findMatchedMemberIdsByMemberId(memberId);
 		MatchingCandidateSearchSeed searchSeed = createSearchSeed(myProfile, request, myAge, excludeMemberIds);
 		List<MatchingCandidate> bestCandidates = new ArrayList<>();
 		int maxScore = -1;

@@ -16,8 +16,11 @@ import com.comatching.matching.domain.entity.MatchingHistory;
 @Repository
 public interface MatchingHistoryRepository extends JpaRepository<MatchingHistory, Long> {
 
-	@Query("SELECT m.partnerId FROM MatchingHistory m WHERE m.memberId = :memberId")
-	List<Long> findPartnerIdsByMemberId(@Param("memberId") Long memberId);
+	@Query("SELECT DISTINCT " +
+		"CASE WHEN m.memberId = :memberId THEN m.partnerId ELSE m.memberId END " +
+		"FROM MatchingHistory m " +
+		"WHERE m.memberId = :memberId OR m.partnerId = :memberId")
+	List<Long> findMatchedMemberIdsByMemberId(@Param("memberId") Long memberId);
 
 	Page<MatchingHistory> findByMemberIdOrderByMatchedAtDesc(Long memberId, Pageable pageable);
 

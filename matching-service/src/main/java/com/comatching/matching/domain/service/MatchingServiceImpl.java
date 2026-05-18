@@ -3,6 +3,7 @@ package com.comatching.matching.domain.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.comatching.common.annotation.DistributedLock;
@@ -35,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 public class MatchingServiceImpl implements MatchingService {
 
 	private static final int MAX_ALLOWED_AGE = 27;
+	private static final int MAX_MATCHING_ATTEMPTS = 2;
+	private static final String PAIR_KEY_CONSTRAINT = "uk_history_pair_key";
 
 	private final MatchingHistoryRepository historyRepository;
 	private final MemberClient memberClient;
@@ -52,16 +55,38 @@ public class MatchingServiceImpl implements MatchingService {
 		List<ItemConsumption> consumedConsumptions = consumeItems(memberId, request);
 
 		try {
-			MatchingCandidate matchedCandidate = matchingProcessor.process(memberId, myProfile, request);
-			ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
-
-			saveHistoryAndPublishEvent(memberId, matchedCandidate, request);
-
-			return MatchingResponse.of(matchedCandidate, partnerProfile);
+			return matchWithPairConflictRetry(memberId, myProfile, request);
 		} catch (Exception e) {
 			refundItems(memberId, consumedConsumptions);
 			throw e;
 		}
+	}
+
+	private MatchingResponse matchWithPairConflictRetry(Long memberId, ProfileResponse myProfile, MatchingRequest request) {
+		for (int attempt = 1; attempt <= MAX_MATCHING_ATTEMPTS; attempt++) {
+			MatchingCandidate matchedCandidate = matchingProcessor.process(memberId, myProfile, request);
+			ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
+
+			try {
+				saveHistoryAndPublishEvent(memberId, matchedCandidate, request);
+				return MatchingResponse.of(matchedCandidate, partnerProfile);
+			} catch (DataIntegrityViolationException e) {
+				if (!isPairKeyConflict(e)) {
+					throw e;
+				}
+				if (attempt == MAX_MATCHING_ATTEMPTS) {
+					throw new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE);
+				}
+				log.warn(
+					"Pair matching conflict detected. retrying matching once. memberId={}, partnerId={}, attempt={}",
+					memberId,
+					matchedCandidate.getMemberId(),
+					attempt
+				);
+			}
+		}
+
+		throw new BusinessException(GeneralErrorCode.INTERNAL_SERVER_ERROR);
 	}
 
 	private List<ItemConsumption> consumeItems(Long memberId, MatchingRequest request) {
@@ -125,6 +150,13 @@ public class MatchingServiceImpl implements MatchingService {
 			.build();
 
 		matchingEventProducer.sendMatchingSuccess(event);
+	}
+
+	private boolean isPairKeyConflict(DataIntegrityViolationException e) {
+		String message = e.getMostSpecificCause() != null
+			? e.getMostSpecificCause().getMessage()
+			: e.getMessage();
+		return message != null && message.toLowerCase().contains(PAIR_KEY_CONSTRAINT);
 	}
 
 	private void validateAgeLimitRequest(MatchingRequest request) {
