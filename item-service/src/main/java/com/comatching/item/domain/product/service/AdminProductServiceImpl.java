@@ -2,8 +2,10 @@ package com.comatching.item.domain.product.service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -27,13 +29,15 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class AdminProductServiceImpl implements AdminProductService {
 
+	private static final String AUTO_PRODUCT_CODE_PREFIX = "PRODUCT_";
+	private static final int AUTO_PRODUCT_CODE_MAX_ATTEMPTS = 5;
+
 	private final ProductRepository productRepository;
 
 	@Override
 	public ProductResponse createProduct(ProductCreateRequest request) {
 		Map<ItemType, Integer> rewardQuantityByType = validateRewards(request.rewards());
-		String code = normalizeRequiredText(request.code(), "상품 코드는 필수입니다.");
-		validateDuplicateCode(code);
+		String code = resolveProductCode(request.code());
 		validateFirstPurchasePolicy(request);
 
 		Product product = Product.builder()
@@ -113,6 +117,28 @@ public class AdminProductServiceImpl implements AdminProductService {
 		}
 	}
 
+	private String resolveProductCode(String requestCode) {
+		if (StringUtils.hasText(requestCode)) {
+			String code = requestCode.trim();
+			validateDuplicateCode(code);
+			return code;
+		}
+		return generateUniqueProductCode();
+	}
+
+	private String generateUniqueProductCode() {
+		for (int attempt = 0; attempt < AUTO_PRODUCT_CODE_MAX_ATTEMPTS; attempt++) {
+			String code = AUTO_PRODUCT_CODE_PREFIX + UUID.randomUUID()
+				.toString()
+				.replace("-", "")
+				.toUpperCase(Locale.ROOT);
+			if (!productRepository.existsByCode(code)) {
+				return code;
+			}
+		}
+		throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "상품 코드를 자동 생성하지 못했습니다. 다시 시도해주세요.");
+	}
+
 	private void validateFirstPurchasePolicy(ProductCreateRequest request) {
 		if (!request.firstPurchaseOnly()) {
 			return;
@@ -123,13 +149,6 @@ public class AdminProductServiceImpl implements AdminProductService {
 		if (request.isActive() && productRepository.existsByFirstPurchaseOnlyTrueAndIsActiveTrue()) {
 			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "활성 첫 구매 전용 상품은 하나만 등록할 수 있습니다.");
 		}
-	}
-
-	private String normalizeRequiredText(String value, String message) {
-		if (!StringUtils.hasText(value)) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, message);
-		}
-		return value.trim();
 	}
 
 	private void validateBonusRewards(

@@ -111,6 +111,7 @@
 ```json
 {
   "name": "매칭권 10개 (+옵션권 5개)",
+  "code": "MATCHING_TICKET_10",
   "description": "매칭권과 옵션권을 함께 충전해요.",
   "price": 9000,
   "displayOrder": 3,
@@ -136,6 +137,7 @@
 ```
 
 필드 규칙:
+- `code`: 선택, 공백/생략 가능. 생략하거나 공백이면 서버가 `PRODUCT_...` 형식으로 자동 생성. 직접 입력 시 영문 대문자, 숫자, `_`, `-`만 허용
 - `description`: 필수, 공백 불가, 50자 이하
 - `price`: 1 이상
 - `displayOrder`: 0 이상, 낮을수록 먼저 노출
@@ -155,6 +157,7 @@
   "data": {
     "id": 10,
     "name": "매칭권 10개 (+옵션권 5개)",
+    "code": "MATCHING_TICKET_10",
     "description": "매칭권과 옵션권을 함께 충전해요.",
     "price": 9000,
     "displayOrder": 3,
@@ -212,6 +215,7 @@ Query:
     {
       "id": 10,
       "name": "매칭권 10개 (+옵션권 5개)",
+      "code": "MATCHING_TICKET_10",
       "description": "매칭권과 옵션권을 함께 충전해요.",
       "price": 9000,
       "displayOrder": 3,
@@ -311,6 +315,7 @@ Query:
     {
       "id": 10,
       "name": "매칭권 10개 (+옵션권 5개)",
+      "code": "MATCHING_TICKET_10",
       "description": "매칭권과 옵션권을 함께 충전해요.",
       "price": 9000,
       "displayOrder": 3,

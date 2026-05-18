@@ -96,6 +96,37 @@ class AdminProductServiceImplTest {
 	}
 
 	@Test
+	@DisplayName("상품 코드가 없으면 서버가 자동 생성한다")
+	void shouldGenerateProductCodeWhenCodeIsMissing() {
+		// given
+		ProductCreateRequest request = new ProductCreateRequest(
+			"신규 번들",
+			null,
+			"매칭권과 옵션권을 함께 충전해요.",
+			3300,
+			7,
+			true,
+			true,
+			1,
+			true,
+			List.of(reward(ItemType.MATCHING_TICKET, 3)),
+			List.of()
+		);
+		given(productRepository.save(any(Product.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+		// when
+		ProductResponse response = adminProductService.createProduct(request);
+
+		// then
+		ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
+		then(productRepository).should().save(productCaptor.capture());
+		String generatedCode = productCaptor.getValue().getCode();
+		assertThat(generatedCode).startsWith("PRODUCT_");
+		assertThat(generatedCode).matches("^PRODUCT_[A-F0-9]{32}$");
+		assertThat(response.code()).isEqualTo(generatedCode);
+	}
+
+	@Test
 	@DisplayName("관리자 상품 목록은 비활성 상품도 포함한다")
 	void shouldGetAllProductsForAdmin() {
 		// given

@@ -144,6 +144,7 @@ class ProductRepositoryTest {
 	private Product product(String name, int displayOrder, boolean isActive, boolean isBundle) {
 		return Product.builder()
 			.name(name)
+			.code("TEST_PRODUCT_" + Math.abs(name.hashCode()))
 			.description("상품 설명")
 			.price(1000)
 			.displayOrder(displayOrder)

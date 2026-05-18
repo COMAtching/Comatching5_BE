@@ -20,7 +20,7 @@ public class Product {
 	@Column(nullable = false)
 	private String name;
 
-	@Column(unique = true)
+	@Column(nullable = false, unique = true)
 	private String code;
 
 	@Column(nullable = false, length = 50)

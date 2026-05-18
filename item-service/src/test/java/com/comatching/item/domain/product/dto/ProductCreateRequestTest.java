@@ -60,6 +60,38 @@ class ProductCreateRequestTest {
 		assertThat(violations).isEmpty();
 	}
 
+	@Test
+	@DisplayName("상품 코드는 생략하거나 공백으로 보낼 수 있다")
+	void shouldAllowOptionalProductCode() {
+		// given
+		ProductCreateRequest nullCodeRequest = request(
+			"신규 번들",
+			null,
+			"상품 설명",
+			1000,
+			1,
+			List.of(reward(ItemType.MATCHING_TICKET, 1)),
+			List.of()
+		);
+		ProductCreateRequest blankCodeRequest = request(
+			"신규 번들",
+			" ",
+			"상품 설명",
+			1000,
+			1,
+			List.of(reward(ItemType.MATCHING_TICKET, 1)),
+			List.of()
+		);
+
+		// when
+		Set<ConstraintViolation<ProductCreateRequest>> nullCodeViolations = validator.validate(nullCodeRequest);
+		Set<ConstraintViolation<ProductCreateRequest>> blankCodeViolations = validator.validate(blankCodeRequest);
+
+		// then
+		assertThat(nullCodeViolations).isEmpty();
+		assertThat(blankCodeViolations).isEmpty();
+	}
+
 	private static Stream<Arguments> invalidRequests() {
 		return Stream.of(
 			Arguments.of(
@@ -68,14 +100,9 @@ class ProductCreateRequestTest {
 				"상품명은 필수입니다."
 			),
 			Arguments.of(
-				"상품 코드 공백",
-				request("신규 번들", " ", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
-				"상품 코드는 필수입니다."
-			),
-			Arguments.of(
 				"상품 코드 형식",
 				request("신규 번들", "invalid code", "상품 설명", 1000, 1, List.of(reward(ItemType.MATCHING_TICKET, 1)), List.of()),
-				"상품 코드는 영문 대문자, 숫자, _, -만 사용할 수 있습니다."
+				"상품 코드는 비워두거나 영문 대문자, 숫자, _, -만 사용할 수 있습니다."
 			),
 			Arguments.of(
 				"상품 설명 공백",

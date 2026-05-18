@@ -19,9 +19,8 @@ public record ProductCreateRequest(
 		@NotBlank(message = "상품명은 필수입니다.")
 		String name,
 
-		@Schema(description = "상품 코드. 구매 제한 판정에 사용하는 안정적인 식별자입니다.", example = "MATCHING_TICKET_10", requiredMode = Schema.RequiredMode.REQUIRED)
-		@NotBlank(message = "상품 코드는 필수입니다.")
-		@Pattern(regexp = "^[A-Z0-9_-]+$", message = "상품 코드는 영문 대문자, 숫자, _, -만 사용할 수 있습니다.")
+		@Schema(description = "상품 코드. 생략하면 서버가 자동 생성합니다. 구매 제한 판정에 사용하는 안정적인 식별자입니다.", example = "MATCHING_TICKET_10")
+		@Pattern(regexp = "^\\s*$|^\\s*[A-Z0-9_-]+\\s*$", message = "상품 코드는 비워두거나 영문 대문자, 숫자, _, -만 사용할 수 있습니다.")
 		String code,
 
 		@Schema(description = "상품 설명. 50자 이하의 실제 설명 문구입니다.", example = "매칭권과 옵션권을 함께 충전해요.", maxLength = 50, requiredMode = Schema.RequiredMode.REQUIRED)

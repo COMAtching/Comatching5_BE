@@ -37,7 +37,7 @@ public class AdminProductController {
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(
 		summary = "상품 등록",
-		description = "상품명, 50자 이하 설명, 가격, 노출 순서, 활성 여부, 번들 여부, 실제 지급 구성품, 프론트 표시용 보너스 구성품을 입력받아 신규 상품을 등록합니다. 실제 지급은 rewards 기준이며 bonusRewards는 표시용입니다."
+		description = "상품명, 상품 코드(생략 시 서버 자동 생성), 50자 이하 설명, 가격, 노출 순서, 활성 여부, 번들 여부, 실제 지급 구성품, 프론트 표시용 보너스 구성품을 입력받아 신규 상품을 등록합니다. 실제 지급은 rewards 기준이며 bonusRewards는 표시용입니다."
 	)
 	@PostMapping("/products")
 	public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
