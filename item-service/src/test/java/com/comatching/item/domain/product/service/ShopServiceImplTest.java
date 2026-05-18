@@ -293,8 +293,8 @@ class ShopServiceImplTest {
 	}
 
 	@Test
-	@DisplayName("상품 목록에서 상품별 구매 제한 초과 상태를 반환한다")
-	void shouldReturnProductLimitExceededStateWithProducts() {
+	@DisplayName("상품 목록에서 상품별 구매 제한 초과 상품은 제외한다")
+	void shouldExcludeProductLimitExceededProducts() {
 		// given
 		Product product = product("슈퍼 번들", 1000, true, true);
 		ReflectionTestUtils.setField(product, "id", 1L);
@@ -308,15 +308,12 @@ class ShopServiceImplTest {
 		List<ProductResponse> responses = shopService.getActiveProducts(100L, null);
 
 		// then
-		ProductResponse response = responses.get(0);
-		assertThat(response.remainingPurchaseCount()).isZero();
-		assertThat(response.purchaseCountPurchasable()).isFalse();
-		assertThat(response.purchaseBlockReason()).isEqualTo(PurchaseBlockReason.PRODUCT_LIMIT_EXCEEDED);
+		assertThat(responses).isEmpty();
 	}
 
 	@Test
-	@DisplayName("상품 목록에서 첫 구매 전용 차단 상태를 반환한다")
-	void shouldReturnFirstPurchaseOnlyBlockedStateWithProducts() {
+	@DisplayName("상품 목록에서 첫 구매 전용 차단 상품은 제외한다")
+	void shouldExcludeFirstPurchaseOnlyBlockedProducts() {
 		// given
 		Product product = product("첫 구매 번들", 1000, true, true);
 		ReflectionTestUtils.setField(product, "id", 1L);
@@ -329,9 +326,7 @@ class ShopServiceImplTest {
 		List<ProductResponse> responses = shopService.getActiveProducts(100L, null);
 
 		// then
-		ProductResponse response = responses.get(0);
-		assertThat(response.purchaseCountPurchasable()).isFalse();
-		assertThat(response.purchaseBlockReason()).isEqualTo(PurchaseBlockReason.FIRST_PURCHASE_ONLY);
+		assertThat(responses).isEmpty();
 	}
 
 	@Test

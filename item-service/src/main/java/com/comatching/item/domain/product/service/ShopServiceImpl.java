@@ -57,8 +57,10 @@ public class ShopServiceImpl implements ShopService {
 	public List<ProductResponse> getActiveProducts(Long memberId, Boolean isBundle) {
 		List<Product> products = productRepository.findActiveProductsWithRewards(isBundle);
 		fetchBonusRewards(products);
+		LocalDateTime now = LocalDateTime.now();
 		return products.stream()
-			.map(product -> toMemberProductResponse(memberId, product, LocalDateTime.now()))
+			.map(product -> toMemberProductResponse(memberId, product, now))
+			.filter(product -> Boolean.TRUE.equals(product.purchaseCountPurchasable()))
 			.toList();
 	}
 
