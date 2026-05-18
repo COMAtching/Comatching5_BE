@@ -23,6 +23,7 @@ import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
 import com.comatching.user.domain.member.repository.MemberRepository;
+import com.comatching.user.global.config.ProfileImageProperties;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MemberServiceImpl 테스트")
@@ -36,6 +37,9 @@ class MemberServiceImplTest {
 
 	@Mock
 	private UserEventPublisher eventPublisher;
+
+	@Mock
+	private ProfileImageProperties profileImageProperties;
 
 	@Test
 	@DisplayName("활성 사용자 수를 조회한다")
@@ -91,9 +95,11 @@ class MemberServiceImplTest {
 			.university("학교")
 			.major("전공")
 			.contactFrequency(ContactFrequency.NORMAL)
+			.profileImageUrl("https://s3.com/profiles/100/custom.png")
 			.build();
 		member.setProfile(profile);
 		given(memberRepository.findById(100L)).willReturn(Optional.of(member));
+		given(profileImageProperties.baseUrl()).willReturn("https://srv.comatching.site/api/public/profile-images/");
 
 		// when
 		memberService.withdrawMember(100L);
@@ -104,6 +110,8 @@ class MemberServiceImplTest {
 		assertThat(profile.getMbti()).isEqualTo("UNKNOWN");
 		assertThat(profile.getUniversity()).isEqualTo("(알 수 없음)");
 		assertThat(profile.getMajor()).isEqualTo("(알 수 없음)");
+		assertThat(profile.getProfileImageUrl())
+			.isEqualTo("https://srv.comatching.site/api/public/profile-images/default.png");
 		assertThat(profile.isMatchable()).isFalse();
 		assertThat(profile.getHobbies()).isEmpty();
 		assertThat(profile.getTags()).isEmpty();

@@ -1,8 +1,11 @@
 package com.comatching.user.domain.member.service;
 
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriUtils;
 
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
@@ -13,6 +16,7 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
+import com.comatching.user.global.config.ProfileImageProperties;
 import com.comatching.user.global.exception.UserErrorCode;
 
 import lombok.RequiredArgsConstructor;
@@ -22,8 +26,11 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class MemberServiceImpl implements MemberService {
 
+	private static final String DEFAULT_PROFILE_IMAGE_FILENAME = "default.png";
+
 	private final MemberRepository memberRepository;
 	private final UserEventPublisher eventPublisher;
+	private final ProfileImageProperties profileImageProperties;
 
 	@Override
 	@Transactional
@@ -75,7 +82,7 @@ public class MemberServiceImpl implements MemberService {
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
 
 		String email = member.getEmail();
-		member.withdraw();
+		member.withdraw(resolveWithdrawnProfileImageUrl());
 
 		// Kafka 이벤트 발행
 		eventPublisher.sendWithdrawEvent(memberId, email);
@@ -114,6 +121,14 @@ public class MemberServiceImpl implements MemberService {
 
 		String nickname = member.getProfile() != null ? member.getProfile().getNickname() : null;
 		return new OrdererInfoDto(member.getId(), member.getRealName(), nickname);
+	}
+
+	private String resolveWithdrawnProfileImageUrl() {
+		if (!StringUtils.hasText(profileImageProperties.baseUrl())) {
+			return null;
+		}
+		String encodedFilename = UriUtils.encodePathSegment(DEFAULT_PROFILE_IMAGE_FILENAME, StandardCharsets.UTF_8);
+		return profileImageProperties.baseUrl() + encodedFilename;
 	}
 
 	private Member registerSocialMember(SocialLoginRequestDto request) {

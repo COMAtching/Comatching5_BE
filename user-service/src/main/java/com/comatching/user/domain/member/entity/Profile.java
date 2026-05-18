@@ -108,9 +108,13 @@ public class Profile {
 	}
 
 	public void clearProfileData() {
+		clearProfileData(null);
+	}
+
+	public void clearProfileData(String defaultProfileImageUrl) {
 		this.nickname = "탈퇴한 사용자";
 		this.intro = null;
-		this.profileImageUrl = null;
+		this.profileImageUrl = defaultProfileImageUrl;
 		this.birthDate = LocalDate.of(1970, 1, 1);
 		this.socialAccountType = null;
 		this.socialAccountId = null;

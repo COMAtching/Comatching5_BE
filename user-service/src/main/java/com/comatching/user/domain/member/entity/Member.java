@@ -81,6 +81,10 @@ public class Member {
 	}
 
 	public void withdraw() {
+		withdraw(null);
+	}
+
+	public void withdraw(String defaultProfileImageUrl) {
 		this.status = MemberStatus.WITHDRAWN;
 		this.deletedAt = LocalDateTime.now();
 
@@ -94,7 +98,7 @@ public class Member {
 		this.socialId = null;
 
 		if (this.profile != null) {
-			this.profile.clearProfileData();
+			this.profile.clearProfileData(defaultProfileImageUrl);
 		}
 	}
 
