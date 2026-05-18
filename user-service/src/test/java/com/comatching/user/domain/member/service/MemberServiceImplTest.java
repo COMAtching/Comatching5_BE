@@ -99,7 +99,7 @@ class MemberServiceImplTest {
 			.build();
 		member.setProfile(profile);
 		given(memberRepository.findById(100L)).willReturn(Optional.of(member));
-		given(profileImageProperties.baseUrl()).willReturn("https://srv.comatching.site/api/public/profile-images/");
+		given(profileImageProperties.baseUrl()).willReturn("https://srv.comatching.site/api/public/profile-images");
 
 		// when
 		memberService.withdrawMember(100L);

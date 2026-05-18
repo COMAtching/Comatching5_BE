@@ -1,6 +1,5 @@
 package com.comatching.user.domain.member.service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -9,7 +8,6 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriUtils;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.ProfileTagItem;
@@ -308,11 +306,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 	}
 
 	private String buildDefaultProfileImageUrl(String filename) {
-		if (!StringUtils.hasText(profileImageProperties.baseUrl())) {
-			return null;
-		}
-		String encodedFilename = UriUtils.encodePathSegment(filename, StandardCharsets.UTF_8);
-		return profileImageProperties.baseUrl() + encodedFilename;
+		return DefaultProfileImageUrlBuilder.build(profileImageProperties, filename);
 	}
 
 	private String resolveDefaultProfileImageFilename() {

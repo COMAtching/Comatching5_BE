@@ -272,7 +272,7 @@ class ProfileServiceImplTest {
 				.build();
 
 			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
+			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 			willDoNothing().given(eventPublisher).sendSignupEvent(any());

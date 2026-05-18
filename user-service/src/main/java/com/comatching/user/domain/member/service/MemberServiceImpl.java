@@ -1,11 +1,8 @@
 package com.comatching.user.domain.member.service;
 
-import java.nio.charset.StandardCharsets;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriUtils;
 
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
@@ -124,11 +121,7 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	private String resolveWithdrawnProfileImageUrl() {
-		if (!StringUtils.hasText(profileImageProperties.baseUrl())) {
-			return null;
-		}
-		String encodedFilename = UriUtils.encodePathSegment(DEFAULT_PROFILE_IMAGE_FILENAME, StandardCharsets.UTF_8);
-		return profileImageProperties.baseUrl() + encodedFilename;
+		return DefaultProfileImageUrlBuilder.build(profileImageProperties, DEFAULT_PROFILE_IMAGE_FILENAME);
 	}
 
 	private Member registerSocialMember(SocialLoginRequestDto request) {
