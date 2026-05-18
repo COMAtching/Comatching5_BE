@@ -205,7 +205,45 @@ class ChatServiceImplTest {
 				&& pageable.getPageSize() == 6
 				&& isDescendingSort(pageable, "createdAt")
 				&& isDescendingSort(pageable, "id"))
+			);
+	}
+
+	@Test
+	@DisplayName("상대방 readAt과 같은 시각의 메시지는 읽음 처리한다")
+	void getChatHistory_marksMessageAtReadBoundaryAsRead() {
+		// given
+		LocalDateTime readAt = LocalDateTime.of(2026, 5, 18, 22, 50);
+		ChatRoom room = chatRoom(ROOM_ID, INITIATOR_ID, TARGET_ID);
+		ReflectionTestUtils.setField(room, "targetLastReadAt", readAt);
+		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+
+		ChatMessage beforeRead = savedMessage(
+			"message-before",
+			INITIATOR_ID,
+			"before",
+			MessageType.TALK,
+			readAt.minusNanos(1)
 		);
+		ChatMessage atRead = savedMessage("message-at", INITIATOR_ID, "at", MessageType.TALK, readAt);
+		ChatMessage afterRead = savedMessage(
+			"message-after",
+			INITIATOR_ID,
+			"after",
+			MessageType.TALK,
+			readAt.plusNanos(1)
+		);
+
+		given(chatMessageRepository.findByRoomId(eq(ROOM_ID), any(Pageable.class)))
+			.willReturn(List.of(afterRead, atRead, beforeRead));
+
+		// when
+		List<ChatMessageResponse> result = chatService.getChatHistory(ROOM_ID, INITIATOR_ID, PageRequest.of(0, 3));
+
+		// then
+		assertThat(result).extracting(ChatMessageResponse::id)
+			.containsExactly("message-before", "message-at", "message-after");
+		assertThat(result).extracting(ChatMessageResponse::readCount)
+			.containsExactly(0, 0, 1);
 	}
 
 	private ChatMessageRequest talkRequest(Long senderId, String senderNickname, String content) {

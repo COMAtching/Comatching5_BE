@@ -133,7 +133,7 @@ public class ChatServiceImpl implements ChatService {
 
 		List<ChatMessageResponse> responses = messages.stream()
 			.map(msg -> {
-				int readCount = msg.getCreatedAt().isBefore(otherUserLastReadAt) ? 0 : 1;
+				int readCount = calculateReadCount(msg, otherUserLastReadAt);
 				return ChatMessageResponse.from(msg, readCount);
 			})
 			.toList();
@@ -148,6 +148,10 @@ public class ChatServiceImpl implements ChatService {
 		);
 
 		return responses;
+	}
+
+	private int calculateReadCount(ChatMessage message, LocalDateTime otherUserLastReadAt) {
+		return message.getCreatedAt().isAfter(otherUserLastReadAt) ? 1 : 0;
 	}
 
 	private Pageable toLatestFirstPageable(Pageable pageable) {
