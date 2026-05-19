@@ -24,6 +24,7 @@ public record ProfileResponse(
 	String major,
 	String contactFrequency,
 	String song,
+	boolean isMatchable,
 	List<HobbyDto> hobbies,
 	List<ProfileTagDto> tags
 ) {

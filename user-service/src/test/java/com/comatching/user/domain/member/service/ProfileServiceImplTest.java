@@ -101,6 +101,7 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response).isNotNull();
+			assertThat(response.isMatchable()).isTrue();
 			assertThat(response.tags()).hasSize(2);
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("계란형 얼굴", "밝은 분위기");
@@ -595,6 +596,26 @@ class ProfileServiceImplTest {
 			// then
 			assertThat(response.socialType()).isNull();
 			assertThat(response.socialAccountId()).isNull();
+		}
+
+		@Test
+		@DisplayName("안뽑히기를 끄면 프로필 응답에 isMatchable=false가 포함된다")
+		void shouldReturnUpdatedMatchableState() {
+			// given
+			Long memberId = 1L;
+			Profile profile = createProfileWithTags(memberId);
+			ProfileUpdateRequest request = new ProfileUpdateRequest();
+			request.setIsMatchable(false);
+
+			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
+			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
+
+			// when
+			ProfileResponse response = profileService.updateProfile(memberId, request);
+
+			// then
+			assertThat(response.isMatchable()).isFalse();
 		}
 	}
 

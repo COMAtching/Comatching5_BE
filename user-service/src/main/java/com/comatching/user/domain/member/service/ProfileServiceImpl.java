@@ -394,6 +394,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.major(profile.getMajor())
 			.contactFrequency(profile.getContactFrequency().getCode())
 			.song(profile.getSong())
+			.isMatchable(profile.isMatchable())
 			.hobbies(profile.getHobbies().stream()
 				.map(h -> new HobbyDto(h.getCategory(), h.getName()))
 				.toList())
