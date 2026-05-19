@@ -14,6 +14,7 @@ import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.repository.ItemRepository;
+import com.comatching.item.domain.order.config.PaymentOrderProperties;
 import com.comatching.item.domain.order.entity.Order;
 import com.comatching.item.domain.order.entity.OrderItem;
 import com.comatching.item.domain.order.repository.OrderRepository;
@@ -36,7 +37,6 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class ShopServiceImpl implements ShopService {
 
-	private static final int ORDER_EXPIRE_MINUTES = 10;
 	private static final Map<ItemType, Integer> PURCHASE_LIMITS = Map.of(
 		ItemType.MATCHING_TICKET, 30,
 		ItemType.OPTION_TICKET, 90
@@ -51,6 +51,7 @@ public class ShopServiceImpl implements ShopService {
 	private final ItemRepository itemRepository;
 	private final UserOrderClient userOrderClient;
 	private final OrderOutboxService orderOutboxService;
+	private final PaymentOrderProperties paymentOrderProperties;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -97,7 +98,7 @@ public class ShopServiceImpl implements ShopService {
 			.requestedPrice(product.getPrice())
 			.expectedPrice(product.getPrice())
 			.requestedAt(now)
-			.expiresAt(now.plusMinutes(ORDER_EXPIRE_MINUTES))
+			.expiresAt(now.plusMinutes(paymentOrderProperties.expireMinutes()))
 			.build();
 
 		product.getRewards().forEach(reward -> order.addOrderItem(

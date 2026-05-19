@@ -44,7 +44,7 @@
 - `APPROVED`: 승인 완료
 - `REJECTED`: 거절 완료
 - `CANCELED`: 취소
-- `EXPIRED`: 만료 (요청 후 10분 경과)
+- `EXPIRED`: 만료. 기본 만료 시간은 요청 후 30일이며 `ORDER_EXPIRE_MINUTES` env로 조정 가능
 
 ---
 
@@ -436,7 +436,7 @@ NONE:
       "expectedPrice": 9000,
       "status": "PENDING",
       "requestedAt": "2026-04-23T14:10:00",
-      "expiresAt": "2026-04-23T14:20:00"
+      "expiresAt": "2026-05-23T14:10:00"
     }
   ]
 }
@@ -528,7 +528,7 @@ NONE:
   "expectedPrice": 9000,
   "status": "PENDING",
   "requestedAt": "2026-04-23T14:10:00",
-  "expiresAt": "2026-04-23T14:20:00"
+  "expiresAt": "2026-05-23T14:10:00"
 }
 ```
 

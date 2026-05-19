@@ -60,6 +60,8 @@ internal:
   service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 comatching:
+  order:
+    expire-minutes: ${ORDER_EXPIRE_MINUTES:43200}
   pre-signup:
     matching-ticket-grant:
       enabled: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED:true}

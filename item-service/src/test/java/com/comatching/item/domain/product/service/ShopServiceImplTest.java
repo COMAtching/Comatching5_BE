@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,7 @@ import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.repository.ItemRepository;
+import com.comatching.item.domain.order.config.PaymentOrderProperties;
 import com.comatching.item.domain.order.entity.Order;
 import com.comatching.item.domain.order.enums.OrderStatus;
 import com.comatching.item.domain.order.repository.OrderRepository;
@@ -62,6 +64,9 @@ class ShopServiceImplTest {
 	@Mock
 	private OrderOutboxService orderOutboxService;
 
+	@Mock
+	private PaymentOrderProperties paymentOrderProperties;
+
 	@Test
 	@DisplayName("상품 ID 기반 요청이면 상품 가격/구성품으로 주문을 생성한다")
 	void shouldCreateOrderFromProductSnapshot() {
@@ -75,9 +80,12 @@ class ShopServiceImplTest {
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
 		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
 
 		// when
+		LocalDateTime before = LocalDateTime.now();
 		shopService.requestPurchase(100L, 3L);
+		LocalDateTime after = LocalDateTime.now();
 
 		// then
 		ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
@@ -93,6 +101,8 @@ class ShopServiceImplTest {
 		assertThat(savedOrder.getRequestedPrice()).isEqualTo(5000);
 		assertThat(savedOrder.getExpectedPrice()).isEqualTo(5000);
 		assertThat(savedOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
+		assertThat(savedOrder.getExpiresAt())
+			.isBetween(before.plusMinutes(43200), after.plusMinutes(43200));
 		assertThat(savedOrder.getOrderItems()).hasSize(2);
 		assertThat(savedOrder.getOrderItems()).anyMatch(
 			item -> item.getItemType() == ItemType.MATCHING_TICKET && item.getQuantity() == 10
@@ -261,6 +271,7 @@ class ShopServiceImplTest {
 		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
 			.willReturn(0L);
 		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
 
 		// when
 		shopService.requestPurchase(100L, 3L);

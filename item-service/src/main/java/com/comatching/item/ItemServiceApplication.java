@@ -10,13 +10,17 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 import com.comatching.item.domain.grant.config.PreSignupMatchingTicketGrantProperties;
+import com.comatching.item.domain.order.config.PaymentOrderProperties;
 
 @SpringBootApplication(exclude = { UserDetailsServiceAutoConfiguration.class })
 @ComponentScan(basePackages = {"com.comatching.item", "com.comatching.common"})
 @EnableFeignClients(basePackages = "com.comatching.item")
 @EnableScheduling
 @EnableJpaAuditing
-@EnableConfigurationProperties(PreSignupMatchingTicketGrantProperties.class)
+@EnableConfigurationProperties({
+	PreSignupMatchingTicketGrantProperties.class,
+	PaymentOrderProperties.class
+})
 public class ItemServiceApplication {
 
 	public static void main(String[] args) {
