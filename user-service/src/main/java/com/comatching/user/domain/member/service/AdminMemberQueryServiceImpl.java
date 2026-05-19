@@ -1,7 +1,7 @@
 package com.comatching.user.domain.member.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -9,6 +9,7 @@ import org.springframework.util.StringUtils;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.member.AdminUserProfileDto;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
@@ -24,16 +25,18 @@ public class AdminMemberQueryServiceImpl implements AdminMemberQueryService {
 	private final MemberRepository memberRepository;
 
 	@Override
-	public List<AdminUserProfileDto> getUsers(String keyword) {
+	public PagingResponse<AdminUserProfileDto> getUsers(String keyword, Pageable pageable) {
 		String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
 
-		return memberRepository.searchMembersForAdmin(
+		Page<AdminUserProfileDto> users = memberRepository.searchMembersForAdmin(
 				MemberStatus.ACTIVE,
 				MemberRole.ROLE_USER,
-				normalizedKeyword
-			).stream()
-			.map(this::toAdminUserProfileDto)
-			.toList();
+				normalizedKeyword,
+				pageable
+			)
+			.map(this::toAdminUserProfileDto);
+
+		return PagingResponse.from(users);
 	}
 
 	@Override
@@ -48,6 +51,7 @@ public class AdminMemberQueryServiceImpl implements AdminMemberQueryService {
 		return new AdminUserProfileDto(
 			member.getId(),
 			member.getEmail(),
+			member.getRealName(),
 			member.getProfile().getNickname(),
 			member.getProfile().getGender(),
 			member.getProfile().getProfileImageUrl()

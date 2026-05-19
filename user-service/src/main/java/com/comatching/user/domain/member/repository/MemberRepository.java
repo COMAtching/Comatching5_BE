@@ -1,8 +1,9 @@
 package com.comatching.user.domain.member.repository;
 
 import java.util.Optional;
-import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,18 +25,27 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
 	long countByRoleAndStatus(MemberRole role, MemberStatus status);
 
-	@Query("SELECT m FROM Member m " +
+	@Query(value = "SELECT m FROM Member m " +
 		"JOIN FETCH m.profile p " +
 		"WHERE m.status = :status " +
 		"AND m.role = :role " +
 		"AND (:keyword IS NULL " +
 		"OR LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-		"OR LOWER(p.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-		"ORDER BY m.id DESC")
-	List<Member> searchMembersForAdmin(
+		"OR LOWER(p.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+		"OR LOWER(m.realName) LIKE LOWER(CONCAT('%', :keyword, '%')))",
+		countQuery = "SELECT COUNT(m) FROM Member m " +
+			"JOIN m.profile p " +
+			"WHERE m.status = :status " +
+			"AND m.role = :role " +
+			"AND (:keyword IS NULL " +
+			"OR LOWER(m.email) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+			"OR LOWER(p.nickname) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+			"OR LOWER(m.realName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+	Page<Member> searchMembersForAdmin(
 		@Param("status") MemberStatus status,
 		@Param("role") MemberRole role,
-		@Param("keyword") String keyword
+		@Param("keyword") String keyword,
+		Pageable pageable
 	);
 
 	@Query("SELECT m FROM Member m " +

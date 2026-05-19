@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.AdminUserProfileDto;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.admin.dto.AdminInventoryAction;
 import com.comatching.item.domain.admin.dto.AdminInventoryUpdateRequest;
@@ -48,26 +51,39 @@ class AdminUserItemServiceImplTest {
 	@DisplayName("관리자 사용자 목록 조회 시 사용자 정보와 타입별 아이템 총량을 반환한다")
 	void shouldReturnAdminUserList() {
 		// given
-		AdminUserProfileDto user = new AdminUserProfileDto(1L, "a@comatching.com", "닉네임", Gender.MALE, "https://img");
-		given(userAdminClient.getUsers("nick")).willReturn(List.of(user));
+		PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+		AdminUserProfileDto user = new AdminUserProfileDto(
+			1L,
+			"a@comatching.com",
+			"홍길동",
+			"닉네임",
+			Gender.MALE,
+			"https://img"
+		);
+		given(userAdminClient.getUsers("nick", 0, 20, List.of("id,desc")))
+			.willReturn(new PagingResponse<>(List.of(user), 0, 20, 1, 1, false, false));
 		given(itemRepository.sumUsableQuantityByMemberIds(List.of(1L)))
 			.willReturn(List.of(
 				quantity(1L, ItemType.MATCHING_TICKET, 3L),
 				quantity(1L, ItemType.OPTION_TICKET, 7L)
-			));
+		));
 
 		// when
-		List<AdminUserSummaryResponse> result = adminUserItemService.getUsers("nick");
+		PagingResponse<AdminUserSummaryResponse> result = adminUserItemService.getUsers("nick", pageable);
 
 		// then
-		assertThat(result).hasSize(1);
-		assertThat(result.get(0).id()).isEqualTo(1L);
-		assertThat(result.get(0).email()).isEqualTo("a@comatching.com");
-		assertThat(result.get(0).nickname()).isEqualTo("닉네임");
-		assertThat(result.get(0).gender()).isEqualTo(Gender.MALE);
-		assertThat(result.get(0).profileImageUrl()).isEqualTo("https://img");
-		assertThat(result.get(0).matchingTicketCount()).isEqualTo(3);
-		assertThat(result.get(0).optionTicketCount()).isEqualTo(7);
+		assertThat(result.content()).hasSize(1);
+		assertThat(result.currentPage()).isZero();
+		assertThat(result.size()).isEqualTo(20);
+		assertThat(result.totalElements()).isEqualTo(1);
+		assertThat(result.content().get(0).id()).isEqualTo(1L);
+		assertThat(result.content().get(0).email()).isEqualTo("a@comatching.com");
+		assertThat(result.content().get(0).realName()).isEqualTo("홍길동");
+		assertThat(result.content().get(0).nickname()).isEqualTo("닉네임");
+		assertThat(result.content().get(0).gender()).isEqualTo(Gender.MALE);
+		assertThat(result.content().get(0).profileImageUrl()).isEqualTo("https://img");
+		assertThat(result.content().get(0).matchingTicketCount()).isEqualTo(3);
+		assertThat(result.content().get(0).optionTicketCount()).isEqualTo(7);
 	}
 
 	@Test
@@ -75,7 +91,14 @@ class AdminUserItemServiceImplTest {
 	void shouldReturnUserDetailWithInventory() {
 		// given
 		Long memberId = 11L;
-		AdminUserProfileDto user = new AdminUserProfileDto(memberId, "user@comatching.com", "유저", Gender.FEMALE, "https://img2");
+		AdminUserProfileDto user = new AdminUserProfileDto(
+			memberId,
+			"user@comatching.com",
+			"박유저",
+			"유저",
+			Gender.FEMALE,
+			"https://img2"
+		);
 
 		given(userAdminClient.getUserDetail(memberId)).willReturn(user);
 		given(itemRepository.sumUsableQuantityByMemberIds(List.of(memberId)))
@@ -87,6 +110,7 @@ class AdminUserItemServiceImplTest {
 		// then
 		assertThat(result.id()).isEqualTo(memberId);
 		assertThat(result.email()).isEqualTo("user@comatching.com");
+		assertThat(result.realName()).isEqualTo("박유저");
 		assertThat(result.matchingTicketCount()).isEqualTo(3);
 		assertThat(result.optionTicketCount()).isZero();
 	}
@@ -104,7 +128,7 @@ class AdminUserItemServiceImplTest {
 			"보상 누락"
 		);
 		given(userAdminClient.getUserDetail(memberId))
-			.willReturn(new AdminUserProfileDto(memberId, "u@u.com", "u", Gender.MALE, null));
+			.willReturn(new AdminUserProfileDto(memberId, "u@u.com", "유저", "u", Gender.MALE, null));
 
 		// when
 		adminUserItemService.updateUserInventory(adminId, memberId, request);
@@ -127,7 +151,7 @@ class AdminUserItemServiceImplTest {
 			"오지급 회수"
 		);
 		given(userAdminClient.getUserDetail(memberId))
-			.willReturn(new AdminUserProfileDto(memberId, "u@u.com", "u", Gender.MALE, null));
+			.willReturn(new AdminUserProfileDto(memberId, "u@u.com", "유저", "u", Gender.MALE, null));
 
 		// when
 		adminUserItemService.updateUserInventory(adminId, memberId, request);

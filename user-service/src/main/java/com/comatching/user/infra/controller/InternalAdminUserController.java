@@ -1,7 +1,8 @@
 package com.comatching.user.infra.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.common.dto.member.AdminUserProfileDto;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.user.domain.member.service.AdminMemberQueryService;
 
 import lombok.RequiredArgsConstructor;
@@ -21,10 +23,11 @@ public class InternalAdminUserController {
 	private final AdminMemberQueryService adminMemberQueryService;
 
 	@GetMapping
-	public List<AdminUserProfileDto> getUsers(
-		@RequestParam(required = false) String keyword
+	public PagingResponse<AdminUserProfileDto> getUsers(
+		@RequestParam(required = false) String keyword,
+		@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		return adminMemberQueryService.getUsers(keyword);
+		return adminMemberQueryService.getUsers(keyword, pageable);
 	}
 
 	@GetMapping("/{memberId}")

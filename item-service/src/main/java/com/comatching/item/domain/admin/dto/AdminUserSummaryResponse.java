@@ -6,6 +6,7 @@ import com.comatching.common.dto.member.AdminUserProfileDto;
 public record AdminUserSummaryResponse(
 	Long id,
 	String email,
+	String realName,
 	String nickname,
 	Gender gender,
 	String profileImageUrl,
@@ -16,6 +17,7 @@ public record AdminUserSummaryResponse(
 		return new AdminUserSummaryResponse(
 			dto.id(),
 			dto.email(),
+			dto.realName(),
 			dto.nickname(),
 			dto.gender(),
 			dto.profileImageUrl(),

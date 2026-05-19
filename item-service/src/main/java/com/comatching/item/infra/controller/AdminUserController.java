@@ -1,7 +1,8 @@
 package com.comatching.item.infra.controller;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,6 +17,7 @@ import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.item.domain.admin.dto.AdminInventoryUpdateRequest;
 import com.comatching.item.domain.admin.dto.AdminUserDetailResponse;
 import com.comatching.item.domain.admin.dto.AdminUserSummaryResponse;
@@ -35,13 +37,14 @@ public class AdminUserController {
 	private final AdminUserItemService adminUserItemService;
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
-	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임 키워드로 사용자 목록을 조회합니다.")
+	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임/이름 키워드로 사용자 목록을 페이징 조회합니다.")
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<AdminUserSummaryResponse>>> getUsers(
+	public ResponseEntity<ApiResponse<PagingResponse<AdminUserSummaryResponse>>> getUsers(
 		@CurrentMember MemberInfo memberInfo,
-		@RequestParam(required = false) String keyword
+		@RequestParam(required = false) String keyword,
+		@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		return ResponseEntity.ok(ApiResponse.ok(adminUserItemService.getUsers(keyword)));
+		return ResponseEntity.ok(ApiResponse.ok(adminUserItemService.getUsers(keyword, pageable)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)

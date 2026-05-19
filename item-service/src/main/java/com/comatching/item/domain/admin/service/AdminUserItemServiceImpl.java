@@ -2,13 +2,17 @@ package com.comatching.item.domain.admin.service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.AdminUserProfileDto;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.item.domain.admin.dto.AdminInventoryCounts;
@@ -20,10 +24,13 @@ import com.comatching.item.global.exception.ItemErrorCode;
 import com.comatching.item.infra.client.UserAdminClient;
 
 import feign.FeignException;
+import feign.codec.DecodeException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class AdminUserItemServiceImpl implements AdminUserItemService {
 
@@ -34,22 +41,41 @@ public class AdminUserItemServiceImpl implements AdminUserItemService {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<AdminUserSummaryResponse> getUsers(String keyword) {
+	public PagingResponse<AdminUserSummaryResponse> getUsers(String keyword, Pageable pageable) {
 		try {
-			List<AdminUserProfileDto> users = userAdminClient.getUsers(keyword);
+			PagingResponse<AdminUserProfileDto> userPage = userAdminClient.getUsers(
+				keyword,
+				pageable.getPageNumber(),
+				pageable.getPageSize(),
+				toSortParams(pageable.getSort())
+			);
+			List<AdminUserProfileDto> users = userPage.content() == null ? List.of() : userPage.content();
 			Map<Long, AdminInventoryCounts> inventoryCountsByMemberId = getInventoryCountsByMemberId(
 				users.stream()
 					.map(AdminUserProfileDto::id)
 					.toList()
 			);
 
-			return users.stream()
+			List<AdminUserSummaryResponse> summaries = users.stream()
 				.map(user -> AdminUserSummaryResponse.from(
 					user,
 					inventoryCountsByMemberId.getOrDefault(user.id(), AdminInventoryCounts.empty())
 				))
 				.toList();
+			return new PagingResponse<>(
+				summaries,
+				userPage.currentPage(),
+				userPage.size(),
+				userPage.totalElements(),
+				userPage.totalPages(),
+				userPage.hasNext(),
+				userPage.hasPrevious()
+			);
+		} catch (DecodeException e) {
+			log.warn("Admin user query decode failed.", e);
+			throw new BusinessException(ItemErrorCode.USER_QUERY_FAILED);
 		} catch (FeignException e) {
+			log.warn("Admin user query failed. status={}, body={}", e.status(), e.contentUTF8(), e);
 			throw new BusinessException(ItemErrorCode.USER_QUERY_FAILED);
 		}
 	}
@@ -64,6 +90,7 @@ public class AdminUserItemServiceImpl implements AdminUserItemService {
 		return new AdminUserDetailResponse(
 			user.id(),
 			user.email(),
+			user.realName(),
 			user.nickname(),
 			user.gender(),
 			user.profileImageUrl(),
@@ -109,11 +136,26 @@ public class AdminUserItemServiceImpl implements AdminUserItemService {
 		}
 		try {
 			return userAdminClient.getUserDetail(memberId);
+		} catch (DecodeException e) {
+			log.warn("Admin user detail query decode failed. memberId={}", memberId, e);
+			throw new BusinessException(ItemErrorCode.USER_QUERY_FAILED);
 		} catch (FeignException e) {
 			if (e.status() == 400 || e.status() == 404) {
 				throw new BusinessException(ItemErrorCode.TARGET_USER_NOT_FOUND);
 			}
+			log.warn("Admin user detail query failed. memberId={}, status={}, body={}",
+				memberId, e.status(), e.contentUTF8(), e);
 			throw new BusinessException(ItemErrorCode.USER_QUERY_FAILED);
 		}
+	}
+
+	private List<String> toSortParams(Sort sort) {
+		if (sort == null || sort.isUnsorted()) {
+			return List.of();
+		}
+
+		return sort.stream()
+			.map(order -> order.getProperty() + "," + order.getDirection().name().toLowerCase(Locale.ROOT))
+			.toList();
 	}
 }
