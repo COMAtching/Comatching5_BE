@@ -73,7 +73,7 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: recordaydev@gmail.com
+    username: catholicalarm2@gmail.com
     password: ${SMTP_PASSWORD}
     properties:
       mail:
@@ -130,3 +130,9 @@ kakao:
     unlink-url: https://kapi.kakao.com/v1/user/unlink
     unlink-content-type: application/x-www-form-urlencoded;charset=utf-8
     unlink-target-id-type: user_id
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

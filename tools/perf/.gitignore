@@ -1,0 +1,6 @@
+out/
+tokens.csv
+
+# JMeter 가 작업 디렉터리에 남기는 로그
+jmeter/jmeter.log
+jmeter/*.jtl

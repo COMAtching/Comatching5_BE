@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090      # 컨테이너 간 통신이므로 서비스명
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s               # scrape_interval 과 일치

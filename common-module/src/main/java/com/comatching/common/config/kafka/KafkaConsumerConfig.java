@@ -3,14 +3,17 @@ package com.comatching.common.config.kafka;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
@@ -23,6 +26,19 @@ public class KafkaConsumerConfig {
 	@Value("${spring.kafka.consumer.group-id}")
 	private String groupId;
 
+	private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+
+	public KafkaConsumerConfig(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+		this.meterRegistryProvider = meterRegistryProvider;
+	}
+
+	private <K, V> DefaultKafkaConsumerFactory<K, V> withMetrics(DefaultKafkaConsumerFactory<K, V> factory) {
+		meterRegistryProvider.ifAvailable(registry ->
+				factory.addListener(new MicrometerConsumerListener<>(registry)));
+
+		return factory;
+	}
+
 	@Bean
 	public ConsumerFactory<String, String> consumerFactory() {
 		Map<String, Object> config = new HashMap<>();
@@ -30,7 +46,7 @@ public class KafkaConsumerConfig {
 		config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 		config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		return new DefaultKafkaConsumerFactory<>(config);
+		return withMetrics(new DefaultKafkaConsumerFactory<>(config));
 	}
 
 	@Bean
@@ -41,7 +57,7 @@ public class KafkaConsumerConfig {
 		config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		config.put(JsonDeserializer.TRUSTED_PACKAGES, "com.comatching.common.dto.event.*");
-		return new DefaultKafkaConsumerFactory<>(config);
+		return withMetrics(new DefaultKafkaConsumerFactory<>(config));
 	}
 
 	@Bean

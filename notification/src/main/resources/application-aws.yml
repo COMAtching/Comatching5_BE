@@ -23,7 +23,7 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: recordaydev@gmail.com
+    username: catholicalarm2@gmail.com
     password: ${SMTP_PASSWORD}
     properties:
       mail:
@@ -31,3 +31,9 @@ spring:
           auth: true
           starttls:
             enable: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

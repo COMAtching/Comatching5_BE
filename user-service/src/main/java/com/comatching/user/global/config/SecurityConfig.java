@@ -54,7 +54,8 @@ public class SecurityConfig {
 		"/api/internal/**",
 		"/api/profile/tags",
 		"/api/hobbies/categories",
-		"/api/public/profile-images/**"
+		"/api/public/profile-images/**",
+		"/actuator/**"
 	);
 
 	@Bean

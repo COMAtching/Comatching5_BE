@@ -1,0 +1,209 @@
+{
+  "uid": "comatching-loadtest",
+  "title": "Comatching — Load Test",
+  "tags": ["comatching", "loadtest"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "svc",
+        "label": "서비스 (서버 측)",
+        "type": "custom",
+        "current": { "text": "user-service", "value": "user-service" },
+        "options": [
+          { "text": "user-service", "value": "user-service", "selected": true },
+          { "text": "matching-service", "value": "matching-service", "selected": false },
+          { "text": "item-service", "value": "item-service", "selected": false },
+          { "text": "gateway-service", "value": "gateway-service", "selected": false }
+        ],
+        "query": "user-service,matching-service,item-service,gateway-service"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "① 클라이언트 vs 서버 — 이 회차를 믿어도 되는가",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "p95 비교 — 클라이언트(JMeter) vs 서버(게이트웨이/서비스)",
+      "description": "세 선의 간격이 곧 큐잉+네트워크 시간이다. 클라이언트만 치솟고 서버는 평평하면 병목은 서버가 아니라 부하기(또는 호스트 CPU)다. 단일 맥 측정에서 이 대조 없이는 어떤 결론도 신뢰할 수 없다.",
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*서버.*" },
+            "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 4] } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["max", "mean"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "클라 $tag_transaction",
+          "query": "SELECT mean(\"pct95.0\") FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ok' AND $timeFilter GROUP BY time($__interval), \"transaction\" fill(none)"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "legendFormat": "서버 gateway",
+          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"gateway-service\", uri=~\".*participants.*\"}[30s])))"
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "legendFormat": "서버 $svc",
+          "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"$svc\", uri=~\".*participants.*\"}[30s])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "에러 / 초 (클라이언트)",
+      "description": "지연은 멀쩡한데 에러로 무너지는 형태를 놓치지 않기 위한 패널. knee 기준 중 하나가 에러율 1%다.",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 30, "lineWidth": 1 }, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_transaction",
+          "query": "SELECT sum(\"count\") / 5 FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ko' AND $timeFilter GROUP BY time($__interval), \"transaction\" fill(0)"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "② 처리량 — knee 를 찾는 곳",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 11 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "실제 처리량 (RPS) — 계단별",
+      "description": "계단을 2배 올렸는데 이 선이 2배로 안 오르면 포화다(knee 기준 ③). 빨간 선 1,667 은 피크 CCU 5만 × think-time 30초에서 나온 목표치다.",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "red", "value": 1667 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["max"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_transaction",
+          "query": "SELECT sum(\"count\") / 5 FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'all' AND $timeFilter GROUP BY time($__interval), \"transaction\" fill(none)"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "클라이언트 백분위 (p50 / p90 / p95 / p99)",
+      "description": "p50 은 평평한데 p99 만 치솟으면 '대부분 멀쩡하고 일부만 죽는' 상태다. 원인은 대개 GC, 락 대기, 커넥션 풀 큐 같은 간헐적 자원 경합이다. 평균만 보면 절대 안 보인다.",
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "lineWidth": 1, "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "rawQuery": true, "resultFormat": "time_series", "alias": "p50", "query": "SELECT mean(\"pct50.0\") FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ok' AND $timeFilter GROUP BY time($__interval) fill(none)" },
+        { "refId": "B", "rawQuery": true, "resultFormat": "time_series", "alias": "p90", "query": "SELECT mean(\"pct90.0\") FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ok' AND $timeFilter GROUP BY time($__interval) fill(none)" },
+        { "refId": "C", "rawQuery": true, "resultFormat": "time_series", "alias": "p95", "query": "SELECT mean(\"pct95.0\") FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ok' AND $timeFilter GROUP BY time($__interval) fill(none)" },
+        { "refId": "D", "rawQuery": true, "resultFormat": "time_series", "alias": "p99", "query": "SELECT mean(\"pct99.0\") FROM \"jmeter\" WHERE \"application\" = 'comatching' AND \"statut\" = 'ok' AND $timeFilter GROUP BY time($__interval) fill(none)" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "③ 포화 — 어느 자원이 먼저 찼는가",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "HikariCP — active / idle / pending ($svc)",
+      "description": "pending 이 0 을 벗어나면 스레드가 DB 커넥션을 기다리고 있다는 뜻이다. 이때 p95 가 함께 올랐다면 병목은 DB(또는 풀 크기)다. 현재 maximum-pool-size 는 전 서비스 10이다.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "hikaricp_connections_active{service=\"$svc\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "hikaricp_connections_idle{service=\"$svc\"}", "legendFormat": "idle" },
+        { "refId": "C", "expr": "hikaricp_connections_pending{service=\"$svc\"}", "legendFormat": "pending ⚠" },
+        { "refId": "D", "expr": "hikaricp_connections_max{service=\"$svc\"}", "legendFormat": "max" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GC pause 총합 / 초 ($svc)",
+      "description": "이 값이 0.1(=초당 100ms를 GC에 씀)을 넘으면 애플리케이션 스레드가 그만큼 멈춘다. p99 만 튀는 현상의 대표적 원인이다.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 20 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (cause) (rate(jvm_gc_pause_seconds_sum{service=\"$svc\"}[30s]))", "legendFormat": "{{cause}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "프로세스 CPU (서비스별)",
+      "description": "호스트 전체 CPU 는 cpu_sampler.sh 가 CSV 로 따로 잰다(맥 호스트는 Docker 안에서 볼 수 없다). 여기는 JVM 프로세스가 각자 얼마나 쓰는지다. 어느 서비스가 부하를 받고 있는지 확인용.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "custom": { "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "process_cpu_usage", "legendFormat": "{{service}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "서버 측 처리량 (uri별, $svc)",
+      "description": "클라이언트 처리량과 이 값이 어긋나면 요청이 중간에서 유실되거나 다른 경로로 새고 있다는 신호다.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 5 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{service=\"$svc\"}[30s]))", "legendFormat": "{{uri}} [{{status}}]" }
+      ]
+    }
+  ]
+}
