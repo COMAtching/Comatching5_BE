@@ -30,7 +30,8 @@ import lombok.Setter;
 @Table(
 	name = "members",
 	indexes = {
-		@Index(name = "idx_social_info", columnList = "socialType, socialId")
+		@Index(name = "idx_social_info", columnList = "socialType, socialId"),
+		@Index(name = "idx_role_status", columnList = "role, status")
 	}
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
