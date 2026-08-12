@@ -3,13 +3,16 @@ package com.comatching.common.config.kafka;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.MicrometerProducerListener;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.serializer.JsonSerializer;
@@ -20,13 +23,25 @@ public class KafkaProducerConfig {
 	@Value("${spring.kafka.bootstrap-servers}")
 	private String bootstrapServers;
 
+	private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+
+	public KafkaProducerConfig(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+		this.meterRegistryProvider = meterRegistryProvider;
+	}
+
+	private <K, V> DefaultKafkaProducerFactory<K, V> withMetrics(DefaultKafkaProducerFactory<K, V> factory) {
+		meterRegistryProvider.ifAvailable(registry ->
+				factory.addListener(new MicrometerProducerListener<>(registry)));
+		return factory;
+	}
+
 	@Bean
 	public ProducerFactory<String, String> producerFactory() {
 		Map<String, Object> config = new HashMap<>();
 		config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-		return new DefaultKafkaProducerFactory<>(config);
+		return withMetrics(new DefaultKafkaProducerFactory<>(config));
 	}
 
 	@Bean
@@ -45,7 +60,7 @@ public class KafkaProducerConfig {
 		config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		return new DefaultKafkaProducerFactory<>(config);
+		return withMetrics(new DefaultKafkaProducerFactory<>(config));
 	}
 
 	@Bean

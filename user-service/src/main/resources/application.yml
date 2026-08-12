@@ -70,7 +70,7 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: recordaydev@gmail.com
+    username: catholicalarm2@gmail.com
     password: ${SMTP_PASSWORD}
     properties:
       mail:
@@ -127,3 +127,23 @@ kakao:
     unlink-url: https://kapi.kakao.com/v1/user/unlink
     unlink-content-type: application/x-www-form-urlencoded;charset=utf-8
     unlink-target-id-type: user_id
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      # percentiles(서비스별 고정 분위수)가 아니라 histogram 버킷을 내보낸다.
+      # 전자는 인스턴스 간 합산이 불가능해 전체 p95를 뽑을 수 없다.
+      percentiles-histogram:
+        http.server.requests: true
+        spring.kafka.listener: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s,2s

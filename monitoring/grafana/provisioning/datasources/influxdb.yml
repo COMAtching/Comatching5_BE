@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    uid: influxdb                    # 대시보드 JSON 이 이 문자열로 참조한다. 바꾸면 패널이 깨진다
+    access: proxy
+    url: http://influxdb:8086        # 컨테이너 간 통신이므로 서비스명
+    database: jmeter                 # docker-compose 의 INFLUXDB_DB 와 일치해야 한다
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMode: GET                  # InfluxQL(1.x) 기본. 2.x 의 Flux 가 아니다
+      timeInterval: 5s               # JMeter Backend Listener 전송 주기와 맞춘다

@@ -1,0 +1,73 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: comatching-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    extra_hosts:
+      # macOS Docker Desktop 은 기본 제공하지만 Linux 호환을 위해 명시
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  influxdb:
+    # JMeter Backend Listener 가 쏘는 "클라이언트 측" 지표를 받는다.
+    #
+    # 왜 필요한가: Prometheus 는 서버가 스스로 잰 시간만 안다. 요청이 커널
+    # 백로그나 JMeter 자신의 스레드 큐에서 기다린 시간은 서버 지표에 안 잡힌다.
+    # 단일 맥에서는 부하 생성기와 대상이 CPU 를 나눠 쓰기 때문에 이 차이가
+    # 커질 수 있고, 그 gap 이 곧 "측정을 믿어도 되는가"의 판단 근거가 된다.
+    #
+    # 2.x 가 아니라 1.8 을 쓰는 이유: JMeter 내장 InfluxdbBackendListenerClient 가
+    # 1.x 의 /write 라인 프로토콜을 쓴다. 2.x 는 토큰/버킷 개념이라 별도 설정이 필요하다.
+    image: influxdb:1.8
+    container_name: comatching-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      INFLUXDB_DB: jmeter              # 컨테이너 첫 기동 시 자동 생성된다
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+      INFLUXDB_REPORTING_DISABLED: "true"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8086/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: comatching-grafana
+    ports:
+      # .env 의 CLIENT_URL=http://localhost:3000 과 충돌하므로 3001 사용
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - influxdb
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  influxdb-data:

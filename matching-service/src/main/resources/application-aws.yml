@@ -70,3 +70,9 @@ jwt:
 
 internal:
   service-token: ${INTERNAL_SERVICE_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

@@ -54,11 +54,23 @@ scripts
 docker-compose.yml
 Dockerfile
 /database
-/docs
+/docs/*
+!/docs/perf-log.md
 docker-compose.prod.yml
 application-docker.yml
 application-secret.yml
 serviceAccountKey.json
 MemberDummyDataInitializer.java
 /scripts
-/tools
+/tools/*
+!/tools/perf/
+
+# 부하 테스트 산출물 — 스크립트는 커밋, 데이터는 제외
+tools/perf/seed/out/
+tools/perf/tokens/tokens.csv
+tools/perf/jmeter/results/
+
+# 로컬 실행 부산물
+.pids/
+logs/
+cookies.txt

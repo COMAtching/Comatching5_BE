@@ -75,3 +75,9 @@ comatching:
       enabled: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED:true}
       quantity: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_QUANTITY:1}
       campaign-code: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_CAMPAIGN_CODE:PRE_SIGNUP_2026}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

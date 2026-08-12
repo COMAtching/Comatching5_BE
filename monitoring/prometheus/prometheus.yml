@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 5s        # 기본 15초는 짧은 부하 테스트에서 데이터 포인트가 부족하다
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: comatching-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ 'host.docker.internal:8080' ]
+        labels: { service: gateway-service }
+      - targets: [ 'host.docker.internal:9000' ]
+        labels: { service: user-service }
+      - targets: [ 'host.docker.internal:9001' ]
+        labels: { service: matching-service }
+      - targets: [ 'host.docker.internal:9003' ]
+        labels: { service: chat-service }
+      - targets: [ 'host.docker.internal:9005' ]
+        labels: { service: notification }
+      - targets: [ 'host.docker.internal:9006' ]
+        labels: { service: item-service }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [ 'localhost:9090' ]
