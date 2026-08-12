@@ -1,0 +1,417 @@
+{
+  "uid": "comatching-mysql-queries",
+  "title": "Comatching / 매칭 쿼리 분해",
+  "description": "matching_bench.py 실행 결과를 performance_schema 다이제스트로 분해해서 본다",
+  "tags": [
+    "comatching",
+    "perf",
+    "mysql"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 39,
+  "refresh": "",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### 매칭 1회 요청의 DB 비용 분해 — `POST /api/matching`\n`python3 tools/perf/matching_bench.py` 를 돌린 **직후**에 이 대시보드를 보면 그 실행 한 번의 결과가 나온다. 벤치가 시작할 때 다이제스트 통계를 리셋하므로 여기 보이는 값은 전부 그 실행분이다. **시계열이 아니라 스냅샷이다** — 시간 범위 설정은 영향을 주지 않는다."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "총 쿼리 수",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(COUNT_STAR) AS v FROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "SQL 서버시간 합계",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(SUM(SUM_TIMER_WAIT)/1e9, 1) AS v FROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "스캔한 행 수",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(SUM_ROWS_EXAMINED) AS v FROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%';"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "piechart",
+      "title": "쿼리 종류별 서버시간 비중",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE\n    WHEN DIGEST_TEXT LIKE '%candidate_hobby_categories%' THEN '3. 취미 컬렉션 (N+1)'\n    WHEN DIGEST_TEXT LIKE '%matching_history%'           THEN '1. 제외 목록'\n    WHEN DIGEST_TEXT LIKE '%matching_candidate%'         THEN '2. 후보 페이지'\n    ELSE LEFT(DIGEST_TEXT, 40)\n  END AS kind, ROUND(SUM(SUM_TIMER_WAIT)/1e9, 1) AS ms\nFROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%'\n GROUP BY kind ORDER BY ms DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "pieType": "donut",
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "쿼리 종류별 실행 횟수 — 문장 수가 곧 비용이다",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE\n    WHEN DIGEST_TEXT LIKE '%candidate_hobby_categories%' THEN '3. 취미 컬렉션 (N+1)'\n    WHEN DIGEST_TEXT LIKE '%matching_history%'           THEN '1. 제외 목록'\n    WHEN DIGEST_TEXT LIKE '%matching_candidate%'         THEN '2. 후보 페이지'\n    ELSE LEFT(DIGEST_TEXT, 40)\n  END AS kind, SUM(COUNT_STAR) AS cnt\nFROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%'\n GROUP BY kind ORDER BY cnt DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "continuous-BlYlRd"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "valueMode": "color",
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "다이제스트별 상세",
+      "datasource": {
+        "type": "mysql",
+        "uid": "mysql"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "mysql"
+          },
+          "refId": "A",
+          "format": "table",
+          "editorMode": "code",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE\n    WHEN DIGEST_TEXT LIKE '%candidate_hobby_categories%' THEN '3. 취미 컬렉션 (N+1)'\n    WHEN DIGEST_TEXT LIKE '%matching_history%'           THEN '1. 제외 목록'\n    WHEN DIGEST_TEXT LIKE '%matching_candidate%'         THEN '2. 후보 페이지'\n    ELSE LEFT(DIGEST_TEXT, 40)\n  END AS `쿼리`,\n       COUNT_STAR                   AS `실행 횟수`,\n       ROUND(SUM_TIMER_WAIT/1e9, 1) AS `총 ms`,\n       ROUND(AVG_TIMER_WAIT/1e9, 3) AS `평균 ms`,\n       SUM_ROWS_EXAMINED            AS `스캔 행`,\n       SUM_ROWS_SENT                AS `반환 행`\nFROM performance_schema.events_statements_summary_by_digest\n WHERE SCHEMA_NAME = 'comatching_matching'\n   AND DIGEST_TEXT LIKE 'SELECT%'\n   AND DIGEST_TEXT NOT LIKE '%performance_schema%'\n   AND DIGEST_TEXT NOT LIKE '%ROW_NUMBER%'\n   AND DIGEST_TEXT NOT LIKE 'SELECT @@%'\n ORDER BY SUM_TIMER_WAIT DESC;"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "right",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "쿼리"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "총 ms"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "총 ms",
+            "desc": true
+          }
+        ]
+      }
+    }
+  ]
+}
