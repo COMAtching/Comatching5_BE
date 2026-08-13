@@ -85,7 +85,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
 			given(scoreCalculator.calculate(eq(candidate1), eq(request), any(KoreanAge.class))).willReturn(40);
@@ -111,7 +111,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), eq(candidate1), eq(request), any()))
 				.willReturn(false);
@@ -139,7 +139,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
 			given(scoreCalculator.calculate(any(), eq(request), any(KoreanAge.class))).willReturn(20);
@@ -160,7 +160,7 @@ class MatchingProcessorTest {
 			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(new ArrayList<>());
 
 			// when & then
@@ -180,7 +180,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(candidate1);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), any(), eq(request), any()))
 				.willReturn(false);
@@ -202,7 +202,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(candidate);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
 			given(scoreCalculator.calculate(any(), eq(request), any(KoreanAge.class))).willReturn(20);
@@ -211,7 +211,7 @@ class MatchingProcessorTest {
 			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
 
 			// then
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
+			verify(candidateRepository).findBestCandidate(argThat(condition ->
 				condition.targetGender() == Gender.FEMALE
 					&& "컴퓨터공학과".equals(condition.excludeMajor())
 			));
@@ -229,7 +229,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate = createCandidate(3L, "ISTJ", 25);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(List.of(2L, 4L));
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(List.of(candidate));
 			given(conditionCheckerFactory.check(isNull(), eq(candidate), eq(request), any())).willReturn(true);
 			given(scoreCalculator.calculate(eq(candidate), eq(request), any(KoreanAge.class))).willReturn(20);
@@ -241,7 +241,7 @@ class MatchingProcessorTest {
 			assertThat(result.getMemberId()).isEqualTo(3L);
 			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
 				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
-			verify(candidateRepository).findPotentialCandidates(conditionCaptor.capture());
+			verify(candidateRepository).findBestCandidate(conditionCaptor.capture());
 			assertThat(conditionCaptor.getValue().excludeMemberIds()).containsExactly(2L, 4L);
 		}
 
@@ -262,7 +262,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(age19, age27, age29);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
 			given(scoreCalculator.calculate(eq(age27), eq(request), any(KoreanAge.class))).willReturn(30);
@@ -272,7 +272,7 @@ class MatchingProcessorTest {
 
 			// then
 			assertThat(result.getMemberId()).isEqualTo(3L);
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
+			verify(candidateRepository).findBestCandidate(argThat(condition ->
 				condition.minAge() == 20
 					&& condition.maxAge() == 27
 					&& condition.limit() == 500
@@ -294,7 +294,7 @@ class MatchingProcessorTest {
 			MatchingCandidate candidate = createCandidate(2L, "ISTJ", 25);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(List.of(candidate));
 			given(conditionCheckerFactory.check(eq(ImportantOption.HOBBY), eq(candidate), eq(request), any()))
 				.willReturn(true);
@@ -305,7 +305,7 @@ class MatchingProcessorTest {
 
 			// then
 			assertThat(result.getMemberId()).isEqualTo(2L);
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
+			verify(candidateRepository).findBestCandidate(argThat(condition ->
 				condition.requiredHobbyCategory() == HobbyCategory.SPORTS
 					&& condition.requiredContactFrequency() == null
 					&& condition.limit() == 500
@@ -328,7 +328,7 @@ class MatchingProcessorTest {
 			MatchingCandidate secondPageCandidate = createCandidate(600L, "ENFP", 23);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(firstPage, List.of(secondPageCandidate));
 			given(conditionCheckerFactory.check(isNull(), eq(secondPageCandidate), eq(request), any())).willReturn(true);
 			given(scoreCalculator.calculate(eq(secondPageCandidate), eq(request), any(KoreanAge.class))).willReturn(30);
@@ -340,7 +340,7 @@ class MatchingProcessorTest {
 			assertThat(result.getMemberId()).isEqualTo(600L);
 			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
 				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
-			verify(candidateRepository, times(2)).findPotentialCandidates(conditionCaptor.capture());
+			verify(candidateRepository, times(2)).findBestCandidate(conditionCaptor.capture());
 			assertThat(conditionCaptor.getAllValues().get(0).lastMemberIdExclusive()).isNull();
 			assertThat(conditionCaptor.getAllValues().get(1).lastMemberIdExclusive()).isEqualTo(501L);
 		}
@@ -361,7 +361,7 @@ class MatchingProcessorTest {
 			List<MatchingCandidate> candidates = List.of(age19, age27);
 
 			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
+			given(candidateRepository.findBestCandidate(any(MatchingCandidateSearchCondition.class)))
 				.willReturn(candidates);
 
 			// when & then

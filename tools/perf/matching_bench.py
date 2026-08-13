@@ -44,6 +44,7 @@ CONTAINER = os.environ.get("CONTAINER", "comatching-mysql")
 MYSQL_PW = os.environ.get("MYSQL_ROOT_PASSWORD", "comatching12!@")
 DB = "comatching_matching"
 HOBBY_BATCH = 100          # MatchingCandidate.hobbyCategories 의 @BatchSize(size = 100)
+AGE_OPERATOR = {"EQUAL": "=", "OLDER": ">", "YOUNGER": "<"}
 
 
 def mysql(sql, tabular=False):
@@ -78,15 +79,59 @@ def mysql_discard(sql):
         sys.exit(1)
 
 
+def best_candidate_sql(args):
+    """
+    개선 후 MatchingCandidateRepositoryImpl.findBestCandidate 가 만들어내는 SQL 과 같은 모양.
+
+    걸러내기 조건을 gender + is_matchable 만 거는 건 의도한 것이다.
+    old 모드와 후보 모집단을 똑같이 맞춰야 '쿼리 모양만 바꿨을 때의 차이'가 나온다.
+    필수 조건을 더 걸면 후보가 줄어서 당연히 빨라지는데, 그건 개선이 아니라 조건 변경이다.
+
+    점수식은 앱과 동일하다 — MBTI 글자당 10, 취미 개수별 10/15/20, 나이 20, 연락빈도 10.
+    ORDER BY 의 괄호는 필수다. 점수 항이 없으면 "0" 이 되는데 MySQL 은 ORDER BY 의
+    정수 리터럴을 컬럼 순번으로 해석해서 에러를 낸다.
+    """
+    mbti_terms = "\n        + ".join(
+        f"CASE WHEN LOCATE('{c}', c.mbti) > 0 THEN 10 ELSE 0 END" for c in args.mbti
+    )
+    return f"""SELECT c.* FROM matching_candidate c
+ LEFT JOIN (SELECT member_id, COUNT(*) AS cnt
+              FROM candidate_hobby_categories
+             WHERE hobby_categories = '{args.hobby}'
+             GROUP BY member_id) h ON h.member_id = c.member_id
+ WHERE c.gender = '{args.gender}'
+   AND c.is_matchable = 1
+ ORDER BY ({mbti_terms}
+        + CASE WHEN COALESCE(h.cnt, 0) >= 3 THEN 20
+               WHEN COALESCE(h.cnt, 0) = 2 THEN 15
+               WHEN COALESCE(h.cnt, 0) = 1 THEN 10
+               ELSE 0 END
+        + CASE WHEN c.age {AGE_OPERATOR[args.age_option]} {args.my_age} THEN 20 ELSE 0 END
+        + CASE WHEN c.contact_frequency = '{args.contact}' THEN 10 ELSE 0 END) DESC, RAND()
+ LIMIT 1;"""
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", default="old", choices=["old", "new"],
+                    help="old=개선 전(페이지 100 + 취미 N+1 500), new=개선 후(단일 쿼리)")
     ap.add_argument("--gender", default="FEMALE", choices=["FEMALE", "MALE"],
                     help="탐색 대상 성별. 앱은 '내 성별의 반대'를 넣는다")
     ap.add_argument("--page-size", type=int, default=500,
-                    help="MatchingProcessor.MAX_CANDIDATE_FETCH_SIZE 와 같은 값")
-    ap.add_argument("--no-hobby", action="store_true", help="취미 N+1 재현을 생략")
+                    help="[old] MatchingProcessor.MAX_CANDIDATE_FETCH_SIZE 와 같은 값")
+    ap.add_argument("--no-hobby", action="store_true", help="[old] 취미 N+1 재현을 생략")
     ap.add_argument("--member-id", type=int, default=1000001,
                     help="제외 목록 조회에 쓸 회원 id")
+    # --- [new] 점수식 파라미터 ---
+    # 걸러내기 조건은 일부러 old 와 똑같이 gender + is_matchable 만 건다.
+    # 후보 모집단이 같아야 '쿼리 모양만 바꿨을 때의 차이'를 잴 수 있다.
+    ap.add_argument("--mbti", default="ENFP", help="[new] 점수용 MBTI 글자")
+    ap.add_argument("--hobby", default="GAME", help="[new] 점수용 취미 카테고리")
+    ap.add_argument("--my-age", type=int, default=24, help="[new] 내 나이")
+    ap.add_argument("--age-option", default="EQUAL", choices=["EQUAL", "OLDER", "YOUNGER"])
+    ap.add_argument("--contact", default="NORMAL", choices=["FREQUENT", "NORMAL", "RARE"])
+    ap.add_argument("--repeat", type=int, default=1,
+                    help="[new] 쿼리가 1 개뿐이라 편차가 크면 늘려서 평균을 본다")
     args = ap.parse_args()
 
     print("=" * 68)
@@ -100,21 +145,8 @@ def main():
         print(f"❌ {args.gender} 후보가 0 명이다. 시드를 먼저 적재하라.")
         sys.exit(1)
 
-    pages = (total + args.page_size - 1) // args.page_size
+    print(f" 모드        : {args.mode}  ({'개선 전 — 페이지 + 취미 N+1' if args.mode == 'old' else '개선 후 — 단일 쿼리'})")
     print(f" 대상 성별   : {args.gender}  (후보 {total:,} 명)")
-    print(f" 페이지 크기 : {args.page_size:,}  ->  {pages} 페이지")
-    print(f" 취미 N+1    : {'생략' if args.no_hobby else f'{(total + HOBBY_BATCH - 1)//HOBBY_BATCH} 회 (@BatchSize({HOBBY_BATCH}))'}")
-
-    # 페이지 경계 = 각 페이지의 마지막 member_id. 다음 페이지의 member_id > 경계 가 된다.
-    boundaries = [int(x) for x in mysql(f"""
-        SELECT member_id FROM (
-          SELECT member_id, ROW_NUMBER() OVER (ORDER BY member_id) rn
-          FROM matching_candidate WHERE {where}
-        ) t WHERE rn MOD {args.page_size} = 0 ORDER BY member_id;
-    """).split() if x]
-
-    all_ids = [int(x) for x in mysql(
-        f"SELECT member_id FROM matching_candidate WHERE {where} ORDER BY member_id;").split() if x]
 
     # ---------- 워밍업 ----------
     # 버퍼 풀이 비어 있으면 디스크 I/O 가 섞인다. 측정 대상 인덱스를 미리 데운다.
@@ -127,25 +159,51 @@ def main():
 
     # ① 제외 목록: WHERE member_id = ? OR partner_id = ?
     #    partner_id 단독 인덱스가 없어서 OR 가 인덱스를 못 탄다.
-    stmts.append(
+    #    두 모드 모두 이 쿼리는 그대로 나간다(개선 A 의 대상이 아니다).
+    exclude_sql = (
         f"SELECT DISTINCT CASE WHEN m.member_id = {args.member_id} "
         f"THEN m.partner_id ELSE m.member_id END FROM matching_history m "
         f"WHERE m.member_id = {args.member_id} OR m.partner_id = {args.member_id};")
 
-    # ② 후보 페이지: 앱과 같은 컬럼, 같은 정렬, 같은 limit
-    cols = "member_id, age, contact_frequency, gender, is_matchable, major, mbti, profile_id"
-    cursors = [None] + boundaries[:pages - 1]
-    for cur in cursors:
-        keyset = f" AND member_id > {cur}" if cur is not None else ""
-        stmts.append(f"SELECT {cols} FROM matching_candidate "
-                     f"WHERE {where}{keyset} ORDER BY member_id ASC LIMIT {args.page_size};")
+    if args.mode == "old":
+        pages = (total + args.page_size - 1) // args.page_size
+        print(f" 페이지 크기 : {args.page_size:,}  ->  {pages} 페이지")
+        print(f" 취미 N+1    : {'생략' if args.no_hobby else f'{(total + HOBBY_BATCH - 1)//HOBBY_BATCH} 회 (@BatchSize({HOBBY_BATCH}))'}")
 
-    # ③ 취미 N+1: Hibernate 가 IN (?, ... 100개) 로 묶어서 날린다
-    if not args.no_hobby:
-        for i in range(0, len(all_ids), HOBBY_BATCH):
-            chunk = ",".join(str(x) for x in all_ids[i:i + HOBBY_BATCH])
-            stmts.append("SELECT member_id, hobby_categories FROM candidate_hobby_categories "
-                         f"WHERE member_id IN ({chunk});")
+        # 페이지 경계 = 각 페이지의 마지막 member_id. 다음 페이지의 member_id > 경계 가 된다.
+        boundaries = [int(x) for x in mysql(f"""
+            SELECT member_id FROM (
+              SELECT member_id, ROW_NUMBER() OVER (ORDER BY member_id) rn
+              FROM matching_candidate WHERE {where}
+            ) t WHERE rn MOD {args.page_size} = 0 ORDER BY member_id;
+        """).split() if x]
+
+        all_ids = [int(x) for x in mysql(
+            f"SELECT member_id FROM matching_candidate WHERE {where} ORDER BY member_id;").split() if x]
+
+        stmts.append(exclude_sql)
+
+        # ② 후보 페이지: 앱과 같은 컬럼, 같은 정렬, 같은 limit
+        cols = "member_id, age, contact_frequency, gender, is_matchable, major, mbti, profile_id"
+        cursors = [None] + boundaries[:pages - 1]
+        for cur in cursors:
+            keyset = f" AND member_id > {cur}" if cur is not None else ""
+            stmts.append(f"SELECT {cols} FROM matching_candidate "
+                         f"WHERE {where}{keyset} ORDER BY member_id ASC LIMIT {args.page_size};")
+
+        # ③ 취미 N+1: Hibernate 가 IN (?, ... 100개) 로 묶어서 날린다
+        if not args.no_hobby:
+            for i in range(0, len(all_ids), HOBBY_BATCH):
+                chunk = ",".join(str(x) for x in all_ids[i:i + HOBBY_BATCH])
+                stmts.append("SELECT member_id, hobby_categories FROM candidate_hobby_categories "
+                             f"WHERE member_id IN ({chunk});")
+    else:
+        print(f" 점수 조건   : mbti={args.mbti} hobby={args.hobby} "
+              f"age={args.age_option}({args.my_age}) contact={args.contact}")
+        print(f" 반복        : {args.repeat} 회")
+        stmts.append(exclude_sql)
+        for _ in range(args.repeat):
+            stmts.append(best_candidate_sql(args))
 
     # ---------- 실행 ----------
     print(f"▸ 쿼리 {len(stmts):,} 개 실행 중 (단일 세션)...")
@@ -157,9 +215,12 @@ def main():
 
     # ---------- 집계 ----------
     # timer_wait 단위는 피코초. /1e9 하면 ms.
+    # DIGEST_TEXT 를 자르면 안 된다. 아래에서 테이블 이름으로 쿼리 종류를 구분하는데,
+    # 60자로 자르면 candidate_hobby_categories / matching_history 가 잘려나가
+    # 전부 '후보 페이지'로 오분류된다. 실제로 그렇게 찍혔었다.
     rows = mysql("""
         SELECT COUNT_STAR, ROUND(SUM_TIMER_WAIT/1e9, 2), ROUND(AVG_TIMER_WAIT/1e9, 3),
-               LEFT(DIGEST_TEXT, 60)
+               SUM_ROWS_EXAMINED, REPLACE(DIGEST_TEXT, '\\n', ' ')
           FROM performance_schema.events_statements_summary_by_digest
          WHERE SCHEMA_NAME = 'comatching_matching'
            AND DIGEST_TEXT LIKE 'SELECT%'
@@ -169,44 +230,81 @@ def main():
          ORDER BY SUM_TIMER_WAIT DESC;
     """)
 
-    print("\n" + "-" * 68)
-    print(f"{'실행':>7} {'총 ms':>10} {'평균 ms':>9}  쿼리")
-    print("-" * 68)
+    # 같은 종류인데 다이제스트가 갈리는 경우가 있다. 첫 페이지만 keyset 조건
+    # (member_id > ?)이 없어서 별도 다이제스트로 잡히는 게 대표적이다.
+    # 그래서 종류별로 합산해서 보여준다.
+    buckets = {}
     server_ms = 0.0
     nqueries = 0
+    scanned = 0
     for line in rows.splitlines():
         if not line.strip():
             continue
-        cnt, tot, avg, text = line.split("\t")
+        cnt, tot, avg, examined, text = line.split("\t")
         if "performance_schema" in text or "ROW_NUMBER" in text:
             continue
+
+        if "matching_history" in text:
+            label = "① 제외 목록"
+        elif args.mode == "new":
+            # new 모드의 후보 쿼리는 취미 파생 테이블을 안에 품고 있어
+            # candidate_hobby 도 같이 잡힌다. 하나의 쿼리로 센다.
+            label = "② 최적 후보 (단일 쿼리)"
+        elif "candidate_hobby_categories" in text:
+            label = "③ 취미 컬렉션 (N+1)"
+        else:
+            label = "② 후보 페이지"
+
+        b = buckets.setdefault(label, [0, 0.0, 0])
+        b[0] += int(cnt)
+        b[1] += float(tot)
+        b[2] += int(examined)
         server_ms += float(tot)
         nqueries += int(cnt)
-        label = ("① 제외 목록" if "matching_history" in text
-                 else "③ 취미 컬렉션" if "candidate_hobby" in text
-                 else "② 후보 페이지")
-        print(f"{int(cnt):>7,} {float(tot):>10,.1f} {float(avg):>9.3f}  {label}")
+        scanned += int(examined)
 
-    print("-" * 68)
-    print(f"  SQL 서버시간 합계 : {server_ms:>9,.1f} ms   (쿼리 {nqueries:,} 회)")
+    print("\n" + "-" * 72)
+    print(f"{'실행':>7} {'총 ms':>10} {'평균 ms':>9} {'스캔 행':>12}  쿼리")
+    print("-" * 72)
+    for label, (cnt, tot, examined) in sorted(buckets.items(), key=lambda kv: -kv[1][1]):
+        print(f"{cnt:>7,} {tot:>10,.1f} {tot / cnt:>9.3f} {examined:>12,}  {label}")
+
+    print("-" * 72)
+    print(f"  SQL 서버시간 합계 : {server_ms:>9,.1f} ms   (쿼리 {nqueries:,} 회, 스캔 {scanned:,} 행)")
     print(f"  세션 벽시계 시간  : {wall_ms:>9,.1f} ms   (프로토콜 왕복 포함)")
-    print("-" * 68)
+    print("-" * 72)
 
     # ---------- 실행 계획 ----------
-    print("\n▸ 실행 계획 (핵심 쿼리)")
-    for name, q in [
-        ("② 후보 페이지",
-         f"SELECT {cols} FROM matching_candidate WHERE {where} AND member_id > 1000001 "
-         f"ORDER BY member_id ASC LIMIT {args.page_size}"),
-        ("① 제외 목록",
-         f"SELECT DISTINCT CASE WHEN m.member_id = {args.member_id} THEN m.partner_id "
-         f"ELSE m.member_id END FROM matching_history m "
-         f"WHERE m.member_id = {args.member_id} OR m.partner_id = {args.member_id}"),
-    ]:
-        plan = mysql(f"EXPLAIN {q};").splitlines()
-        if plan:
-            f = plan[0].split("\t")
-            print(f"   {name:<14} type={f[3]:<8} key={f[5]:<22} rows={f[8]:<8} {f[10]}")
+    print("\n▸ 실행 계획")
+    if args.mode == "old":
+        cols = "member_id, age, contact_frequency, gender, is_matchable, major, mbti, profile_id"
+        plans = [("② 후보 페이지",
+                  f"SELECT {cols} FROM matching_candidate WHERE {where} "
+                  f"AND member_id > 1000001 ORDER BY member_id ASC LIMIT {args.page_size}")]
+    else:
+        plans = [("② 최적 후보", best_candidate_sql(args).rstrip(";"))]
+
+    plans.append(("① 제외 목록",
+                  f"SELECT DISTINCT CASE WHEN m.member_id = {args.member_id} THEN m.partner_id "
+                  f"ELSE m.member_id END FROM matching_history m "
+                  f"WHERE m.member_id = {args.member_id} OR m.partner_id = {args.member_id}"))
+
+    # EXPLAIN 의 탭 구분 컬럼 순서 (12개):
+    # 0 id / 1 select_type / 2 table / 3 partitions / 4 type / 5 possible_keys
+    # 6 key / 7 key_len / 8 ref / 9 rows / 10 filtered / 11 Extra
+    # partitions 가 끼어 있어서 한 칸씩 밀린다. 이걸 놓쳐서 type 자리에 NULL 이 찍혔었다.
+    for name, q in plans:
+        for line in mysql(f"EXPLAIN {q};").splitlines():
+            if not line.strip():
+                continue
+            f = line.split("\t")
+            print(f"   {name:<14} table={f[2] or '-':<22} type={f[4]:<8} "
+                  f"key={f[6]:<26} rows={f[9]:>8}  {f[11]}")
+            name = ""   # 같은 쿼리의 두 번째 줄부터는 이름을 비운다
+
+    if args.mode == "new":
+        print("\n▸ 실제 실행된 SQL (그대로 복사해서 EXPLAIN ANALYZE 를 돌릴 수 있다)")
+        print("\n".join("   " + l for l in best_candidate_sql(args).splitlines()))
 
     print(f"""
 {'=' * 68}

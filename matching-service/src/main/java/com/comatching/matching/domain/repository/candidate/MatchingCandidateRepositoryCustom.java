@@ -1,10 +1,10 @@
 package com.comatching.matching.domain.repository.candidate;
 
-import java.util.List;
-
 import com.comatching.matching.domain.entity.MatchingCandidate;
+
+import java.util.Optional;
 
 public interface MatchingCandidateRepositoryCustom {
 
-	List<MatchingCandidate> findPotentialCandidates(MatchingCandidateSearchCondition condition);
+	Optional<MatchingCandidate> findBestCandidate(MatchingCandidateSearchCondition condition);
 }
