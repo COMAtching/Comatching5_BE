@@ -1,5 +1,6 @@
-package com.comatching.user.domain.member.service;
+package com.comatching.user.domain.admin.service;
 
+import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
 import org.springframework.data.domain.Pageable;
 
 import com.comatching.common.dto.member.AdminUserProfileDto;
@@ -11,7 +12,7 @@ import com.comatching.common.dto.response.PagingResponse;
  */
 public interface AdminMemberService {
 
-	PagingResponse<AdminUserProfileDto> getUsers(String keyword, Pageable pageable);
+	PagingResponse<AdminUserSummaryResponse> getUsers(String keyword, Pageable pageable);
 
 	AdminUserProfileDto getUserDetail(Long memberId);
 

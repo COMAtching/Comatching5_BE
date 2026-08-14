@@ -19,25 +19,31 @@ import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.service.AdminMemberService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 
 @Tag(name = "Admin User API", description = "관리자 전용 사용자 조회 및 인벤토리 관리 (현재 미구현)")
 @RestController
 @RequestMapping("/api/admin/users")
+@RequiredArgsConstructor
 public class AdminMemberController {
+
+	private final AdminMemberService adminMemberService;
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임/이름 키워드로 사용자 목록을 페이징 조회합니다.")
 	@GetMapping
-	public ResponseEntity<ApiResponse<PagingResponse<Void>>> getUsers(
+	public ResponseEntity<ApiResponse<PagingResponse<AdminUserSummaryResponse>>> getUsers(
 		@CurrentMember MemberInfo memberInfo,
 		@RequestParam(required = false) String keyword,
 		@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+		return ResponseEntity.ok(ApiResponse.ok(adminMemberService.getUsers(keyword, pageable)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
