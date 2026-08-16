@@ -1,6 +1,7 @@
 package com.comatching.user.infra.controller;
 
 import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -49,11 +50,11 @@ public class AdminMemberController {
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(summary = "사용자 상세 조회", description = "관리자가 사용자 상세 정보와 보유 아이템 인벤토리를 조회합니다.")
 	@GetMapping("/{memberId}")
-	public ResponseEntity<ApiResponse<Void>> getUserDetail(
+	public ResponseEntity<ApiResponse<AdminUserDetailResponse>> getUserDetail(
 		@CurrentMember MemberInfo memberInfo,
 		@PathVariable Long memberId
 	) {
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+		return ResponseEntity.ok(ApiResponse.ok(adminMemberService.getUserDetail(memberId)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)

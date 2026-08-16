@@ -74,3 +74,4 @@ tools/perf/jmeter/results/
 .pids/
 logs/
 cookies.txt
+*.txt

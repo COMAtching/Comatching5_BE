@@ -1,7 +1,11 @@
 package com.comatching.user.domain.admin.service;
 
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.user.domain.admin.dto.AdminInventoryCounts;
+import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
+import com.comatching.user.global.exception.UserErrorCode;
 import com.comatching.user.infra.client.ItemAdminClient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,10 +21,12 @@ import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -68,9 +74,19 @@ public class AdminMemberServiceImpl implements AdminMemberService {
 	}
 
 	@Override
-	public AdminUserProfileDto getUserDetail(Long memberId) {
-		// TODO(refactor/admin): AdminMemberQueryServiceImpl#getUserDetail 로직 이식 + ItemAdminClient 티켓 수량 합성
-		throw new UnsupportedOperationException("not implemented yet");
+	public AdminUserDetailResponse getUserDetail(Long memberId) {
+		if (memberId == null || memberId <= 0) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "memberId는 1 이상의 값이어야 합니다.");
+		}
+
+		Member member = memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+		AdminUserProfileDto user = toAdminUserProfileDto(member);
+
+		Map<Long, AdminInventoryCounts> inventoryCountsByMemberId = itemAdminClient.getInventoryCounts(List.of(memberId));
+		AdminInventoryCounts inventoryCounts = inventoryCountsByMemberId.getOrDefault(memberId, AdminInventoryCounts.empty());
+
+		return AdminUserDetailResponse.from(user, inventoryCounts);
 	}
 
 	@Override
@@ -90,4 +106,7 @@ public class AdminMemberServiceImpl implements AdminMemberService {
 			member.getProfile().getProfileImageUrl()
 		);
 	}
+
+
+
 }

@@ -37,7 +37,7 @@ public class AdminUserController {
 	private final AdminUserItemService adminUserItemService;
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
-	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임/이름 키워드로 사용자 목록을 페이징 조회합니다.")
+	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임/이름 키워드로 사용자 목록을 페이징 조회합니다. (리팩토링 완료)")
 	@GetMapping
 	public ResponseEntity<ApiResponse<PagingResponse<AdminUserSummaryResponse>>> getUsers(
 		@CurrentMember MemberInfo memberInfo,
