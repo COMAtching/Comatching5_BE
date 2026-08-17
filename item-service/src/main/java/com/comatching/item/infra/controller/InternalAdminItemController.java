@@ -3,8 +3,6 @@ package com.comatching.item.infra.controller;
 import java.util.List;
 import java.util.Map;
 
-import com.comatching.item.domain.admin.service.AdminItemQueryService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -17,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.item.domain.admin.dto.AdminInventoryCounts;
 import com.comatching.item.domain.admin.dto.AdminInventoryUpdateRequest;
+import com.comatching.item.domain.admin.service.AdminItemCommandService;
+import com.comatching.item.domain.admin.service.AdminItemQueryService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class InternalAdminItemController {
 	private final AdminItemQueryService adminItemQueryService;
+	private final AdminItemCommandService adminItemCommandService;
 
 	@GetMapping
 	public ResponseEntity<Map<Long, AdminInventoryCounts>> getInventoryCounts(
@@ -39,6 +40,7 @@ public class InternalAdminItemController {
 		@RequestHeader("X-Admin-Id") Long adminId,
 		@RequestBody AdminInventoryUpdateRequest request
 	) {
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+		adminItemCommandService.adjustInventory(adminId, memberId, request);
+		return ResponseEntity.ok().build();
 	}
 }

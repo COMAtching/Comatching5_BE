@@ -1,12 +1,16 @@
 package com.comatching.user.domain.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,15 +24,25 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.user.domain.admin.dto.AdminInventoryAction;
 import com.comatching.user.domain.admin.dto.AdminInventoryCounts;
+import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
 import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
 import com.comatching.user.domain.member.repository.MemberRepository;
+import com.comatching.user.global.exception.UserErrorCode;
 import com.comatching.user.infra.client.ItemAdminClient;
+
+import feign.FeignException;
+import feign.Request;
+import feign.Response;
+import feign.codec.DecodeException;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AdminMemberServiceImpl 테스트")
@@ -127,6 +141,157 @@ class AdminMemberServiceTest {
 		// then
 		then(memberRepository).should()
 			.searchMembersForAdmin(MemberStatus.ACTIVE, MemberRole.ROLE_USER, null, pageable);
+	}
+
+	@Test
+	@DisplayName("대상 사용자가 존재하면 인벤토리 조정을 item-service에 위임한다")
+	void shouldAdjustInventoryWhenMemberExists() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 15L;
+		Member member = createMemberWithProfile(memberId, "u@u.com", "유저", "u", Gender.MALE, "https://img");
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+
+		// when
+		assertThatCode(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.doesNotThrowAnyException();
+
+		// then
+		then(itemAdminClient).should().adjustInventory(memberId, adminId, request);
+	}
+
+	@Test
+	@DisplayName("대상 사용자가 없으면 item-service를 호출하지 않고 예외를 던진다")
+	void shouldThrowWhenTargetMemberNotFound() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 99L;
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(UserErrorCode.TARGET_USER_NOT_FOUND);
+		then(itemAdminClient).shouldHaveNoInteractions();
+	}
+
+	@Test
+	@DisplayName("item-service가 409를 반환하면 중복 조정 예외로 변환한다")
+	void shouldThrowDuplicateWhenItemServiceReturns409() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 15L;
+		Member member = createMemberWithProfile(memberId, "u@u.com", "유저", "u", Gender.MALE, "https://img");
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+		willThrow(feignException(409)).given(itemAdminClient).adjustInventory(memberId, adminId, request);
+
+		// when & then
+		assertThatThrownBy(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(UserErrorCode.DUPLICATE_ADMIN_INVENTORY_ADJUSTMENT);
+	}
+
+	@Test
+	@DisplayName("item-service가 400을 반환하면 아이템 부족 예외로 변환한다")
+	void shouldThrowNotEnoughItemWhenItemServiceReturns400() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 15L;
+		Member member = createMemberWithProfile(memberId, "u@u.com", "유저", "u", Gender.MALE, "https://img");
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.REMOVE, "오지급 회수"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+		willThrow(feignException(400)).given(itemAdminClient).adjustInventory(memberId, adminId, request);
+
+		// when & then
+		assertThatThrownBy(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(UserErrorCode.NOT_ENOUGH_ITEM);
+	}
+
+	@Test
+	@DisplayName("item-service가 그 외 상태코드를 반환하면 조회 실패 예외로 변환한다")
+	void shouldThrowUserQueryFailedForOtherStatus() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 15L;
+		Member member = createMemberWithProfile(memberId, "u@u.com", "유저", "u", Gender.MALE, "https://img");
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+		willThrow(feignException(500)).given(itemAdminClient).adjustInventory(memberId, adminId, request);
+
+		// when & then
+		assertThatThrownBy(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(UserErrorCode.USER_QUERY_FAILED);
+	}
+
+	@Test
+	@DisplayName("item-service 응답 디코딩에 실패하면 조회 실패 예외로 변환한다")
+	void shouldThrowUserQueryFailedWhenDecodeFails() {
+		// given
+		Long adminId = 900L;
+		Long memberId = 15L;
+		Member member = createMemberWithProfile(memberId, "u@u.com", "유저", "u", Gender.MALE, "https://img");
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+		willThrow(decodeException()).given(itemAdminClient).adjustInventory(memberId, adminId, request);
+
+		// when & then
+		assertThatThrownBy(() -> adminMemberService.updateUserInventory(adminId, memberId, request))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(UserErrorCode.USER_QUERY_FAILED);
+	}
+
+	private static FeignException feignException(int status) {
+		Response response = Response.builder()
+			.status(status)
+			.reason("error")
+			.request(testRequest())
+			.headers(Map.of())
+			.build();
+		return FeignException.errorStatus("ItemAdminClient#adjustInventory", response);
+	}
+
+	private static DecodeException decodeException() {
+		return new DecodeException(200, "decode failed", testRequest());
+	}
+
+	private static Request testRequest() {
+		return Request.create(
+			Request.HttpMethod.PATCH, "/api/internal/admin/items/1", Map.of(), Request.Body.empty(), null
+		);
 	}
 
 	private static Member createMemberWithProfile(

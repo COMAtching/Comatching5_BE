@@ -32,6 +32,12 @@ public enum UserErrorCode implements ErrorCode {
 	INVALID_NICKNAME("MEM-009", HttpStatus.BAD_REQUEST, "닉네임은 공백일 수 없습니다."),
 	INVALID_PROFILE_TAG("MEM-010", HttpStatus.BAD_REQUEST, "유효하지 않은 장점 태그입니다."),
 	INVALID_REAL_NAME("MEM-011", HttpStatus.BAD_REQUEST, "실명은 공백일 수 없습니다."),
+
+	// 관리자 인벤토리 조정 에러 - item-service AdminUserController와 응답 스펙(코드/메시지/상태)을 동일하게 유지해야 하므로 ITEM-0xx 코드를 그대로 사용
+	NOT_ENOUGH_ITEM("ITEM-001", HttpStatus.BAD_REQUEST, "아이템이 부족합니다."),
+	TARGET_USER_NOT_FOUND("ITEM-004", HttpStatus.BAD_REQUEST, "대상 사용자를 찾을 수 없습니다."),
+	USER_QUERY_FAILED("ITEM-005", HttpStatus.INTERNAL_SERVER_ERROR, "사용자 조회 중 오류가 발생했습니다."),
+	DUPLICATE_ADMIN_INVENTORY_ADJUSTMENT("ITEM-006", HttpStatus.CONFLICT, "동일한 관리자 아이템 조정 요청이 처리 중입니다."),
 	;
 
 	private final String code;

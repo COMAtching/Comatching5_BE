@@ -1,11 +1,8 @@
 package com.comatching.user.infra.controller;
 
-import com.comatching.common.dto.response.PagingResponse;
-import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,15 +17,18 @@ import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
+import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
 import com.comatching.user.domain.admin.service.AdminMemberService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-
-@Tag(name = "Admin User API", description = "관리자 전용 사용자 조회 및 인벤토리 관리 (현재 미구현)")
+@Tag(name = "Admin User API", description = "관리자 전용 사용자 조회 및 인벤토리 관리")
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
@@ -63,8 +63,9 @@ public class AdminMemberController {
 	public ResponseEntity<ApiResponse<Void>> updateUserInventory(
 		@CurrentMember MemberInfo memberInfo,
 		@PathVariable Long memberId,
-		@RequestBody Object request
+		@Valid @RequestBody AdminInventoryUpdateRequest request
 	) {
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+		adminMemberService.updateUserInventory(memberInfo.memberId(), memberId, request);
+		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

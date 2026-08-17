@@ -4,7 +4,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,15 +21,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.handler.GlobalExceptionHandler;
 import com.comatching.common.resolver.MemberInfoArgumentResolver;
+import com.comatching.user.domain.admin.dto.AdminInventoryAction;
+import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
 import com.comatching.user.domain.admin.service.AdminMemberService;
+import com.comatching.user.global.exception.UserErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +52,8 @@ class AdminMemberControllerTest {
 
 	private static final Long ADMIN_ID = 999L;
 	private static final String SUCCESS_CODE = "GEN-000";
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@BeforeEach
 	void setUp() {
@@ -108,5 +119,65 @@ class AdminMemberControllerTest {
 			.andExpect(status().isInternalServerError());
 
 		then(adminMemberService).shouldHaveNoInteractions();
+	}
+
+	@Test
+	@DisplayName("GET /api/admin/users/{memberId} - 사용자 상세와 인벤토리를 조회한다")
+	void getUserDetail_success() throws Exception {
+		// given
+		AdminUserDetailResponse detail = new AdminUserDetailResponse(
+			1L, "user@test.com", "홍길동", "닉네임", Gender.FEMALE, "https://img", 3L, 1L
+		);
+		given(adminMemberService.getUserDetail(1L)).willReturn(detail);
+
+		// when & then
+		mockMvc.perform(get("/api/admin/users/{memberId}", 1L)
+				.header("X-Member-Id", ADMIN_ID)
+				.header("X-Member-Role", "ROLE_ADMIN"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.code").value(SUCCESS_CODE))
+			.andExpect(jsonPath("$.data.id").value(1))
+			.andExpect(jsonPath("$.data.matchingTicketCount").value(3))
+			.andExpect(jsonPath("$.data.optionTicketCount").value(1));
+	}
+
+	@Test
+	@DisplayName("PATCH /api/admin/users/{memberId}/items - 인벤토리 조정에 성공하면 200을 반환한다")
+	void updateUserInventory_success() throws Exception {
+		// given
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+
+		// when & then
+		mockMvc.perform(patch("/api/admin/users/{memberId}/items", 1L)
+				.header("X-Member-Id", ADMIN_ID)
+				.header("X-Member-Role", "ROLE_ADMIN")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.code").value(SUCCESS_CODE));
+
+		then(adminMemberService).should().updateUserInventory(ADMIN_ID, 1L, request);
+	}
+
+	@Test
+	@DisplayName("PATCH /api/admin/users/{memberId}/items - 대상 사용자가 없으면 ITEM-004를 반환한다")
+	void updateUserInventory_targetUserNotFound() throws Exception {
+		// given
+		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
+			ItemType.MATCHING_TICKET, 3, AdminInventoryAction.ADD, "보상 지급"
+		);
+		willThrow(new BusinessException(UserErrorCode.TARGET_USER_NOT_FOUND))
+			.given(adminMemberService).updateUserInventory(ADMIN_ID, 1L, request);
+
+		// when & then
+		mockMvc.perform(patch("/api/admin/users/{memberId}/items", 1L)
+				.header("X-Member-Id", ADMIN_ID)
+				.header("X-Member-Role", "ROLE_ADMIN")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(request)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("ITEM-004"));
 	}
 }

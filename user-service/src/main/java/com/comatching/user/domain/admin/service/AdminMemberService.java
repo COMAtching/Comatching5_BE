@@ -3,6 +3,7 @@ package com.comatching.user.domain.admin.service;
 import org.springframework.data.domain.Pageable;
 
 import com.comatching.common.dto.response.PagingResponse;
+import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
 import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
 import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
 
@@ -12,5 +13,5 @@ public interface AdminMemberService {
 
 	AdminUserDetailResponse getUserDetail(Long memberId);
 
-	void updateUserInventory(Long adminId, Long memberId, Object request);
+	void updateUserInventory(Long adminId, Long memberId, AdminInventoryUpdateRequest request);
 }
