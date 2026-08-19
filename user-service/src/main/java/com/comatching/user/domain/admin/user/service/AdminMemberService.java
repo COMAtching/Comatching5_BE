@@ -1,11 +1,11 @@
-package com.comatching.user.domain.admin.service;
+package com.comatching.user.domain.admin.user.service;
 
 import org.springframework.data.domain.Pageable;
 
 import com.comatching.common.dto.response.PagingResponse;
-import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
-import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
-import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminUserDetailResponse;
+import com.comatching.user.domain.admin.user.dto.AdminUserSummaryResponse;
 
 public interface AdminMemberService {
 

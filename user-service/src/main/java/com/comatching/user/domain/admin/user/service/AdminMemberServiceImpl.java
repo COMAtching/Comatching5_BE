@@ -1,4 +1,4 @@
-package com.comatching.user.domain.admin.service;
+package com.comatching.user.domain.admin.user.service;
 
 import java.util.List;
 import java.util.Map;
@@ -15,10 +15,10 @@ import com.comatching.common.dto.member.AdminUserProfileDto;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
-import com.comatching.user.domain.admin.dto.AdminInventoryCounts;
-import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
-import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
-import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryCounts;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminUserDetailResponse;
+import com.comatching.user.domain.admin.user.dto.AdminUserSummaryResponse;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
 import com.comatching.user.global.exception.UserErrorCode;

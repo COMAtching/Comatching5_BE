@@ -31,11 +31,11 @@ import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.handler.GlobalExceptionHandler;
 import com.comatching.common.resolver.MemberInfoArgumentResolver;
-import com.comatching.user.domain.admin.dto.AdminInventoryAction;
-import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
-import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
-import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
-import com.comatching.user.domain.admin.service.AdminMemberService;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryAction;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminUserDetailResponse;
+import com.comatching.user.domain.admin.user.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.user.service.AdminMemberService;
 import com.comatching.user.global.exception.UserErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

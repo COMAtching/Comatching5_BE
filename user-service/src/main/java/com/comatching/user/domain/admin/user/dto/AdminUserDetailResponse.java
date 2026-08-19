@@ -1,4 +1,4 @@
-package com.comatching.user.domain.admin.dto;
+package com.comatching.user.domain.admin.user.dto;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.dto.member.AdminUserProfileDto;

@@ -1,7 +1,6 @@
-package com.comatching.user.domain.admin.dto;
+package com.comatching.user.domain.admin.user.dto;
 
 import com.comatching.common.domain.enums.ItemType;
-import com.comatching.user.domain.admin.dto.AdminInventoryAction;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

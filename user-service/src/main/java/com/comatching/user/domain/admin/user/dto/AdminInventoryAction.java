@@ -1,4 +1,4 @@
-package com.comatching.user.domain.admin.dto;
+package com.comatching.user.domain.admin.user.dto;
 
 public enum AdminInventoryAction {
 	ADD,

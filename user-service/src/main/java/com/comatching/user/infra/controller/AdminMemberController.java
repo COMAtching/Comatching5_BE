@@ -18,10 +18,10 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.response.PagingResponse;
-import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
-import com.comatching.user.domain.admin.dto.AdminUserDetailResponse;
-import com.comatching.user.domain.admin.dto.AdminUserSummaryResponse;
-import com.comatching.user.domain.admin.service.AdminMemberService;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminUserDetailResponse;
+import com.comatching.user.domain.admin.user.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.user.service.AdminMemberService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,8 +1,7 @@
-package com.comatching.user.domain.admin.dto;
+package com.comatching.user.domain.admin.user.dto;
 
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.dto.member.AdminUserProfileDto;
-import com.comatching.user.domain.admin.dto.AdminInventoryCounts;
 
 public record AdminUserSummaryResponse(
 	Long id,

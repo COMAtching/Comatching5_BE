@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.comatching.user.domain.admin.dto.AdminInventoryCounts;
-import com.comatching.user.domain.admin.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryCounts;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
 
 @FeignClient(name = "item-service-admin", url = "${item-service.url}", path = "/api/internal/admin/items")
 public interface ItemAdminClient {
