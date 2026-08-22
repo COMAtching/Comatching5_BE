@@ -91,12 +91,20 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
                 "\n LEFT JOIN candidate_hobby_categories h"
                 + "\n        ON h.member_id = c.member_id AND h.hobby_categories = :hobbyCategory";
 
+        // 점수 항이 하나도 없으면 정렬식에서 점수를 통째로 뺀다.
+        // 상수 "0" 을 넣으면 MySQL 이 ORDER BY 의 정수 리터럴을 '몇 번째 컬럼'으로
+        // 해석해 Unknown column '0' in 'order clause' 로 죽는다. 괄호로 감싸도 마찬가지다.
+        // 어차피 전원 동점이므로 RAND() 만 남기면 표본 안에서 무작위 추출이 된다.
+        String orderBy = (score == null)
+                ? "\n  ORDER BY RAND()"
+                : "\n  ORDER BY (" + score + ") DESC, RAND()";
+
         String sql = "SELECT c.*"
                 + "\n   FROM (" + sample + ") s"
                 + "\n   JOIN matching_candidate c ON c.member_id = s.member_id"
                 + hobbyJoin
                 + "\n  GROUP BY c.member_id"
-                + "\n  ORDER BY (" + score + ") DESC, RAND()"
+                + orderBy
                 + "\n  LIMIT 1";
 
         log.debug("후보 조회 SQL\n{}\n파라미터: {}", sql, params);
@@ -208,7 +216,8 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
             params.put("scoreContact", condition.scoreContactFrequency().name());
         }
 
-        return terms.isEmpty() ? "0" : String.join("\n        + ", terms);
+        // 항이 없으면 null. 호출부가 ORDER BY 에서 점수를 빼는 신호로 쓴다.
+        return terms.isEmpty() ? null : String.join("\n        + ", terms);
     }
 
 }

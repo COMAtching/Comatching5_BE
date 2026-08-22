@@ -36,6 +36,14 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'com.h2database:h2'
+
+	// 후보 조회는 네이티브 MySQL SQL 이다. LOCATE / RAND() / 파생 테이블 +
+	// GROUP BY 위의 집계 정렬처럼 방언에 민감한 문법을 쓰기 때문에 H2 로는
+	// '통과했지만 운영에선 다르게 동작하는' 테스트가 된다. 실제 MySQL 로 검증한다.
+	// 버전은 Spring Boot BOM 이 관리한다.
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:mysql'
 }
 
 def querydslDir = "$buildDir/generated/querydsl"

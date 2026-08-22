@@ -135,8 +135,10 @@ def best_candidate_sql(args):
     필수 조건을 더 걸면 후보가 줄어서 당연히 빨라지는데, 그건 개선이 아니라 조건 변경이다.
 
     점수식은 앱과 동일하다 — MBTI 글자당 10, 취미 개수별 10/15/20, 나이 20, 연락빈도 10.
-    ORDER BY 의 괄호는 필수다. 점수 항이 없으면 "0" 이 되는데 MySQL 은 ORDER BY 의
-    정수 리터럴을 컬럼 순번으로 해석해서 에러를 낸다.
+    벤치는 항상 점수 항이 있는 요청을 재현하므로 정렬식이 비는 경우는 없다.
+    (앱은 옵션이 하나도 없으면 ORDER BY 에서 점수를 통째로 뺀다. MySQL 이
+     ORDER BY 의 정수 리터럴을 컬럼 순번으로 읽어서 "0" 을 넣으면 죽기 때문인데,
+     괄호로 감싸도 막히지 않는다.)
     """
     mbti_terms = "\n        + ".join(
         f"CASE WHEN LOCATE('{c}', c.mbti) > 0 THEN 10 ELSE 0 END" for c in args.mbti
