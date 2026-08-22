@@ -36,6 +36,7 @@
 # ============================================================================
 import argparse
 import os
+import random
 import subprocess
 import sys
 import time
@@ -45,6 +46,8 @@ MYSQL_PW = os.environ.get("MYSQL_ROOT_PASSWORD", "comatching12!@")
 DB = "comatching_matching"
 HOBBY_BATCH = 100          # MatchingCandidate.hobbyCategories 의 @BatchSize(size = 100)
 AGE_OPERATOR = {"EQUAL": "=", "OLDER": ">", "YOUNGER": "<"}
+# MatchingCandidate.RANDOM_KEY_START_BOUND 와 같은 값
+RANDOM_KEY_START_BOUND = 900_000_000
 
 
 def mysql(sql, tabular=False):
@@ -77,6 +80,50 @@ def mysql_discard(sql):
         err = "\n".join(l for l in (p.stderr or "").splitlines() if "Using a password" not in l)
         print(f"❌ MySQL 오류\n{err}", file=sys.stderr)
         sys.exit(1)
+
+
+def score_terms(args, hobby_count_expr):
+    """
+    점수식. old/new/sample 이 같은 규칙을 써야 비교가 성립한다.
+    hobby_count_expr 만 모드별로 다르다(파생 테이블의 cnt vs 집계 COUNT).
+    """
+    mbti = "\n        + ".join(
+        f"CASE WHEN LOCATE('{c}', c.mbti) > 0 THEN 10 ELSE 0 END" for c in args.mbti
+    )
+    return (f"{mbti}"
+            f"\n        + CASE WHEN {hobby_count_expr} >= 3 THEN 20"
+            f"\n               WHEN {hobby_count_expr} = 2 THEN 15"
+            f"\n               WHEN {hobby_count_expr} = 1 THEN 10"
+            f"\n               ELSE 0 END"
+            f"\n        + CASE WHEN c.age {AGE_OPERATOR[args.age_option]} {args.my_age} THEN 20 ELSE 0 END"
+            f"\n        + CASE WHEN c.contact_frequency = '{args.contact}' THEN 10 ELSE 0 END")
+
+
+def sample_candidate_sql(args, random_start):
+    """
+    개선 B(표본 추출)가 만들어내는 SQL.
+
+    (gender, is_matchable, random_key) 인덱스에서 무작위 지점으로 점프해
+    연속 N 건을 읽는다. random_key 는 삽입 시 한 번 정해지는 무작위 정수라
+    '무작위 공간에서의 연속 구간 = 무작위 표본'이 된다.
+
+    걸러내기를 gender + is_matchable 만 거는 건 old/new 와 후보 모집단을
+    맞추기 위해서다. 조건을 더 걸면 후보가 줄어 당연히 빨라지는데 그건 개선이 아니다.
+    """
+    return f"""SELECT c.*
+   FROM (SELECT mc.member_id
+           FROM matching_candidate mc
+          WHERE mc.gender = '{args.gender}'
+            AND mc.is_matchable = 1
+            AND mc.random_key >= {random_start}
+          ORDER BY mc.random_key
+          LIMIT {args.sample_size}) s
+   JOIN matching_candidate c ON c.member_id = s.member_id
+   LEFT JOIN candidate_hobby_categories h
+          ON h.member_id = c.member_id AND h.hobby_categories = '{args.hobby}'
+  GROUP BY c.member_id
+  ORDER BY ({score_terms(args, "COUNT(h.member_id)")}) DESC, RAND()
+  LIMIT 1;"""
 
 
 def best_candidate_sql(args):
@@ -113,8 +160,9 @@ def best_candidate_sql(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", default="old", choices=["old", "new"],
-                    help="old=개선 전(페이지 100 + 취미 N+1 500), new=개선 후(단일 쿼리)")
+    ap.add_argument("--mode", default="old", choices=["old", "new", "sample"],
+                    help="old=개선 전(페이지100+취미N+1 500), new=A(단일 쿼리 전수조사), "
+                         "sample=B(무작위 표본)")
     ap.add_argument("--gender", default="FEMALE", choices=["FEMALE", "MALE"],
                     help="탐색 대상 성별. 앱은 '내 성별의 반대'를 넣는다")
     ap.add_argument("--page-size", type=int, default=500,
@@ -130,6 +178,8 @@ def main():
     ap.add_argument("--my-age", type=int, default=24, help="[new] 내 나이")
     ap.add_argument("--age-option", default="EQUAL", choices=["EQUAL", "OLDER", "YOUNGER"])
     ap.add_argument("--contact", default="NORMAL", choices=["FREQUENT", "NORMAL", "RARE"])
+    ap.add_argument("--sample-size", type=int, default=5000,
+                    help="[sample] MatchingProcessor.SAMPLE_SIZE 와 같은 값")
     ap.add_argument("--repeat", type=int, default=1,
                     help="[new] 쿼리가 1 개뿐이라 편차가 크면 늘려서 평균을 본다")
     args = ap.parse_args()
@@ -145,7 +195,10 @@ def main():
         print(f"❌ {args.gender} 후보가 0 명이다. 시드를 먼저 적재하라.")
         sys.exit(1)
 
-    print(f" 모드        : {args.mode}  ({'개선 전 — 페이지 + 취미 N+1' if args.mode == 'old' else '개선 후 — 단일 쿼리'})")
+    mode_desc = {"old": "개선 전 — 페이지 + 취미 N+1",
+                 "new": "A — 단일 쿼리 전수조사",
+                 "sample": "B — 무작위 표본"}[args.mode]
+    print(f" 모드        : {args.mode}  ({mode_desc})")
     print(f" 대상 성별   : {args.gender}  (후보 {total:,} 명)")
 
     # ---------- 워밍업 ----------
@@ -160,10 +213,17 @@ def main():
     # ① 제외 목록: WHERE member_id = ? OR partner_id = ?
     #    partner_id 단독 인덱스가 없어서 OR 가 인덱스를 못 탄다.
     #    두 모드 모두 이 쿼리는 그대로 나간다(개선 A 의 대상이 아니다).
-    exclude_sql = (
-        f"SELECT DISTINCT CASE WHEN m.member_id = {args.member_id} "
-        f"THEN m.partner_id ELSE m.member_id END FROM matching_history m "
-        f"WHERE m.member_id = {args.member_id} OR m.partner_id = {args.member_id};")
+    if args.mode == "sample":
+        # B 에서 OR 를 UNION 으로 쪼갰다. 각 갈래가 자기 인덱스를 커버링으로 탄다.
+        exclude_sql = (
+            f"SELECT partner_id FROM matching_history WHERE member_id  = {args.member_id} "
+            f"UNION "
+            f"SELECT member_id  FROM matching_history WHERE partner_id = {args.member_id};")
+    else:
+        exclude_sql = (
+            f"SELECT DISTINCT CASE WHEN m.member_id = {args.member_id} "
+            f"THEN m.partner_id ELSE m.member_id END FROM matching_history m "
+            f"WHERE m.member_id = {args.member_id} OR m.partner_id = {args.member_id};")
 
     if args.mode == "old":
         pages = (total + args.page_size - 1) // args.page_size
@@ -200,10 +260,14 @@ def main():
     else:
         print(f" 점수 조건   : mbti={args.mbti} hobby={args.hobby} "
               f"age={args.age_option}({args.my_age}) contact={args.contact}")
+        if args.mode == "sample":
+            print(f" 표본 크기   : {args.sample_size:,}  (전체 {total:,} 명 중)")
         print(f" 반복        : {args.repeat} 회")
         stmts.append(exclude_sql)
         for _ in range(args.repeat):
-            stmts.append(best_candidate_sql(args))
+            # 표본 시작점은 매 요청 새로 뽑는다. 앱과 같은 동작이다.
+            stmts.append(sample_candidate_sql(args, random.randrange(RANDOM_KEY_START_BOUND))
+                         if args.mode == "sample" else best_candidate_sql(args))
 
     # ---------- 실행 ----------
     print(f"▸ 쿼리 {len(stmts):,} 개 실행 중 (단일 세션)...")
@@ -246,6 +310,8 @@ def main():
 
         if "matching_history" in text:
             label = "① 제외 목록"
+        elif args.mode == "sample":
+            label = f"② 최적 후보 (표본 {args.sample_size:,})"
         elif args.mode == "new":
             # new 모드의 후보 쿼리는 취미 파생 테이블을 안에 품고 있어
             # candidate_hobby 도 같이 잡힌다. 하나의 쿼리로 센다.
@@ -281,6 +347,9 @@ def main():
         plans = [("② 후보 페이지",
                   f"SELECT {cols} FROM matching_candidate WHERE {where} "
                   f"AND member_id > 1000001 ORDER BY member_id ASC LIMIT {args.page_size}")]
+    elif args.mode == "sample":
+        plans = [("② 최적 후보",
+                  sample_candidate_sql(args, random.randrange(RANDOM_KEY_START_BOUND)).rstrip(";"))]
     else:
         plans = [("② 최적 후보", best_candidate_sql(args).rstrip(";"))]
 
@@ -302,9 +371,11 @@ def main():
                   f"key={f[6]:<26} rows={f[9]:>8}  {f[11]}")
             name = ""   # 같은 쿼리의 두 번째 줄부터는 이름을 비운다
 
-    if args.mode == "new":
+    if args.mode in ("new", "sample"):
+        shown = (sample_candidate_sql(args, random.randrange(RANDOM_KEY_START_BOUND))
+                 if args.mode == "sample" else best_candidate_sql(args))
         print("\n▸ 실제 실행된 SQL (그대로 복사해서 EXPLAIN ANALYZE 를 돌릴 수 있다)")
-        print("\n".join("   " + l for l in best_candidate_sql(args).splitlines()))
+        print("\n".join("   " + l for l in shown.splitlines()))
 
     print(f"""
 {'=' * 68}

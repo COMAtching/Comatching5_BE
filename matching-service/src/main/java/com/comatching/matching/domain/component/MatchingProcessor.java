@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * == importantOption 이 하는 일 ==
@@ -51,6 +52,7 @@ import java.util.Locale;
 public class MatchingProcessor {
 
     private static final int MAX_ALLOWED_AGE = 27;
+    private static final int SAMPLE_SIZE = 5_000;
 
     private final MatchingCandidateRepository candidateRepository;
     private final MatchingHistoryRepository historyRepository;
@@ -77,6 +79,9 @@ public class MatchingProcessor {
         Gender targetGender = (myProfile.gender() == Gender.MALE) ? Gender.FEMALE : Gender.MALE;
 
         return new MatchingCandidateSearchCondition(
+                ThreadLocalRandom.current().nextInt(MatchingCandidate.RANDOM_KEY_START_BOUND),
+                SAMPLE_SIZE,
+
                 // ---------- 필수 조건 (WHERE) ----------
                 targetGender,
                 request.sameMajorOption() ? myProfile.major() : null,

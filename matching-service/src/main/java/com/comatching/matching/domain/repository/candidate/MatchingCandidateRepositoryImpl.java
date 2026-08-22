@@ -33,6 +33,35 @@ import java.util.*;
  * 그리고 enum 에서 나온 비교 연산자. 값은 전부 setParameter 로 바인딩한다.
  * 특히 MBTI 글자는 요청에서 그대로 오는 사용자 입력이라 절대 이어붙이지 않는다.
  */
+
+/**
+ * == 왜 전수조사를 버렸나 ==
+ * 개선 A 로 쿼리는 601 개에서 2 개가 됐지만 여전히 이성 후보 전원을 훑고 정렬했다
+ * (Using temporary; Using filesort). 5 만 명에 113.9ms, 50 만 명이면 약 570ms 다.
+ * <p>
+ * 그런데 실제 점수 분포를 재보니 5 만 명 중 최고점(90 점)이 단 4 명이었다.
+ * 즉 같은 조건으로 요청하는 모든 사용자가 늘 같은 4 명을 받는다.
+ * 전수조사는 비싸기만 한 게 아니라 매칭을 소수에게 쏠리게 만들고 있었다.
+ * <p>
+ * == 바뀐 정의 ==
+ * '전체에서 최고점 1 명' -> '무작위 표본 5,000 명 중 최고점 1 명'.
+ * 실측 분포 기준 80 점 이상을 99.9% 확보한다. 사용자는 점수를 보지 않고,
+ * 애초에 동점 그룹에서 무작위로 주는 구조라 체감 차이가 없다.
+ * 대신 후보 풀이 4 명에서 수백 명으로 넓어지고, 비용이 사용자 수와 무관해진다.
+ * <p>
+ * == 표본을 어떻게 뽑나 ==
+ * random_key 는 삽입할 때 한 번 정해지는 무작위 정수다.
+ * (gender, is_matchable, random_key) 인덱스에서 무작위 지점으로 점프해
+ * 연속한 N 건을 읽는다. '무작위 공간에서의 연속 구간'이므로 실제로는 무작위 표본이다.
+ * 인덱스 시크 한 번이라 전체 인원과 무관하게 O(표본 크기) 다.
+ * <p>
+ * == 필수 조건을 표본 '안'이 아니라 '밖'에서 거는 이유 ==
+ * 거꾸로다 — 필수 조건은 표본을 뽑을 때 함께 적용한다.
+ * 뽑고 나서 거르면 5,000 명이 조건 통과분만 남아 수백 명으로 쪼그라든다.
+ * 안에서 걸면 '조건을 만족하는 5,000 명'이 나온다. 대신 조건이 빡빡할수록
+ * 5,000 건을 채우려고 더 많은 행을 읽는데, 그 양은 선택도에만 달려 있고
+ * 전체 인원과는 무관하다. 100 만이든 1,000 만이든 같다.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class MatchingCandidateRepositoryImpl implements MatchingCandidateRepositoryCustom {
@@ -55,22 +84,20 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
                 ? condition.scoreHobbyCategory()
                 : condition.requiredHobbyCategory();
 
-        String hobbyJoin = "";
-        if (hobbyCategory != null) {
-            hobbyJoin = "\n LEFT JOIN (SELECT member_id, COUNT(*) AS cnt"
-                    + "\n              FROM candidate_hobby_categories"
-                    + "\n             WHERE hobby_categories = :hobbyCategory"
-                    + "\n             GROUP BY member_id) h ON h.member_id = c.member_id";
-            params.put("hobbyCategory", hobbyCategory.name());
-        }
-
-        String where = buildWhere(condition, params);
+        String sample = buildSample(condition, hobbyCategory, params);
         String score = buildScore(condition, hobbyCategory, params);
 
-        String sql = "SELECT c.* FROM matching_candidate c" + hobbyJoin + "\n"
-                + " WHERE " + where + "\n"
-                + " ORDER BY (" + score + ") DESC, RAND()\n"
-                + " LIMIT 1";
+        String hobbyJoin = hobbyCategory == null ? "" :
+                "\n LEFT JOIN candidate_hobby_categories h"
+                + "\n        ON h.member_id = c.member_id AND h.hobby_categories = :hobbyCategory";
+
+        String sql = "SELECT c.*"
+                + "\n   FROM (" + sample + ") s"
+                + "\n   JOIN matching_candidate c ON c.member_id = s.member_id"
+                + hobbyJoin
+                + "\n  GROUP BY c.member_id"
+                + "\n  ORDER BY (" + score + ") DESC, RAND()"
+                + "\n  LIMIT 1";
 
         log.debug("후보 조회 SQL\n{}\n파라미터: {}", sql, params);
 
@@ -83,31 +110,34 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
-    private String buildWhere(MatchingCandidateSearchCondition condition, Map<String, Object> params) {
+    private String buildSample(MatchingCandidateSearchCondition condition, HobbyCategory hobbyCategory, Map<String, Object> params) {
         List<String> conditions = new ArrayList<>();
 
-        conditions.add("c.gender = :targetGender");
+        conditions.add("mc.gender = :targetGender");
         params.put("targetGender", condition.targetGender().name());
 
-        conditions.add("c.is_matchable = 1");
+        conditions.add("mc.is_matchable = 1");
+
+        conditions.add("mc.random_key >= :randomStart");
+        params.put("randomStart", condition.randomStart());
 
         if (condition.excludeMajor() != null) {
-            conditions.add("c.major <> :excludeMajor");
+            conditions.add("mc.major <> :excludeMajor");
             params.put("excludeMajor", condition.excludeMajor());
         }
 
         if (condition.excludeMemberIds() != null && !condition.excludeMemberIds().isEmpty()) {
-            conditions.add("c.member_id NOT IN (:excludeMemberIds)");
+            conditions.add("mc.member_id NOT IN (:excludeMemberIds)");
             params.put("excludeMemberIds", condition.excludeMemberIds());
         }
 
         if (condition.minAge() != null) {
-            conditions.add("c.age >= :minAge");
+            conditions.add("mc.age >= :minAge");
             params.put("minAge", condition.minAge());
         }
 
         if (condition.maxAge() != null) {
-            conditions.add("c.age <= :maxAge");
+            conditions.add("mc.age <= :maxAge");
             params.put("maxAge", condition.maxAge());
         }
 
@@ -115,21 +145,30 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
         if (required != null && !required.isBlank()) {
             for (int i = 0; i < required.length(); i++) {
                 String name = "reqMbti" + i;
-                conditions.add("LOCATE(:" + name + ", c.mbti) > 0");
+                conditions.add("LOCATE(:" + name + ", mc.mbti) > 0");
                 params.put(name, String.valueOf(required.charAt(i)));
             }
         }
 
         if (condition.requiredContactFrequency() != null) {
-            conditions.add("c.contact_frequency = :reqContact");
+            conditions.add("mc.contact_frequency = :reqContact");
             params.put("reqContact", condition.requiredContactFrequency().name());
         }
 
         if (condition.requiredHobbyCategory() != null) {
-            conditions.add("h.cnt >= 1");
+            conditions.add("EXISTS (SELECT 1 FROM candidate_hobby_categories hx"
+                    + " WHERE hx.member_id = mc.member_id AND hx.hobby_categories = :hobbyCategory)");
         }
 
-        return String.join("\n   AND ", conditions);
+        if (hobbyCategory != null) {
+            params.put("hobbyCategory", hobbyCategory.name());
+        }
+
+        return "SELECT mc.member_id"
+                + "\n           FROM matching_candidate mc"
+                + "\n          WHERE " + String.join("\n            AND ", conditions)
+                + "\n          ORDER BY mc.random_key"
+                + "\n          LIMIT " + condition.sampleSize();
     }
 
     private String buildScore(MatchingCandidateSearchCondition condition, HobbyCategory hobbyCategory, Map<String, Object> params) {
@@ -148,9 +187,9 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 
         // calculateHobbyScore: 같은 카테고리를 몇 개 가졌는지로 10 / 15 / 20 점
         if (hobbyCategory != null && condition.scoreHobbyCategory() != null) {
-            terms.add("CASE WHEN COALESCE(h.cnt, 0) >= 3 THEN " + SCORE_HOBBY_THREE_PLUS
-                    + "\n               WHEN COALESCE(h.cnt, 0) = 2 THEN " + SCORE_HOBBY_TWO
-                    + "\n               WHEN COALESCE(h.cnt, 0) = 1 THEN " + SCORE_HOBBY_ONE
+            terms.add("CASE WHEN COUNT(h.member_id) >= 3 THEN " + SCORE_HOBBY_THREE_PLUS
+                    + "\n               WHEN COUNT(h.member_id) = 2 THEN " + SCORE_HOBBY_TWO
+                    + "\n               WHEN COUNT(h.member_id) = 1 THEN " + SCORE_HOBBY_ONE
                     + "\n               ELSE 0 END");
         }
 

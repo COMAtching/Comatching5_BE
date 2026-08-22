@@ -16,36 +16,37 @@ import com.comatching.matching.domain.entity.MatchingHistory;
 @Repository
 public interface MatchingHistoryRepository extends JpaRepository<MatchingHistory, Long> {
 
-	@Query("SELECT DISTINCT " +
-		"CASE WHEN m.memberId = :memberId THEN m.partnerId ELSE m.memberId END " +
-		"FROM MatchingHistory m " +
-		"WHERE m.memberId = :memberId OR m.partnerId = :memberId")
-	List<Long> findMatchedMemberIdsByMemberId(@Param("memberId") Long memberId);
+    @Query(value = """
+            SELECT partner_id FROM matching_history WHERE member_id  = :memberId
+            UNION
+            SELECT member_id  FROM matching_history WHERE partner_id = :memberId
+            """, nativeQuery = true)
+    List<Long> findMatchedMemberIdsByMemberId(@Param("memberId") Long memberId);
 
-	Page<MatchingHistory> findByMemberIdOrderByMatchedAtDesc(Long memberId, Pageable pageable);
+    Page<MatchingHistory> findByMemberIdOrderByMatchedAtDesc(Long memberId, Pageable pageable);
 
-	Optional<MatchingHistory> findByMemberIdAndPartnerId(Long memberId, Long partnerId);
+    Optional<MatchingHistory> findByMemberIdAndPartnerId(Long memberId, Long partnerId);
 
-	@Query("SELECT m FROM MatchingHistory m " +
-		"WHERE m.memberId = :memberId " +
-		"AND (:startDate IS NULL OR m.matchedAt >= :startDate) " +
-		"AND (:endDate IS NULL OR m.matchedAt <= :endDate)")
-	Page<MatchingHistory> searchHistory(
-		@Param("memberId") Long memberId,
-		@Param("startDate") LocalDateTime startDate,
-		@Param("endDate") LocalDateTime endDate,
-		Pageable pageable
-	);
+    @Query("SELECT m FROM MatchingHistory m " +
+            "WHERE m.memberId = :memberId " +
+            "AND (:startDate IS NULL OR m.matchedAt >= :startDate) " +
+            "AND (:endDate IS NULL OR m.matchedAt <= :endDate)")
+    Page<MatchingHistory> searchHistory(
+            @Param("memberId") Long memberId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
+    );
 
-	@Query("SELECT m FROM MatchingHistory m " +
-		"WHERE m.memberId = :memberId " +
-		"AND (:startDate IS NULL OR m.matchedAt >= :startDate) " +
-		"AND (:endDate IS NULL OR m.matchedAt <= :endDate)" +
-		"AND m.favorite = TRUE")
-	Page<MatchingHistory> searchFavoriteHistory(
-		@Param("memberId") Long memberId,
-		@Param("startDate") LocalDateTime startDate,
-		@Param("endDate") LocalDateTime endDate,
-		Pageable pageable
-	);
+    @Query("SELECT m FROM MatchingHistory m " +
+            "WHERE m.memberId = :memberId " +
+            "AND (:startDate IS NULL OR m.matchedAt >= :startDate) " +
+            "AND (:endDate IS NULL OR m.matchedAt <= :endDate)" +
+            "AND m.favorite = TRUE")
+    Page<MatchingHistory> searchFavoriteHistory(
+            @Param("memberId") Long memberId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable
+    );
 }
