@@ -58,8 +58,11 @@ CONTACT_FREQUENCIES = ["FREQUENT", "NORMAL", "RARE"]
 
 HOBBY_CATEGORIES = ["CULTURE", "DAILY", "GAME", "LEISURE", "MUSIC", "SPORTS"]
 
-# 6 개 중 3 개를 고르는 조합 = 20 가지. 전원에게 균등 배분한다.
-HOBBY_COMBOS = [list(c) for c in itertools.combinations(HOBBY_CATEGORIES, 3)]
+# 취미는 '취미 하나당 한 행'이라 같은 카테고리가 여러 번 나올 수 있다.
+# 게임 취미가 둘이면 게임에 더 가깝다고 보고 점수를 더 준다(10/15/20).
+# combinations 는 중복 없는 조합만 만들어서 15·20 점 분기에 도달하는 데이터가
+# 한 건도 생기지 않았다. 중복을 허용해야 점수 분포가 실제와 비슷해진다.
+HOBBY_COMBOS = [list(c) for c in itertools.combinations_with_replacement(HOBBY_CATEGORIES, 3)]
 
 # 학과는 19 개(소수). 20 처럼 짝수를 쓰면 셔플 전 단계에서 성별과 얽힐 여지가 있고,
 # 소수면 어떤 배분 방식을 쓰더라도 주기가 겹치지 않는다.

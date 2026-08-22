@@ -1,12 +1,12 @@
 package com.comatching.matching.domain.component;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.LongStream;
+import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
-import com.comatching.common.domain.vo.KoreanAge;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.matching.domain.dto.MatchingRequest;
@@ -32,8 +31,22 @@ import com.comatching.matching.domain.repository.candidate.MatchingCandidateSear
 import com.comatching.matching.domain.repository.history.MatchingHistoryRepository;
 import com.comatching.matching.global.exception.MatchingErrorCode;
 
+/**
+ * 점수 계산·필터링·표본 추출이 SQL 로 내려간 뒤 자바에 남은 것은
+ * "요청을 조회 조건으로 번역하는 일"뿐이다. 여기서는 그 번역만 본다.
+ *
+ * 핵심은 importantOption 이 만드는 두 갈래다.
+ *   - 필수 조건(WHERE)  : importantOption 이 지목한 하나만 걸린다
+ *   - 점수 (ORDER BY)   : importantOption 과 무관하게 설정된 값이 전부 넘어간다
+ *
+ * SQL 자체의 동작은 MatchingCandidateRepositoryIT 가 실제 MySQL 로 검증한다.
+ */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("MatchingProcessor 단위 테스트")
 class MatchingProcessorTest {
+
+	private static final Long MEMBER_ID = 1L;
+	private static final int MY_AGE = 24;
 
 	@InjectMocks
 	private MatchingProcessor matchingProcessor;
@@ -44,333 +57,386 @@ class MatchingProcessorTest {
 	@Mock
 	private MatchingHistoryRepository historyRepository;
 
-	@Mock
-	private MatchingScoreCalculator scoreCalculator;
+	@Nested
+	@DisplayName("조회 결과 처리")
+	class Result {
 
-	@Mock
-	private ImportantConditionCheckerFactory conditionCheckerFactory;
+		@Test
+		@DisplayName("리포지토리가 찾은 후보를 그대로 반환한다")
+		void returnsCandidateFromRepository() {
+			MatchingCandidate found = candidate(99L);
+			givenBestCandidate(found);
 
-	private MatchingCandidate createCandidate(Long memberId, String mbti, int age) {
-		return MatchingCandidate.create(
-			memberId, 1L, Gender.FEMALE, mbti, "디자인학과",
-			ContactFrequency.FREQUENT, List.of(HobbyCategory.SPORTS),
-			LocalDate.now().minusYears(age - 1), true
-		);
-	}
+			assertThat(matchingProcessor.process(MEMBER_ID, profile(Gender.MALE), request().build()))
+				.isSameAs(found);
+		}
 
-	private ProfileResponse createProfile(Long memberId, Gender gender, int age) {
-		return ProfileResponse.builder()
-			.memberId(memberId)
-			.gender(gender)
-			.mbti("ISTJ")
-			.major("컴퓨터공학과")
-			.birthDate(LocalDate.now().minusYears(age - 1))
-			.build();
+		@Test
+		@DisplayName("후보가 없으면 NO_MATCHING_CANDIDATE 를 던진다")
+		void throwsWhenNoCandidate() {
+			given(historyRepository.findMatchedMemberIdsByMemberId(MEMBER_ID)).willReturn(List.of());
+			given(candidateRepository.findBestCandidate(any())).willReturn(Optional.empty());
+
+			assertThatThrownBy(() -> matchingProcessor.process(MEMBER_ID, profile(Gender.MALE), request().build()))
+				.isInstanceOf(BusinessException.class)
+				.hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.NO_MATCHING_CANDIDATE);
+		}
 	}
 
 	@Nested
-	@DisplayName("process 메서드")
-	class Process {
+	@DisplayName("나이 중요 조건의 단락 처리")
+	class AgeShortCircuit {
+
+		// 예전 ImportantConditionCheckerFactory.checkAge 는 이 두 경우에 모든 후보를 탈락시켰다.
+		// SQL 의 나이 조건은 그 경우 아예 걸리지 않아 반대로 전부 통과한다.
+		// 기존 동작을 지키려고 쿼리 전에 끊는다. 조회 자체가 일어나면 안 된다.
 
 		@Test
-		@DisplayName("가장 높은 점수의 후보자를 반환한다")
-		void shouldReturnHighestScoreCandidate() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(null, "IS", null, null, false, null);
+		@DisplayName("importantOption 이 AGE 인데 ageOption 이 없으면 조회 없이 예외를 던진다")
+		void throwsWithoutQueryWhenAgeOptionMissing() {
+			MatchingRequest request = request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(null)
+				.build();
 
-			MatchingCandidate candidate1 = createCandidate(2L, "ISTJ", 25);
-			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25);
-			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
-			given(scoreCalculator.calculate(eq(candidate1), eq(request), any(KoreanAge.class))).willReturn(40);
-			given(scoreCalculator.calculate(eq(candidate2), eq(request), any(KoreanAge.class))).willReturn(10);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(2L);
-		}
-
-		@Test
-		@DisplayName("중요 조건을 만족하지 않는 후보자는 필터링된다")
-		void shouldFilterCandidatesNotMeetingImportantCondition() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(AgeOption.EQUAL, null, null, null, false, ImportantOption.AGE);
-
-			MatchingCandidate candidate1 = createCandidate(2L, "ISTJ", 30); // 조건 미충족
-			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25); // 조건 충족
-			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), eq(candidate1), eq(request), any()))
-				.willReturn(false);
-			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), eq(candidate2), eq(request), any()))
-				.willReturn(true);
-			given(scoreCalculator.calculate(eq(candidate2), eq(request), any(KoreanAge.class))).willReturn(20);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(3L);
-		}
-
-		@Test
-		@DisplayName("동점인 경우 후보자 중 하나를 무작위로 반환한다")
-		void shouldReturnRandomCandidateWhenTied() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
-
-			MatchingCandidate candidate1 = createCandidate(2L, "ISTJ", 25);
-			MatchingCandidate candidate2 = createCandidate(3L, "ENFP", 25);
-			List<MatchingCandidate> candidates = List.of(candidate1, candidate2);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
-			given(scoreCalculator.calculate(any(), eq(request), any(KoreanAge.class))).willReturn(20);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isIn(2L, 3L);
-		}
-
-		@Test
-		@DisplayName("후보자가 없으면 BusinessException을 던진다")
-		void shouldThrowExceptionWhenNoCandidates() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(new ArrayList<>());
-
-			// when & then
-			assertThatThrownBy(() -> matchingProcessor.process(memberId, myProfile, request))
-				.isInstanceOf(BusinessException.class);
-		}
-
-		@Test
-		@DisplayName("모든 후보자가 중요 조건을 만족하지 못하면 BusinessException을 던진다")
-		void shouldThrowExceptionWhenAllCandidatesFiltered() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(AgeOption.EQUAL, null, null, null, false, ImportantOption.AGE);
-
-			MatchingCandidate candidate1 = createCandidate(2L, "ISTJ", 30);
-			List<MatchingCandidate> candidates = List.of(candidate1);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(eq(ImportantOption.AGE), any(), eq(request), any()))
-				.willReturn(false);
-
-			// when & then
-			assertThatThrownBy(() -> matchingProcessor.process(memberId, myProfile, request))
-				.isInstanceOf(BusinessException.class);
-		}
-
-		@Test
-		@DisplayName("sameMajorOption이 true면 같은 전공을 제외한다")
-		void shouldExcludeSameMajorWhenOptionIsTrue() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(null, null, null, null, true, null);
-
-			MatchingCandidate candidate = createCandidate(2L, "ISTJ", 25);
-			List<MatchingCandidate> candidates = List.of(candidate);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
-			given(scoreCalculator.calculate(any(), eq(request), any(KoreanAge.class))).willReturn(20);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
-				condition.targetGender() == Gender.FEMALE
-					&& "컴퓨터공학과".equals(condition.excludeMajor())
-			));
-			assertThat(result).isNotNull();
-		}
-
-		@Test
-		@DisplayName("양방향 매칭 이력이 있는 회원 ID를 후보 조회 제외 조건으로 전달한다")
-		void shouldPassBidirectionalMatchedMemberIdsToCandidateSearchCondition() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
-
-			MatchingCandidate candidate = createCandidate(3L, "ISTJ", 25);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(List.of(2L, 4L));
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(List.of(candidate));
-			given(conditionCheckerFactory.check(isNull(), eq(candidate), eq(request), any())).willReturn(true);
-			given(scoreCalculator.calculate(eq(candidate), eq(request), any(KoreanAge.class))).willReturn(20);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(3L);
-			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
-				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
-			verify(candidateRepository).findPotentialCandidates(conditionCaptor.capture());
-			assertThat(conditionCaptor.getValue().excludeMemberIds()).containsExactly(2L, 4L);
-		}
-
-		@Test
-		@DisplayName("나이 제한 옵션이 있으면 요청받은 실제 나이 범위를 27세 상한 내에서 필터링한다")
-		void shouldFilterCandidatesByActualAgeLimitWithinMaxAllowedAge() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
-			MatchingRequest request = new MatchingRequest(
-				null, null, null, null, false, null,
-				20, 29
-			);
-
-			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);
-			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
-			MatchingCandidate age29 = createCandidate(4L, "ISTJ", 29);
-			List<MatchingCandidate> candidates = List.of(age19, age27, age29);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-			given(conditionCheckerFactory.check(isNull(), any(), any(), any())).willReturn(true);
-			given(scoreCalculator.calculate(eq(age27), eq(request), any(KoreanAge.class))).willReturn(30);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(3L);
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
-				condition.minAge() == 20
-					&& condition.maxAge() == 27
-					&& condition.limit() == 500
-			));
-			verify(scoreCalculator, never()).calculate(eq(age19), eq(request), any(KoreanAge.class));
-			verify(scoreCalculator, never()).calculate(eq(age29), eq(request), any(KoreanAge.class));
-		}
-
-		@Test
-		@DisplayName("중요 취미 조건이 있으면 후보 조회 조건으로 전달한다")
-		void shouldPushImportantHobbyToCandidateSearchCondition() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 25);
-			MatchingRequest request = new MatchingRequest(
-				null, null, HobbyCategory.SPORTS, null, false, ImportantOption.HOBBY
-			);
-
-			MatchingCandidate candidate = createCandidate(2L, "ISTJ", 25);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(List.of(candidate));
-			given(conditionCheckerFactory.check(eq(ImportantOption.HOBBY), eq(candidate), eq(request), any()))
-				.willReturn(true);
-			given(scoreCalculator.calculate(eq(candidate), eq(request), any(KoreanAge.class))).willReturn(30);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(2L);
-			verify(candidateRepository).findPotentialCandidates(argThat(condition ->
-				condition.requiredHobbyCategory() == HobbyCategory.SPORTS
-					&& condition.requiredContactFrequency() == null
-					&& condition.limit() == 500
-			));
-		}
-
-		@Test
-		@DisplayName("첫 후보 페이지에 매칭 대상이 없어도 다음 페이지를 조회한다")
-		void shouldContinueSearchWhenFirstPageHasNoFinalCandidate() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
-			MatchingRequest request = new MatchingRequest(
-				null, null, null, null, false, null,
-				22, 24
-			);
-			List<MatchingCandidate> firstPage = LongStream.rangeClosed(2L, 501L)
-				.mapToObj(id -> createCandidate(id, "ISTJ", 19))
-				.toList();
-			MatchingCandidate secondPageCandidate = createCandidate(600L, "ENFP", 23);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(firstPage, List.of(secondPageCandidate));
-			given(conditionCheckerFactory.check(isNull(), eq(secondPageCandidate), eq(request), any())).willReturn(true);
-			given(scoreCalculator.calculate(eq(secondPageCandidate), eq(request), any(KoreanAge.class))).willReturn(30);
-
-			// when
-			MatchingCandidate result = matchingProcessor.process(memberId, myProfile, request);
-
-			// then
-			assertThat(result.getMemberId()).isEqualTo(600L);
-			ArgumentCaptor<MatchingCandidateSearchCondition> conditionCaptor =
-				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
-			verify(candidateRepository, times(2)).findPotentialCandidates(conditionCaptor.capture());
-			assertThat(conditionCaptor.getAllValues().get(0).lastMemberIdExclusive()).isNull();
-			assertThat(conditionCaptor.getAllValues().get(1).lastMemberIdExclusive()).isEqualTo(501L);
-		}
-
-		@Test
-		@DisplayName("나이 제한 조건에 맞는 후보가 없으면 NO_MATCHING_CANDIDATE를 던진다")
-		void shouldThrowNoCandidateWhenAllFilteredByAgeLimit() {
-			// given
-			Long memberId = 1L;
-			ProfileResponse myProfile = createProfile(memberId, Gender.MALE, 23);
-			MatchingRequest request = new MatchingRequest(
-				null, null, null, null, false, null,
-				22, 24
-			);
-
-			MatchingCandidate age19 = createCandidate(2L, "ISTJ", 19);
-			MatchingCandidate age27 = createCandidate(3L, "ENFP", 27);
-			List<MatchingCandidate> candidates = List.of(age19, age27);
-
-			given(historyRepository.findMatchedMemberIdsByMemberId(memberId)).willReturn(new ArrayList<>());
-			given(candidateRepository.findPotentialCandidates(any(MatchingCandidateSearchCondition.class)))
-				.willReturn(candidates);
-
-			// when & then
-			assertThatThrownBy(() -> matchingProcessor.process(memberId, myProfile, request))
+			assertThatThrownBy(() -> matchingProcessor.process(MEMBER_ID, profile(Gender.MALE), request))
 				.isInstanceOf(BusinessException.class)
-				.satisfies(e -> assertThat(((BusinessException)e).getErrorCode())
-					.isEqualTo(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+				.hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.NO_MATCHING_CANDIDATE);
 
-			verify(scoreCalculator, never()).calculate(any(), eq(request), any(KoreanAge.class));
+			then(candidateRepository).shouldHaveNoInteractions();
+			then(historyRepository).shouldHaveNoInteractions();
+		}
+
+		@Test
+		@DisplayName("importantOption 이 AGE 인데 내 생일이 없으면 조회 없이 예외를 던진다")
+		void throwsWithoutQueryWhenMyAgeMissing() {
+			ProfileResponse noBirthDate = ProfileResponse.builder()
+				.memberId(MEMBER_ID)
+				.gender(Gender.MALE)
+				.major("컴퓨터공학과")
+				.build();
+			MatchingRequest request = request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(AgeOption.EQUAL)
+				.build();
+
+			assertThatThrownBy(() -> matchingProcessor.process(MEMBER_ID, noBirthDate, request))
+				.isInstanceOf(BusinessException.class);
+
+			then(candidateRepository).shouldHaveNoInteractions();
+		}
+	}
+
+	@Nested
+	@DisplayName("필수 조건 — importantOption 이 지목한 하나만 걸린다")
+	class RequiredConditions {
+
+		@Test
+		@DisplayName("MBTI 를 고르면 MBTI 만 필수가 되고 대문자로 정규화된다")
+		void mbtiOnly() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.MBTI)
+				.mbtiOption("enfp")
+				.hobbyOption(HobbyCategory.GAME)
+				.contactFrequency(ContactFrequency.NORMAL)
+				.build());
+
+			assertThat(condition.requiredMbtiTraits()).isEqualTo("ENFP");
+			assertThat(condition.requiredHobbyCategory()).isNull();
+			assertThat(condition.requiredContactFrequency()).isNull();
+		}
+
+		@Test
+		@DisplayName("취미를 고르면 취미만 필수가 된다")
+		void hobbyOnly() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.HOBBY)
+				.mbtiOption("ENFP")
+				.hobbyOption(HobbyCategory.GAME)
+				.contactFrequency(ContactFrequency.NORMAL)
+				.build());
+
+			assertThat(condition.requiredHobbyCategory()).isEqualTo(HobbyCategory.GAME);
+			assertThat(condition.requiredMbtiTraits()).isNull();
+			assertThat(condition.requiredContactFrequency()).isNull();
+		}
+
+		@Test
+		@DisplayName("연락빈도를 고르면 연락빈도만 필수가 된다")
+		void contactOnly() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.CONTACT)
+				.mbtiOption("ENFP")
+				.hobbyOption(HobbyCategory.GAME)
+				.contactFrequency(ContactFrequency.NORMAL)
+				.build());
+
+			assertThat(condition.requiredContactFrequency()).isEqualTo(ContactFrequency.NORMAL);
+			assertThat(condition.requiredMbtiTraits()).isNull();
+			assertThat(condition.requiredHobbyCategory()).isNull();
+		}
+
+		@Test
+		@DisplayName("아무것도 고르지 않으면 필수 조건이 하나도 걸리지 않는다")
+		void noneWhenImportantOptionIsNull() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(null)
+				.mbtiOption("ENFP")
+				.hobbyOption(HobbyCategory.GAME)
+				.contactFrequency(ContactFrequency.NORMAL)
+				.build());
+
+			assertThat(condition.requiredMbtiTraits()).isNull();
+			assertThat(condition.requiredHobbyCategory()).isNull();
+			assertThat(condition.requiredContactFrequency()).isNull();
+		}
+
+		@Test
+		@DisplayName("MBTI 를 골라도 값이 비어 있으면 필수로 걸지 않는다")
+		void blankMbtiIsNotRequired() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.MBTI)
+				.mbtiOption("  ")
+				.build());
+
+			assertThat(condition.requiredMbtiTraits()).isNull();
+		}
+	}
+
+	@Nested
+	@DisplayName("점수 — importantOption 과 무관하게 전부 전달된다")
+	class ScoreParameters {
+
+		@Test
+		@DisplayName("필수로 걸리지 않은 옵션도 점수 파라미터로는 넘어간다")
+		void allOptionsGoToScore() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.MBTI)   // 필수는 MBTI 하나뿐
+				.mbtiOption("ENFP")
+				.hobbyOption(HobbyCategory.GAME)
+				.contactFrequency(ContactFrequency.NORMAL)
+				.ageOption(AgeOption.OLDER)
+				.build());
+
+			assertThat(condition.scoreMbtiTraits()).isEqualTo("ENFP");
+			assertThat(condition.scoreHobbyCategory()).isEqualTo(HobbyCategory.GAME);
+			assertThat(condition.scoreContactFrequency()).isEqualTo(ContactFrequency.NORMAL);
+			assertThat(condition.scoreAgeOption()).isEqualTo(AgeOption.OLDER);
+			assertThat(condition.myAge()).isEqualTo(MY_AGE);
+		}
+	}
+
+	@Nested
+	@DisplayName("나이 범위 계산")
+	class AgeRange {
+
+		@Test
+		@DisplayName("나이 제한이 없으면 범위를 걸지 않는다")
+		void noBoundsWithoutAgeLimit() {
+			MatchingCandidateSearchCondition condition = capture(request().build());
+
+			assertThat(condition.minAge()).isNull();
+			assertThat(condition.maxAge()).isNull();
+		}
+
+		@Test
+		@DisplayName("나이 제한 상한은 27세를 넘지 못한다")
+		void clampsUpperBoundToMaxAllowedAge() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.minAgeOffset(20)
+				.maxAgeOffset(40)
+				.build());
+
+			assertThat(condition.minAge()).isEqualTo(20);
+			assertThat(condition.maxAge()).isEqualTo(27);
+		}
+
+		@Test
+		@DisplayName("AGE 중요 조건 EQUAL 은 내 나이로 범위를 좁힌다")
+		void equalNarrowsToMyAge() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(AgeOption.EQUAL)
+				.build());
+
+			assertThat(condition.minAge()).isEqualTo(MY_AGE);
+			assertThat(condition.maxAge()).isEqualTo(MY_AGE);
+		}
+
+		@Test
+		@DisplayName("AGE 중요 조건 OLDER 는 하한을 내 나이 + 1 로 올린다")
+		void olderRaisesLowerBound() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(AgeOption.OLDER)
+				.build());
+
+			assertThat(condition.minAge()).isEqualTo(MY_AGE + 1);
+			assertThat(condition.maxAge()).isNull();
+		}
+
+		@Test
+		@DisplayName("AGE 중요 조건 YOUNGER 는 상한을 내 나이 - 1 로 내린다")
+		void youngerLowersUpperBound() {
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(AgeOption.YOUNGER)
+				.build());
+
+			assertThat(condition.maxAge()).isEqualTo(MY_AGE - 1);
+			assertThat(condition.minAge()).isNull();
+		}
+
+		@Test
+		@DisplayName("나이 제한과 AGE 중요 조건이 겹치면 더 엄격한 쪽을 쓴다")
+		void takesStricterOfTwoSources() {
+			// 제한은 20~27, OLDER 는 하한 25 를 요구한다 -> 하한은 25 가 이긴다
+			MatchingCandidateSearchCondition condition = capture(request()
+				.importantOption(ImportantOption.AGE)
+				.ageOption(AgeOption.OLDER)
+				.minAgeOffset(20)
+				.maxAgeOffset(27)
+				.build());
+
+			assertThat(condition.minAge()).isEqualTo(MY_AGE + 1);
+			assertThat(condition.maxAge()).isEqualTo(27);
+		}
+	}
+
+	@Nested
+	@DisplayName("그 밖의 조건")
+	class Others {
+
+		@Test
+		@DisplayName("내 성별의 반대를 대상으로 삼는다")
+		void targetsOppositeGender() {
+			assertThat(capture(profile(Gender.MALE), request().build()).targetGender())
+				.isEqualTo(Gender.FEMALE);
+			assertThat(capture(profile(Gender.FEMALE), request().build()).targetGender())
+				.isEqualTo(Gender.MALE);
+		}
+
+		@Test
+		@DisplayName("sameMajorOption 이 켜지면 내 전공을 제외 대상으로 넘긴다")
+		void passesMyMajorWhenExcludingSameMajor() {
+			assertThat(capture(request().sameMajorOption(true).build()).excludeMajor())
+				.isEqualTo("컴퓨터공학과");
+			assertThat(capture(request().sameMajorOption(false).build()).excludeMajor())
+				.isNull();
+		}
+
+		@Test
+		@DisplayName("양방향 매칭 이력을 제외 목록으로 넘긴다")
+		void passesMatchedHistoryAsExclusion() {
+			given(historyRepository.findMatchedMemberIdsByMemberId(MEMBER_ID))
+				.willReturn(List.of(7L, 8L));
+			given(candidateRepository.findBestCandidate(any())).willReturn(Optional.of(candidate(99L)));
+
+			matchingProcessor.process(MEMBER_ID, profile(Gender.MALE), request().build());
+
+			assertThat(captureCondition().excludeMemberIds()).containsExactly(7L, 8L);
+		}
+
+		@Test
+		@DisplayName("표본 크기와 시작점을 함께 넘긴다")
+		void passesSamplingParameters() {
+			MatchingCandidateSearchCondition condition = capture(request().build());
+
+			assertThat(condition.sampleSize()).isEqualTo(5_000);
+			assertThat(condition.randomStart())
+				.isBetween(0, MatchingCandidate.RANDOM_KEY_START_BOUND - 1);
+		}
+
+		@Test
+		@DisplayName("표본 시작점은 매 요청 새로 뽑는다")
+		void randomStartVariesPerRequest() {
+			given(historyRepository.findMatchedMemberIdsByMemberId(MEMBER_ID)).willReturn(List.of());
+			given(candidateRepository.findBestCandidate(any())).willReturn(Optional.of(candidate(99L)));
+
+			for (int i = 0; i < 30; i++) {
+				matchingProcessor.process(MEMBER_ID, profile(Gender.MALE), request().build());
+			}
+
+			ArgumentCaptor<MatchingCandidateSearchCondition> captor =
+				ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
+			then(candidateRepository).should(times(30)).findBestCandidate(captor.capture());
+
+			assertThat(captor.getAllValues())
+				.extracting(MatchingCandidateSearchCondition::randomStart)
+				.doesNotHaveDuplicates();
+		}
+	}
+
+	// ================= 헬퍼 =================
+
+	private void givenBestCandidate(MatchingCandidate candidate) {
+		given(historyRepository.findMatchedMemberIdsByMemberId(MEMBER_ID)).willReturn(List.of());
+		given(candidateRepository.findBestCandidate(any())).willReturn(Optional.of(candidate));
+	}
+
+	private MatchingCandidateSearchCondition capture(MatchingRequest request) {
+		return capture(profile(Gender.MALE), request);
+	}
+
+	private MatchingCandidateSearchCondition capture(ProfileResponse myProfile, MatchingRequest request) {
+		given(historyRepository.findMatchedMemberIdsByMemberId(MEMBER_ID)).willReturn(List.of());
+		given(candidateRepository.findBestCandidate(any())).willReturn(Optional.of(candidate(99L)));
+
+		matchingProcessor.process(MEMBER_ID, myProfile, request);
+
+		return captureCondition();
+	}
+
+	private MatchingCandidateSearchCondition captureCondition() {
+		ArgumentCaptor<MatchingCandidateSearchCondition> captor =
+			ArgumentCaptor.forClass(MatchingCandidateSearchCondition.class);
+		then(candidateRepository).should(atLeastOnce()).findBestCandidate(captor.capture());
+		return captor.getValue();
+	}
+
+	private MatchingCandidate candidate(Long memberId) {
+		return MatchingCandidate.create(memberId, memberId, Gender.FEMALE, "ISTJ", "디자인학과",
+			ContactFrequency.FREQUENT, List.of(HobbyCategory.SPORTS),
+			LocalDate.now().minusYears(MY_AGE - 1L), true);
+	}
+
+	private ProfileResponse profile(Gender gender) {
+		return ProfileResponse.builder()
+			.memberId(MEMBER_ID)
+			.gender(gender)
+			.mbti("ISTJ")
+			.major("컴퓨터공학과")
+			.birthDate(LocalDate.now().minusYears(MY_AGE - 1L))
+			.build();
+	}
+
+	private RequestBuilder request() {
+		return new RequestBuilder();
+	}
+
+	/** MatchingRequest 는 필드가 많아 테스트마다 필요한 것만 지정할 수 있게 감싼다. */
+	private static final class RequestBuilder {
+		private AgeOption ageOption;
+		private String mbtiOption;
+		private HobbyCategory hobbyOption;
+		private ContactFrequency contactFrequency;
+		private boolean sameMajorOption;
+		private ImportantOption importantOption;
+		private Integer minAgeOffset;
+		private Integer maxAgeOffset;
+
+		RequestBuilder ageOption(AgeOption v) { this.ageOption = v; return this; }
+		RequestBuilder mbtiOption(String v) { this.mbtiOption = v; return this; }
+		RequestBuilder hobbyOption(HobbyCategory v) { this.hobbyOption = v; return this; }
+		RequestBuilder contactFrequency(ContactFrequency v) { this.contactFrequency = v; return this; }
+		RequestBuilder sameMajorOption(boolean v) { this.sameMajorOption = v; return this; }
+		RequestBuilder importantOption(ImportantOption v) { this.importantOption = v; return this; }
+		RequestBuilder minAgeOffset(Integer v) { this.minAgeOffset = v; return this; }
+		RequestBuilder maxAgeOffset(Integer v) { this.maxAgeOffset = v; return this; }
+
+		MatchingRequest build() {
+			return new MatchingRequest(ageOption, mbtiOption, hobbyOption, contactFrequency,
+				sameMajorOption, importantOption, minAgeOffset, maxAgeOffset);
 		}
 	}
 }
