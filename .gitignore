@@ -74,3 +74,7 @@ tools/perf/jmeter/results/
 .pids/
 logs/
 cookies.txt
+
+# 파이썬 캐시 (tools/perf 스크립트 실행 부산물)
+__pycache__/
+*.pyc

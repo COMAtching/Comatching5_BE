@@ -120,6 +120,35 @@ else
   )
 fi
 
+# 이미 떠 있는 서비스를 먼저 내린다.
+#
+# 왜 필요한가: 이게 없으면 새 JVM 이 포트 바인딩에 실패해 죽는데,
+# wait_for_port 는 "포트가 열려 있다"만 확인하므로 옛 프로세스를 보고
+# "기동 완료"라고 보고한다. 그런데 Hibernate 의 ddl-auto: create 는
+# 포트 바인딩보다 먼저 돌아서 스키마를 이미 드롭·재생성한 뒤다.
+# 결과: 시드 데이터만 사라지고 옛 코드가 계속 돈다. 실제로 겪었다.
+stop_existing() {
+  local found=false pids
+  for entry in "${SERVICES[@]}"; do
+    IFS=':' read -r name _ port <<< "$entry"
+    pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+      echo "🛑 포트 $port 사용 중이던 프로세스 종료 ($name): $(echo $pids | tr '\n' ' ')"
+      kill $pids 2>/dev/null || true
+      found=true
+    fi
+  done
+  if [ "$found" = true ]; then
+    sleep 3
+    for entry in "${SERVICES[@]}"; do
+      IFS=':' read -r _ _ port <<< "$entry"
+      pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+      [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
+    done
+    sleep 1
+  fi
+}
+
 start_service() {
   local name="$1" module="$2" port="$3"
   local jar
@@ -135,22 +164,47 @@ start_service() {
 
 wait_for_port() {
   local name="$1" port="$2"
+  local pid
+  pid=$(cat "$PID_DIR/$name.pid" 2>/dev/null || echo "")
   for i in $(seq 1 90); do
+    # 포트가 열렸는지보다 "내가 띄운 프로세스가 살아 있는지"를 먼저 본다.
+    # 이게 죽었는데 포트가 열려 있으면 다른(옛) 프로세스가 잡고 있는 것이고,
+    # 그대로 두면 옛 코드를 새 코드로 착각한 채 측정하게 된다.
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+      echo "   ❌ $name 프로세스(pid $pid)가 죽었습니다."
+      grep -a -m1 -A2 "APPLICATION FAILED TO START" "$LOG_DIR/$name.log" 2>/dev/null | sed 's/^/      /'
+      grep -a -m1 "Port .* was already in use\|Caused by" "$LOG_DIR/$name.log" 2>/dev/null | sed 's/^/      /'
+      echo "      전체 로그: logs/$name.log"
+      return 1
+    fi
     if nc -z localhost "$port" 2>/dev/null; then
-      echo "   ✅ $name 기동 완료 (:$port)"
+      echo "   ✅ $name 기동 완료 (:$port, pid $pid)"
       return 0
     fi
     sleep 2
   done
   echo "   ⚠️  $name 이 90초 안에 뜨지 않았습니다. logs/$name.log 확인"
-  return 0
+  return 1
 }
 
+stop_existing
+
+FAILED=()
 for entry in "${SERVICES[@]}"; do
   IFS=':' read -r name module port <<< "$entry"
   start_service "$name" "$module" "$port"
-  wait_for_port "$name" "$port"
+  wait_for_port "$name" "$port" || FAILED+=("$name")
 done
+
+if [ ${#FAILED[@]} -gt 0 ]; then
+  echo ""
+  echo "❌ 기동 실패: ${FAILED[*]}"
+  echo "   이 상태로 부하 테스트를 돌리면 안 된다."
+  echo "   user-service 는 ddl-auto: create 라, 기동에 실패해도 스키마는 이미"
+  echo "   드롭·재생성된 뒤다. 즉 시드 데이터가 날아가 있다."
+  echo "   원인을 고치고 다시 띄운 뒤 tools/perf/seed/load_seed.sh 를 다시 실행하라."
+  exit 1
+fi
 
 echo ""
 echo "🏁 전체 기동 완료"
