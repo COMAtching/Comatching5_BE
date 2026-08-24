@@ -140,9 +140,10 @@ flowchart LR
 그래서 삭제를 "레코드 없음"이 아니라 **`WithdrawnMember` 레코드의 존재**로
 남긴다.
 
-- `removeCandidate` — tombstone 삽입 → 후보 삭제 (이 순서여야 "후보는
-  지워졌는데 tombstone 은 아직"인 중간 상태가 없다). 재전달에 멱등.
-- `upsertCandidate` — tombstone 이 있으면 갱신 이벤트를 무시한다.
+- `removeCandidate` — tombstone 을 `saveAndFlush` 로 즉시 INSERT 한 뒤 후보를
+  **잠금 조회(current read)** 로 지운다. 재전달에 멱등.
+- `upsertCandidate` — tombstone 을 잠금 조회하고, 있으면 갱신 이벤트를
+  무시한다.
 
 ```mermaid
 sequenceDiagram
@@ -167,10 +168,57 @@ sequenceDiagram
     Note over L2: upsert 건너뜀 — 탈퇴 회원 부활 차단 ✅
 ```
 
-tombstone 조회는 잠금 조회(`PESSIMISTIC_WRITE`)다. 행이 없으면 InnoDB 갭
-락이 걸려서, "upsert 가 tombstone 없음을 확인 → 탈퇴가 커밋 → upsert 가 후보
-삽입 커밋" 으로 부활하는 좁은 동시성 창까지 닫는다. concurrency 3 에서 두
-이벤트는 실제로 서로 다른 스레드에서 동시에 처리될 수 있다.
+concurrency 3 에서 두 이벤트는 실제로 서로 다른 스레드에서 **동시에** 처리될
+수 있고, 이 동시 실행 창은 순서만으로는 닫히지 않는다. 그래서 양쪽 모두
+잠금이 필요하다.
+
+- **upsert 쪽**: tombstone 조회가 잠금 조회(`PESSIMISTIC_WRITE`)다. 행이
+  없으면 InnoDB 갭 락이 걸려서, 같은 회원의 탈퇴 트랜잭션이 tombstone 을
+  넣으려면 upsert 커밋까지 기다려야 한다 — 두 트랜잭션의 직렬화 지점.
+- **탈퇴 쪽**: 갭 락 대기가 풀린 뒤의 후보 삭제도 **잠금 조회(current
+  read)** 여야 한다. MySQL REPEATABLE READ 에서 일반 조회는 트랜잭션 시작
+  시점의 스냅샷을 읽기 때문에, 대기가 풀리는 동안 upsert 가 커밋한 후보를
+  보지 못하고 삭제를 건너뛴다. 그러면 tombstone 은 남지만 후보도 남고,
+  탈퇴 회원은 이벤트를 더 내지 않으므로 그 후보는 **영구히 매칭 대상으로
+  잔존**한다. 잠금 조회는 스냅샷과 무관하게 최신 커밋을 읽어 이 구멍을
+  막는다.
+
+### 5. `auto.offset.reset=earliest` — 증설이 유실이 되지 않게
+
+공통 컨슈머 팩토리는 yml 의 `spring.kafka.consumer.*` 를 읽지 않는 수동
+구성이라, yml 에 뭐라고 적어도 실제로는 클라이언트 기본값 **latest** 가
+적용되고 있었다. latest 는 파티션 증설과 만나는 순간 유실이 된다.
+
+```text
+증설 직후 새 파티션(p1, p2)에는 어떤 그룹의 커밋 오프셋도 없다
+   → 프로듀서는 메타데이터 갱신 즉시 새 파티션으로 발행 시작
+   → 컨슈머 그룹은 메타데이터 갱신(최대 5분) 후에야 새 파티션을 배정받음
+   → latest: 배정 시점에 로그 끝으로 점프 → 그 사이 발행분 영구 유실
+```
+
+`member-withdraw` 는 notification 도 구독하므로 탈퇴 메일이 소리 없이
+누락되고, matching 쪽은 tombstone 미기록·후보 미삭제로 이어진다. 팩토리에
+`earliest` 를 명시했다 — 커밋 오프셋이 있는 기존 파티션에는 아무 영향이
+없고, 오프셋이 없는 새 파티션만 처음부터 읽는다.
+
+## 전환 절차 — 증설은 배포 순서가 반이다
+
+키 지정(프로듀서, user-service)과 파티션 증설(`KafkaAdmin`, matching-service)
+은 서로 다른 서비스에서 일어난다. 순서가 뒤집히면 키 없는 프로듀서가 3개
+파티션에 이벤트를 뿌리는 구간이 생긴다.
+
+```text
+① user-service 배포        키 지정. 파티션이 아직 1개라 동작 변화 없음(무해)
+② 컨슈머 lag 드레인 확인    p0 에 쌓인 백로그를 소진
+③ matching-service 배포     KafkaAdmin 이 파티션 1 → 3 증설
+```
+
+이 순서대로 해도 전환 구간에는 한계가 남는다. 기존 백로그는 전부 p0 에
+있고 새 메시지는 p1·p2 로 흩어지는데, 파티션별 소비 속도가 다르므로 **같은
+회원의 옛 이벤트(p0)가 새 이벤트(p2)보다 늦게 처리될 수 있다.**
+`upsertCandidate` 에는 버전·타임스탬프 비교가 없어 늦게 온 옛 프로필이 새
+프로필을 덮어쓴다(다음 갱신 때 자연 복구). ② 로 창을 최소화하는 것이 현재의
+대응이고, 이벤트에 버전을 실어 stale 갱신을 거부하는 것이 다음 단계다.
 
 ## 검증
 
@@ -181,16 +229,23 @@ tombstone 조회는 잠금 조회(`PESSIMISTIC_WRITE`)다. 행이 없으면 Inno
 | 역전 순서: 탈퇴 → 늦은 갱신 ⇒ 후보 부활하지 않음 | 〃 | ✅ |
 | 탈퇴 이벤트 재전달·후보 없는 탈퇴 ⇒ 멱등 | 〃 | ✅ |
 | 탈퇴하지 않은 회원의 upsert 는 그대로 동작 (신규 + 갱신) | 〃 | ✅ |
+| **동시 실행**: upsert 가 갭 락을 잡고 진행 중일 때 탈퇴가 끼어들어도 후보가 남지 않음 | 실제 MySQL, 두 스레드·두 트랜잭션으로 교차 재현 | ✅ |
 
 user-service · matching-service 전체 테스트 회귀 통과 (failures 0, errors 0).
+구현 후 별도의 다각도 검증(Kafka 의미론·JPA 잠금·운영 설정)을 거쳐 발견된
+스냅샷 읽기 구멍(동시 실행 시 후보 미삭제)과 latest 유실 창을 반영했다.
 
 ## 남은 한계 (다음 순서)
 
 1. **DLT · 재시도 정책 없음** — 탈퇴 이벤트가 소비 실패로 유실되면 후보가
    잔존한다. tombstone 은 순서 역전을 막을 뿐 유실을 막지는 못한다.
 2. **컨슈머 설정이 커스텀 팩토리에 가려 yml 이 적용되지 않는 문제**는 이번
-   범위 밖 (auto-offset-reset 등).
-3. **복제 계수 1** — 브로커가 1대라서다. 브로커 증설 시
+   범위 밖. `auto.offset.reset` 만 유실 위험 때문에 코드에 명시했고, 나머지는
+   `KafkaProperties` 기반 정정이 다음 단계다.
+3. **갱신 이벤트에 버전·타임스탬프가 없다** — 같은 토픽 안에서는 키가 순서를
+   보장하지만, 전환 구간·재처리처럼 순서가 흔들리는 상황에서 stale 갱신을
+   거부할 수단이 없다.
+4. **복제 계수 1** — 브로커가 1대라서다. 브로커 증설 시
    `KafkaTopicConfig.REPLICATION_FACTOR` 만 올리면 된다.
-4. `chat-notification` 은 `roomId` 키가 자연스럽다 — chat 쪽 발행부를 만질 때
+5. `chat-notification` 은 `roomId` 키가 자연스럽다 — chat 쪽 발행부를 만질 때
    같은 방식으로.
