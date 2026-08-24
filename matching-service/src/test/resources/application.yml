@@ -54,3 +54,10 @@ jwt:
 # (기존 설정 유지)
 member-service:
   url: "http://localhost:8080"
+
+# 테스트에는 브로커가 없다. NewTopic 빈이 있으면 KafkaAdmin 이 기동 시 접속을
+# 시도하며 타임아웃까지 기다리므로 토픽 관리를 끈다.
+matching:
+  kafka:
+    topics:
+      enabled: false
