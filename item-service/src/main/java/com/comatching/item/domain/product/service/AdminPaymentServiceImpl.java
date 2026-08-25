@@ -1,13 +1,16 @@
 package com.comatching.item.domain.product.service;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.dto.item.AddItemRequest;
+import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.service.ItemService;
 import com.comatching.item.domain.order.entity.Order;
@@ -29,6 +32,8 @@ import lombok.RequiredArgsConstructor;
 public class AdminPaymentServiceImpl implements AdminPaymentService {
 
 	private static final String EXPIRE_REASON = "AUTO_EXPIRED_BEFORE_ADMIN_DECISION";
+	private static final int MAX_PENDING_REQUEST_PAGE_SIZE = 100;
+	private static final Sort DEFAULT_PENDING_REQUEST_SORT = Sort.by(Sort.Direction.DESC, "requestedAt");
 
 	private final OrderRepository orderRepository;
 	private final OrderGrantLedgerRepository orderGrantLedgerRepository;
@@ -40,11 +45,25 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 	private static final int PURCHASED_ITEM_EXPIRE_DAYS = 36500;
 
 	@Override
-	public List<PurchaseRequestDto> getPendingRequests() {
-		return orderRepository.findAllByStatusAndExpiresAtAfterOrderByRequestedAtDesc(OrderStatus.PENDING, LocalDateTime.now())
-			.stream()
-			.map(PurchaseRequestDto::from)
-			.toList();
+	public PagingResponse<PurchaseRequestDto> getPendingRequests(Pageable pageable) {
+		Pageable boundedPageable = toBoundedPageable(pageable);
+		return PagingResponse.from(
+			orderRepository.findAllByStatusAndExpiresAtAfter(
+				OrderStatus.PENDING,
+				LocalDateTime.now(),
+				boundedPageable
+			).map(PurchaseRequestDto::from)
+		);
+	}
+
+	private Pageable toBoundedPageable(Pageable pageable) {
+		if (pageable == null || pageable.isUnpaged()) {
+			return PageRequest.of(0, MAX_PENDING_REQUEST_PAGE_SIZE, DEFAULT_PENDING_REQUEST_SORT);
+		}
+
+		int pageSize = Math.min(pageable.getPageSize(), MAX_PENDING_REQUEST_PAGE_SIZE);
+		Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : DEFAULT_PENDING_REQUEST_SORT;
+		return PageRequest.of(pageable.getPageNumber(), pageSize, sort);
 	}
 
 	@Override
