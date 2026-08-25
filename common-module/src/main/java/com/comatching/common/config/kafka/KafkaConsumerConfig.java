@@ -3,6 +3,7 @@ package com.comatching.common.config.kafka;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -12,6 +13,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -88,6 +90,16 @@ public class KafkaConsumerConfig {
 	 * Feign 호출 실패 같은 일시적 원인이 업무 예외로 감싸여 올라오는 경로가 있어서,
 	 * 재시도 제외로 분류하면 회복할 수 있는 실패까지 DLT 로 보내게 된다.
 	 */
+	// DLT 재적재는 소비를 선언한 서비스(comatching.kafka.dlt-topics)에만 붙는다.
+	// 발행만 하는 서비스(user-service)와 게이트웨이에는 빈 자체가 안 생긴다.
+	@Bean
+	@ConditionalOnProperty(name = "comatching.kafka.dlt-topics")
+	public KafkaDltRedriveService kafkaDltRedriveService(
+		@Qualifier("bytesKafkaTemplate") KafkaOperations<String, byte[]> bytesTemplate,
+		@Value("${comatching.kafka.dlt-topics}") List<String> dltTopics) {
+		return new KafkaDltRedriveService(bootstrapServers, groupId, bytesTemplate, dltTopics);
+	}
+
 	// DLT 적재를 사람에게 알린다. 웹훅 URL 이 비어 있으면 로그만 남기는 no-op.
 	@Bean
 	public KafkaDltAlertNotifier kafkaDltAlertNotifier(
