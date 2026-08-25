@@ -53,3 +53,5 @@ management:
 comatching:
   kafka:
     dlt-topics: member-signup,member-withdraw,chat-notification
+    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
+    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
