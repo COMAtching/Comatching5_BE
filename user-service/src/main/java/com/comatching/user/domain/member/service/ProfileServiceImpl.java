@@ -13,7 +13,6 @@ import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.ProfileTagItem;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
-import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -173,17 +172,6 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		);
 
 		publishMatchingEvent(profile);
-
-		Member member = profile.getMember();
-
-		MemberUpdateEvent event = MemberUpdateEvent.builder()
-			.memberId(member.getId())
-			.nickname(profile.getNickname())
-			.profileImageUrl(profile.getProfileImageUrl())
-			.status(member.getStatus())
-			.build();
-
-		eventPublisher.sendUpdateEvent(event);
 
 		return toProfileResponse(profile);
 	}

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberAuthEvent;
-import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,7 +25,6 @@ public class UserEventPublisher {
 	private final ObjectMapper objectMapper;
 
 	private static final String TOPIC_SIGNUP = "member-signup";
-	private static final String TOPIC_UPDATE = "member-update";
 	private static final String TOPIC_WITHDRAW = "member-withdraw";
 	private static final String TOPIC_MATCHING_PROFILE_UPDATE = "profile-updates"; // 매칭 서비스용 토픽
 
@@ -42,19 +40,11 @@ public class UserEventPublisher {
 			.type(MemberAuthEvent.EventType.SIGNUP)
 			.build();
 
-		sendToKafka(TOPIC_SIGNUP, event);
-	}
-
-	/**
-	 * 회원정보 수정 이벤트 발행
-	 * - 구독: Chat Service (채팅방 내 닉네임/프사 캐시 갱신), Matching Service
-	 */
-	public void sendUpdateEvent(MemberUpdateEvent event) {
-		sendToKafka(TOPIC_UPDATE, event);
+		sendToKafka(TOPIC_SIGNUP, memberKey(profile.memberId()), event);
 	}
 
 	public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
-		jsonKafkaTemplate.send(TOPIC_MATCHING_PROFILE_UPDATE, event);
+		jsonKafkaTemplate.send(TOPIC_MATCHING_PROFILE_UPDATE, memberKey(event.memberId()), event);
 	}
 
 	/**
@@ -68,13 +58,20 @@ public class UserEventPublisher {
 			LocalDateTime.now()
 		);
 
-		sendToKafka(TOPIC_WITHDRAW, event);
+		sendToKafka(TOPIC_WITHDRAW, memberKey(memberId), event);
 	}
 
-	private void sendToKafka(String topic, Object event) {
+	// Kafka 의 순서 보장 단위는 토픽이 아니라 파티션이다. 키가 없으면 라운드로빈으로
+	// 흩어져서, 파티션을 2개 이상으로 늘리는 순간 같은 회원의 이벤트끼리 순서가 뒤집힐
+	// 수 있다. memberId 를 키로 걸어 회원 단위 순서를 파티션 수와 무관하게 고정한다.
+	private String memberKey(Long memberId) {
+		return String.valueOf(memberId);
+	}
+
+	private void sendToKafka(String topic, String key, Object event) {
 		try {
 			String message = objectMapper.writeValueAsString(event);
-			stringKafkaTemplate.send(topic, message);
+			stringKafkaTemplate.send(topic, key, message);
 		} catch (JsonProcessingException e) {
 			log.error("Failed to serialize event for topic: {}", topic, e);
 		} catch (Exception e) {
