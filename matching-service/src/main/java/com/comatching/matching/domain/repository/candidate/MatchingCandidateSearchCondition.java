@@ -29,4 +29,12 @@ public record MatchingCandidateSearchCondition(
         AgeOption scoreAgeOption,
         ContactFrequency scoreContactFrequency
 ) {
+
+    /** randomStart 만 바꾼 사본. 표본 창이 비었을 때 처음부터 다시 훑기 위해 쓴다. */
+    public MatchingCandidateSearchCondition withRandomStart(int newRandomStart) {
+        return new MatchingCandidateSearchCondition(
+                newRandomStart, sampleSize, targetGender, excludeMajor, excludeMemberIds,
+                minAge, maxAge, requiredMbtiTraits, requiredContactFrequency, requiredHobbyCategory,
+                myAge, scoreMbtiTraits, scoreHobbyCategory, scoreAgeOption, scoreContactFrequency);
+    }
 }

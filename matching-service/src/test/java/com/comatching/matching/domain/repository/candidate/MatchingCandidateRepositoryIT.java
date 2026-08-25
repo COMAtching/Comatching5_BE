@@ -289,7 +289,7 @@ class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 		}
 
 		@Test
-		@DisplayName("randomStart 보다 앞선 키를 가진 후보는 표본에서 빠진다")
+		@DisplayName("창에 후보가 있으면 randomStart 보다 앞선 키는 표본에서 빠진다")
 		void randomStartSkipsEarlierKeys() {
 			save(1L, "XXXX", 99, ContactFrequency.RARE, List.of());
 			save(2L, "XXXX", 99, ContactFrequency.RARE, List.of());
@@ -300,6 +300,46 @@ class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 				.get()
 				.extracting(MatchingCandidate::getMemberId)
 				.isEqualTo(3L);
+		}
+
+		@Test
+		@DisplayName("창이 비면 처음부터 다시 훑어 후보를 찾아낸다")
+		void wrapsAroundWhenWindowIsEmpty() {
+			// random_key 는 삽입할 때 0~10억 중 하나로 정해지고, randomStart 는 요청마다
+			// 0~9억 중 하나로 새로 뽑힌다. 후보 전원의 키가 randomStart 보다 작으면
+			// 창이 비는데, 예전에는 그대로 '후보 없음'이 되어 요청이 실패했다.
+			// 후보 수가 적을수록 자주 걸린다 - 조건 통과자가 1명이면 45%, 3명이면 18%다.
+			save(1L, "XXXX", 99, ContactFrequency.RARE, List.of());
+			save(2L, "XXXX", 99, ContactFrequency.RARE, List.of());
+			fixRandomKeysByMemberId();   // random_key = 1, 2
+
+			assertThat(findBest(base().randomStart(10).build())).isPresent();
+		}
+
+		@Test
+		@DisplayName("다시 훑을 때도 필수 조건은 그대로 지킨다")
+		void wrapAroundStillRespectsFilters() {
+			save(1L, "XXXX", 99, ContactFrequency.RARE, List.of());
+			save(2L, "XXXX", 99, ContactFrequency.FREQUENT, List.of());
+			fixRandomKeysByMemberId();
+
+			assertThat(findBest(base()
+				.randomStart(10)
+				.requiredContactFrequency(ContactFrequency.FREQUENT)
+				.build()))
+				.get()
+				.extracting(MatchingCandidate::getMemberId)
+				.isEqualTo(2L);
+		}
+
+		@Test
+		@DisplayName("다시 훑어도 조건에 맞는 후보가 없으면 빈 결과를 준다")
+		void wrapAroundStillEmptyWhenNothingMatches() {
+			// 재조회가 조건을 무시하고 아무나 집어오지 않는지 본다.
+			save(1L, "XXXX", 99, ContactFrequency.RARE, List.of());
+			fixRandomKeysByMemberId();
+
+			assertThat(findBest(base().randomStart(10).minAge(200).build())).isEmpty();
 		}
 
 		@Test

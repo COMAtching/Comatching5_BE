@@ -55,6 +55,15 @@ import java.util.*;
  * 연속한 N 건을 읽는다. '무작위 공간에서의 연속 구간'이므로 실제로는 무작위 표본이다.
  * 인덱스 시크 한 번이라 전체 인원과 무관하게 O(표본 크기) 다.
  * <p>
+ * == 창이 비면 처음부터 다시 훑는다 ==
+ * random_key 는 0~10 억, randomStart 는 0~9 억에서 뽑는다. 조건을 통과한 후보
+ * 전원의 키가 randomStart 보다 작으면 창이 텅 빈다. 후보가 N 명일 때 그 확률이
+ * 0.9^N/(N+1) 이라 N 이 작을수록 급격히 커진다 - 1 명이면 45%, 3 명이면 18%,
+ * 10 명이면 3% 다. 예전에는 이걸 그대로 '후보 없음'으로 돌려줘서, 후보 풀이 작은
+ * 초기 서비스에서는 멀쩡한 상대를 두고도 매칭이 실패했다.
+ * 그래서 첫 조회가 빈손이면 randomStart 를 0 으로 낮춰 한 번 더 조회한다.
+ * 후보가 많을 때는 첫 조회가 거의 항상 성공하므로 추가 비용이 없다.
+ * <p>
  * == 필수 조건을 표본 '안'이 아니라 '밖'에서 거는 이유 ==
  * 거꾸로다 — 필수 조건은 표본을 뽑을 때 함께 적용한다.
  * 뽑고 나서 거르면 5,000 명이 조건 통과분만 남아 수백 명으로 쪼그라든다.
@@ -77,6 +86,18 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 
     @Override
     public Optional<MatchingCandidate> findBestCandidate(MatchingCandidateSearchCondition condition) {
+        Optional<MatchingCandidate> found = queryBestCandidate(condition);
+
+        // 표본 창(random_key >= randomStart)이 비었다. 조건에 맞는 사람이 정말 없는 건지,
+        // 있는데 전원이 창 앞쪽에 몰린 건지 구분이 안 되므로 0 부터 한 번 더 훑는다.
+        // 이 두 번째 조회는 첫 조회가 빈손일 때만 나가므로 정상 경로의 비용은 그대로다.
+        if (found.isEmpty() && condition.randomStart() != 0) {
+            return queryBestCandidate(condition.withRandomStart(0));
+        }
+        return found;
+    }
+
+    private Optional<MatchingCandidate> queryBestCandidate(MatchingCandidateSearchCondition condition) {
 
         Map<String, Object> params = new LinkedHashMap<>();
 
