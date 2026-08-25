@@ -1,0 +1,182 @@
+# ============================================================
+# main 푸시 -> 깃허브에서 이미지 빌드 -> EC2 가 pull 받아 재기동.
+#
+# 단계가 셋으로 나뉜 이유:
+#   build   Gradle 을 한 번만 돌려 jar 6개를 만든다. 서비스가 6개라고 Gradle 을
+#           6번 돌리면 common-module 컴파일을 6번 반복하게 된다.
+#   images  jar 하나씩 받아 얇은 런타임 이미지로 만들어 GHCR 에 올린다.
+#           서비스끼리 의존이 없으니 6개가 동시에 돈다(matrix).
+#   deploy  EC2 에 SSH 로 들어가 pull 하고 compose 를 다시 올린다.
+#
+# 필요한 저장소 시크릿 (Settings > Secrets and variables > Actions):
+#   EC2_HOST     EC2 퍼블릭 IP 또는 도메인
+#   EC2_USER     ec2-user (Amazon Linux) 또는 ubuntu
+#   EC2_SSH_KEY  EC2 접속용 개인키 전문 (-----BEGIN ... 부터 끝까지)
+#
+# EC2 에서 한 번만 해둘 것 - GHCR 이미지를 받으려면 로그인이 필요하다
+# (레포가 비공개면 패키지도 비공개다):
+#   echo <read:packages 권한 PAT> | docker login ghcr.io -u <깃허브아이디> --password-stdin
+# ============================================================
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  # 코드 변경 없이 다시 배포하고 싶을 때 수동 실행
+  workflow_dispatch:
+
+# 배포가 겹치면 EC2 에서 compose 두 개가 동시에 컨테이너를 만든다.
+# 나중에 들어온 것만 남기고 앞의 것은 취소한다.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  # GHCR 경로는 소문자만 허용한다(레포명은 Comatching5_BE 지만 여기선 소문자).
+  IMAGE_PREFIX: ghcr.io/comatching/comatching5_be
+
+jobs:
+  build:
+    name: jar 빌드 + 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+
+      # build = 컴파일 + 테스트 + bootJar. 테스트가 통과해야 이미지가 만들어진다.
+      # matching-service 는 Testcontainers(MySQL)를, 카프카 IT 는 EmbeddedKafka 를
+      # 쓴다. 둘 다 ubuntu-latest 러너에서 돈다.
+      # 테스트가 발목을 잡으면 이 줄을 `./gradlew bootJar` 로 바꾸면 되지만,
+      # 그러면 검증 없이 운영에 나간다는 뜻이다.
+      - name: 빌드 및 테스트
+        run: ./gradlew build --no-daemon
+
+      - name: 테스트 리포트 보관
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '*/build/reports/tests/**'
+          retention-days: 7
+
+      - name: jar 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-jars
+          path: '*/build/libs/*.jar'
+          retention-days: 1
+
+  images:
+    name: 이미지 (${{ matrix.service }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # 한 서비스가 실패해도 나머지는 끝까지 만든다. 어디가 깨졌는지 한 번에 본다.
+      fail-fast: false
+      matrix:
+        service:
+          - gateway-service
+          - user-service
+          - matching-service
+          - chat-service
+          - item-service
+          - notification
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: boot-jars
+          path: jars
+
+      # 컨텍스트에 app.jar 하나만 둔다. 소스 전체를 컨텍스트로 넘기면
+      # 도커 데몬에 수십 MB 를 전송하고 캐시도 쉽게 깨진다.
+      - name: 빌드 컨텍스트 준비
+        run: |
+          set -euo pipefail
+          mkdir -p ci-context
+          cp jars/${{ matrix.service }}/build/libs/*.jar ci-context/app.jar
+          ls -la ci-context
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 태그 둘을 같이 올린다.
+      #   :latest       사람이 눈으로 볼 때 쓰는 이름
+      #   :<커밋 SHA>   실제로 배포에 쓰는 이름. 어떤 커밋이 떠 있는지가 명확하고,
+      #                 되돌릴 때 예전 SHA 를 그대로 지목할 수 있다.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ci-context
+          file: Dockerfile.ci
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: EC2 배포
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH 로 pull + 재기동
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd ~/comatching
+
+            # 컴포즈 파일·설정 갱신. .env.prod 는 추적 대상이 아니라 reset 에
+            # 지워지지 않는다(추적되지 않는 파일은 건드리지 않음).
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 배포한 태그를 .env.prod 에 박아 둔다. 나중에 사람이 손으로
+            # docker compose up 을 해도 지금 뜬 것과 같은 버전이 뜬다.
+            if grep -q '^IMAGE_TAG=' .env.prod; then
+              sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${{ github.sha }}|" .env.prod
+            else
+              echo "IMAGE_TAG=${{ github.sha }}" >> .env.prod
+            fi
+
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+            # --no-build: EC2 에서 소스를 빌드하지 않는다. 이미지는 이미 만들어져 있다.
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+
+            # 배포마다 서비스 6개의 이미지가 새로 쌓인다. prune -f 는 태그
+            # 없는 것만 지우는데, 옛 커밋 SHA 이미지는 태그가 붙어 있어 그대로
+            # 남는다. -a 로 "컨테이너가 쓰지 않는 것"까지 대상에 넣되, 72시간은
+            # 남겨 최근 버전으로 되돌릴 여지를 둔다.
+            docker image prune -af --filter "until=72h"
+
+      - name: 상태 확인
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/comatching
+            docker compose -f docker-compose.prod.yml --env-file .env.prod ps

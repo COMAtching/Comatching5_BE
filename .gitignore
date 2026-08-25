@@ -50,13 +50,12 @@ bin/
 CLAUDE.md
 scripts
 .idea
-.dockerignore
 docker-compose.yml
-Dockerfile
+# Dockerfile / .dockerignore / docker-compose.prod.yml 은 비밀값이 없는
+# 배포 자산이라 추적한다. 실제 값은 .env.prod 에만 있고 그건 위에서 무시된다.
 /database
 /docs/*
 !/docs/perf-log.md
-docker-compose.prod.yml
 application-docker.yml
 application-secret.yml
 serviceAccountKey.json
@@ -80,3 +79,10 @@ __pycache__/
 *.pyc
 
 _workspace
+
+# SSH 개인키. 레포 폴더에 키를 두는 일이 있어도 커밋되지 않게 막는다.
+*.pem
+*.ppk
+id_rsa
+id_ed25519
+comatching-ec2

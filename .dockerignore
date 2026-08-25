@@ -1,0 +1,30 @@
+# 빌드 컨텍스트에서 뺀다. 특히 .env 계열은 이미지에 절대 들어가면 안 된다.
+.env
+.env.*
+!.env.prod.example
+
+.git
+.gitignore
+.gradle
+build
+**/build
+.idea
+.vscode
+.claude
+.gemini
+
+logs
+.pids
+cookies.txt
+_workspace
+
+# 로컬 전용 자산
+docker-compose.local.yml
+docker-compose.monitoring.yml
+monitoring
+database
+tools
+docs
+run-local.sh
+stop-local.sh
+*.md
