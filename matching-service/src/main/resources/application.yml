@@ -58,6 +58,13 @@ spring:
       s3:
         bucket: ${AWS_S3_BUCKET}
 
+matching:
+  tombstone:
+    # profile-updates retention(KafkaTopicConfig, 1일)보다 길어야 한다.
+    # 근거는 WithdrawnMemberCleanupScheduler 주석 참고.
+    retention-days: 2
+    cleanup-cron: "0 0 4 * * *"
+
 jwt:
   secret: ${JWT_SECRET}
   access-token:

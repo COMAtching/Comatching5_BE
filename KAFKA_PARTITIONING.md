@@ -183,6 +183,49 @@ concurrency 3 에서 두 이벤트는 실제로 서로 다른 스레드에서 **
   잔존**한다. 잠금 조회는 스냅샷과 무관하게 최신 커밋을 읽어 이 구멍을
   막는다.
 
+#### 토픽 retention — 축제 단발성 서비스에 7일은 과하다
+
+`member-withdraw` · `profile-updates` 의 retention 을 브로커 기본 7일에서
+**1일**로 명시했다(`KafkaTopicConfig`, `retention.ms`). 단, "몇 분" 수준까지
+줄이지는 않았다. retention 은 저장 비용이 아니라 **컨슈머가 죽어 있어도
+되는 최대 시간**이기 때문이다.
+
+발행됐지만 아직 소비되지 않은 메시지는 retention 이 지나면 소비 여부와
+무관하게 소거된다. retention 이 컨슈머 다운타임보다 짧으면 그 사이
+발행분이 조용히 사라진다 — 재시도도 DLT 도 개입할 기회가 없는, 이번
+작업이 없애려던 바로 그 조용한 유실이다.
+
+```text
+retention 이 덮어야 하는 창
+  배포 다운타임                 수 분
+  신규 파티션 배정 지연          최대 5분 (earliest 절 참고)
+  차단 재시도 head-of-line      레코드당 최대 7초 × 백로그
+  야간 크래시 → 아침 발견        수 시간   ← 하한을 결정
+```
+
+밤새 장애를 아침에 발견하는 시나리오까지 덮는 하한이 1일이다.
+기존 토픽에도 적용되도록 `KafkaAdmin.setModifyTopicConfigs(true)` 를 켰다
+(NewTopic 에 선언한 config 만 비교·수정하므로 다른 설정에는 무해).
+`.DLT` 토픽은 사람이 열어 보고 재처리하는 곳이라 줄이지 않는다(기본 7일).
+
+#### tombstone TTL — 영구 보존이 만드는 반대 방향의 사고
+
+tombstone 은 늦은 갱신 이벤트가 올 수 있는 동안만 필요하다. 그 상한은
+`profile-updates` 의 retention(위에서 1일로 명시)이다 — 그보다 오래된
+이벤트는 토픽에서 소거되어 도착 자체가 불가능하다. 반대로 영구히 남기면
+같은 memberId 로 **재가입**한 회원의 프로필 이벤트가 tombstone 에 걸러져
+영원히 매칭에서 제외된다.
+
+그래서 `WithdrawnMemberCleanupScheduler` 가 매일 04시에 `withdrawnAt` 이
+보존 기간(기본 2일 = retention 의 2배, `matching.tombstone.retention-days`)
+을 넘긴 행을 벌크 삭제한다. 다중 인스턴스에서 겹쳐 돌아도 멱등이라 분산
+락은 두지 않았다.
+
+**운영 제약**: `profile-updates.DLT` 재적재(re-drive)는 반드시 이 보존
+기간(2일) 안에 해야 한다. TTL 이후 재적재하면 tombstone 이 이미 지워져
+탈퇴 회원이 부활할 수 있다. retention 을 늘리면 `retention-days` 도 같이
+늘려야 한다.
+
 ### 5. `auto.offset.reset=earliest` — 증설이 유실이 되지 않게
 
 공통 컨슈머 팩토리는 yml 의 `spring.kafka.consumer.*` 를 읽지 않는 수동
@@ -230,6 +273,7 @@ concurrency 3 에서 두 이벤트는 실제로 서로 다른 스레드에서 **
 | 탈퇴 이벤트 재전달·후보 없는 탈퇴 ⇒ 멱등 | 〃 | ✅ |
 | 탈퇴하지 않은 회원의 upsert 는 그대로 동작 (신규 + 갱신) | 〃 | ✅ |
 | **동시 실행**: upsert 가 갭 락을 잡고 진행 중일 때 탈퇴가 끼어들어도 후보가 남지 않음 | 실제 MySQL, 두 스레드·두 트랜잭션으로 교차 재현 | ✅ |
+| TTL 경과 tombstone 만 삭제되고 보존 기간 내 행은 남는다 | 실제 MySQL (`WithdrawnMemberCleanupSchedulerIT`) | ✅ |
 
 user-service · matching-service 전체 테스트 회귀 통과 (failures 0, errors 0).
 구현 후 별도의 다각도 검증(Kafka 의미론·JPA 잠금·운영 설정)을 거쳐 발견된
