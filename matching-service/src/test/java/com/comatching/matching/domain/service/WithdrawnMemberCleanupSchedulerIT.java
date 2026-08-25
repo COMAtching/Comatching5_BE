@@ -35,7 +35,7 @@ import com.comatching.matching.support.MySqlContainerSupport;
 @DisplayName("탈퇴 tombstone TTL 정리 배치")
 class WithdrawnMemberCleanupSchedulerIT extends MySqlContainerSupport {
 
-	private static final long RETENTION_DAYS = 14;
+	private static final long RETENTION_DAYS = 2;
 
 	@Autowired
 	private WithdrawnMemberCleanupScheduler scheduler;

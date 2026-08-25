@@ -17,12 +17,13 @@ import lombok.extern.slf4j.Slf4j;
  *
  * tombstone 은 늦게 도착한 profile-updates 이벤트가 탈퇴 회원을 부활시키는
  * 것을 막는 가드라서, 늦은 이벤트가 더 이상 올 수 없는 시점 이후에는 지워도
- * 안전하다. 그 상한은 profile-updates 토픽의 retention(브로커 기본 7일) —
- * 그보다 오래된 이벤트는 토픽에서 이미 소거되어 도착 자체가 불가능하다.
- * 기본 보존 14일은 retention 의 2배로, 컨슈머 랙과 DLT 재처리 지연까지
- * 감안한 여유다. profile-updates.DLT 재적재(re-drive)는 반드시 이 보존
- * 기간 안에 해야 한다 — 그 뒤에 재적재하면 tombstone 이 이미 지워져
- * 탈퇴 회원이 부활할 수 있다.
+ * 안전하다. 그 상한은 profile-updates 토픽의 retention(KafkaTopicConfig 에서
+ * 1일로 선언) — 그보다 오래된 이벤트는 토픽에서 이미 소거되어 도착 자체가
+ * 불가능하다. 기본 보존 2일은 retention 의 2배로, 컨슈머 랙과 DLT 재처리
+ * 지연까지 감안한 여유다. profile-updates.DLT 재적재(re-drive)는 반드시
+ * 이 보존 기간 안에 해야 한다 — 그 뒤에 재적재하면 tombstone 이 이미
+ * 지워져 탈퇴 회원이 부활할 수 있다. retention 을 늘리면 이 값도 같이
+ * 늘려야 한다.
  *
  * 지우지 않고 영구히 쌓으면 저장 공간보다 재가입이 문제다: 같은 memberId 로
  * 다시 가입한 회원의 프로필 이벤트가 tombstone 에 걸러져 영원히 매칭에서
@@ -37,7 +38,7 @@ public class WithdrawnMemberCleanupScheduler {
 
 	private final WithdrawnMemberRepository withdrawnMemberRepository;
 
-	@Value("${matching.tombstone.retention-days:14}")
+	@Value("${matching.tombstone.retention-days:2}")
 	private long retentionDays;
 
 	@Scheduled(cron = "${matching.tombstone.cleanup-cron:0 0 4 * * *}")
