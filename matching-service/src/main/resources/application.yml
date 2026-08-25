@@ -94,3 +94,9 @@ management:
         spring.kafka.listener: true
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
+
+# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
+# 이 서비스가 소비하는 토픽만 적는다.
+comatching:
+  kafka:
+    dlt-topics: member-withdraw,profile-updates

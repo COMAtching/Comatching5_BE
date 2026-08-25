@@ -65,6 +65,11 @@ dependencies {
 	// kafka
 	api 'org.springframework.kafka:spring-kafka'
 
+	// 재시도·DLT 정책은 공통 모듈이 소유하므로 검증도 여기서 한다.
+	// 실제 브로커(EmbeddedKafka) 없이는 "몇 번 재시도하고 어디로 보냈는지"를
+	// 확인할 수 없다.
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+
 	// redisson
 	api 'org.redisson:redisson-spring-boot-starter:3.27.0'
 }

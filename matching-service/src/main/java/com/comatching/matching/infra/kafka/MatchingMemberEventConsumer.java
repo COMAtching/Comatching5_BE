@@ -8,9 +8,7 @@ import com.comatching.matching.domain.service.CandidateService;
 import com.comatching.matching.global.config.KafkaTopicConfig;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class MatchingMemberEventConsumer {
@@ -22,10 +20,10 @@ public class MatchingMemberEventConsumer {
 	@KafkaListener(topics = "member-withdraw", groupId = "matching-service-group",
 		concurrency = KafkaTopicConfig.CANDIDATE_LISTENER_CONCURRENCY)
 	public void handleMemberWithdraw(MemberWithdrawnEvent event) {
-		try {
-			candidateService.removeCandidate(event.memberId(), event.withdrawnAt());
-		} catch (Exception e) {
-			log.error("회원 탈퇴 이벤트 처리 중 오류 발생", e);
-		}
+		// 예외를 잡지 않는다. 여기서 삼키면 오프셋이 그대로 커밋되어 재시도도
+		// DLT 도 없이 탈퇴가 사라지고, 후보 테이블에 탈퇴 회원이 영구히 남는다.
+		// 공통 에러 핸들러(KafkaConsumerConfig)가 재시도 후 DLT 로 보낸다.
+		// removeCandidate 는 멱등이라 재시도해도 안전하다.
+		candidateService.removeCandidate(event.memberId(), event.withdrawnAt());
 	}
 }
