@@ -57,3 +57,8 @@ comatching:
     dlt-topics: member-signup,member-withdraw,chat-notification
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
+
+# /api/internal/** 를 지키는 InternalApiAuthenticationFilter 의 검사 토큰.
+# 비우면 내부 API 전체가 401 로 닫힌다(fail-closed).
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN:}
