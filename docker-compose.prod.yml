@@ -338,7 +338,8 @@ services:
       - "127.0.0.1:8080:8080"
     mem_limit: 512m
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      # 관리 포트가 8081 로 분리됐다 (application-aws.yml 참고).
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
