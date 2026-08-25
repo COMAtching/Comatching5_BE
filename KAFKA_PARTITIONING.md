@@ -329,6 +329,29 @@ tombstone 은 늦은 갱신 이벤트가 올 수 있는 동안만 필요하다. 
 DLT 토픽 스펙도 코드에 박았다(`comatching.kafka.dlt-topics`). 운영 환경은
 auto-create가 꺼져 있어 DLT 토픽이 없으면 옮길 곳 자체가 없기 때문이다.
 
+### DLT 적재 알림 — 쌓인 걸 이틀 안에 알아채야 한다
+
+DLT 는 사람이 열어 보고 고치는 저장소인데, 적재 사실을 사람이 모르면
+유실을 눈에 보이게 만든 의미가 없다. 특히 `profile-updates.DLT` 재적재는
+tombstone TTL(2일) 안에 해야 하므로 알아채는 데에 기한이 있다.
+
+`DeadLetterPublishingRecoverer` 를 감싸 **DLT 발행이 성공한 직후** 웹훅으로
+알린다(`KafkaDltAlertNotifier`, `comatching.kafka.dlt-alert-webhook-url`).
+본문에 `{"content", "text"}` 두 키를 같이 실어 Discord·Slack 어느 웹훅
+URL 을 줘도 동작한다. 설계 결정들:
+
+- **Prometheus + Alertmanager 가 아닌 이유** — 현재 모니터링 스택은 부하
+  테스트 때만 띄우는 구성이라 상시 알림의 기반이 못 되고, 알림 하나를 위해
+  Alertmanager·kafka-exporter 를 상시 운영에 추가하는 것은 단발성 서비스에
+  과하다. 발행 시점 알림은 어느 메시지가 왜 실패했는지까지 본문에 실린다.
+- **토픽별 쿨다운(기본 5분)** — poison pill 뒤 백로그가 연쇄로 DLT 에
+  떨어지면 웹훅이 도배되고, rate limit 에 걸리면 정작 다른 토픽의 알림까지
+  막힌다. 억제된 건수는 다음 알림에 합산 보고한다.
+- **전송 실패는 삼킨다** — 알림 장애가 소비 흐름(오프셋 진행)을 막으면
+  주객전도다. 웹훅과 무관하게 적재는 항상 `log.error` 로 남는다.
+- **발행 성공 후에만 알린다** — DLT 발행 자체가 실패하면 recoverer 예외가
+  에러 핸들러로 전파되어 다시 다뤄지므로, 그 시점 알림은 이르다.
+
 ## 검증
 
 | 테스트 | 방식 | 결과 |
@@ -342,6 +365,8 @@ auto-create가 꺼져 있어 DLT 토픽이 없으면 옮길 곳 자체가 없기
 | TTL 경과 tombstone 만 삭제되고 보존 기간 내 행은 남는다 | 실제 MySQL (`WithdrawnMemberCleanupSchedulerIT`) | ✅ |
 | 계속 실패하는 메시지가 재시도 4회(최초 1 + 3) 후 `.DLT` 로 옮겨지고, 원본 키·위치 헤더가 보존됨 | EmbeddedKafka, 실제 실패 리스너 (`KafkaRetryAndDltIT`) | ✅ |
 | 일시적 실패는 재시도로 회복되고 DLT 로 가지 않음 | 〃 | ✅ |
+| DLT 이동 시에만 알림 발화, 회복된 실패는 알리지 않음 | 〃 | ✅ |
+| 쿨다운 억제·억제 건수 합산 보고·토픽별 독립·미설정 시 no-op | 시계 주입 단위 테스트 (`KafkaDltAlertNotifierTest`) | ✅ |
 
 user-service · matching-service 전체 테스트 회귀 통과 (failures 0, errors 0).
 구현 후 별도의 다각도 검증(Kafka 의미론·JPA 잠금·운영 설정)을 거쳐 발견된
@@ -349,9 +374,9 @@ user-service · matching-service 전체 테스트 회귀 통과 (failures 0, err
 
 ## 남은 한계 (다음 순서)
 
-1. **DLT 에 쌓인 메시지를 되돌리는 경로가 없다** — 유실이 눈에 보이게 됐을
-   뿐, 원인을 고친 뒤 재처리하는 것은 아직 수동이다. 적재를 알리는 알람과
-   재처리 수단이 다음 단계다.
+1. **DLT 에 쌓인 메시지를 되돌리는 경로가 없다** — 적재 알람은 붙였지만,
+   원인을 고친 뒤 재처리하는 것은 아직 수동(콘솔 재발행)이다. 재적재 기한이
+   tombstone TTL(2일)로 묶여 있으므로 재처리 수단이 다음 단계다.
 2. **메일 발송은 재시도가 중복 발송이 될 수 있다** — 후보 삭제·갱신은 멱등이라
    재시도가 안전하지만, notification 의 메일은 SMTP 타임아웃처럼 "보냈는지
    모르는" 실패에서 같은 메일이 두 번 갈 수 있다. 누락보다 중복이 낫다고
