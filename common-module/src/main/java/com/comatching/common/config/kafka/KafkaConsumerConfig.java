@@ -1,5 +1,6 @@
 package com.comatching.common.config.kafka;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.MicrometerConsumerListener;
+import org.springframework.kafka.listener.ConsumerAwareRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
@@ -86,11 +88,20 @@ public class KafkaConsumerConfig {
 	 * Feign 호출 실패 같은 일시적 원인이 업무 예외로 감싸여 올라오는 경로가 있어서,
 	 * 재시도 제외로 분류하면 회복할 수 있는 실패까지 DLT 로 보내게 된다.
 	 */
+	// DLT 적재를 사람에게 알린다. 웹훅 URL 이 비어 있으면 로그만 남기는 no-op.
+	@Bean
+	public KafkaDltAlertNotifier kafkaDltAlertNotifier(
+		@Value("${comatching.kafka.dlt-alert-webhook-url:}") String webhookUrl,
+		@Value("${comatching.kafka.dlt-alert-cooldown-seconds:300}") long cooldownSeconds) {
+		return new KafkaDltAlertNotifier(webhookUrl, groupId, Duration.ofSeconds(cooldownSeconds));
+	}
+
 	@Bean
 	public DefaultErrorHandler kafkaErrorHandler(
 		@Qualifier("kafkaTemplate") KafkaOperations<String, String> stringTemplate,
 		@Qualifier("jsonKafkaTemplate") KafkaOperations<String, Object> jsonTemplate,
-		@Qualifier("bytesKafkaTemplate") KafkaOperations<String, byte[]> bytesTemplate) {
+		@Qualifier("bytesKafkaTemplate") KafkaOperations<String, byte[]> bytesTemplate,
+		KafkaDltAlertNotifier dltAlertNotifier) {
 
 		// 값 타입에 따라 템플릿을 고른다. 가장 구체적인 타입이 앞에 와야 하므로
 		// 순서가 보존되는 맵을 쓰고 Object 를 마지막에 둔다.
@@ -111,7 +122,14 @@ public class KafkaConsumerConfig {
 		backOff.setMultiplier(RETRY_MULTIPLIER);
 		backOff.setMaxInterval(RETRY_MAX_INTERVAL_MS);
 
-		return new DefaultErrorHandler(recoverer, backOff);
+		// DLT 발행이 성공한 뒤에만 알린다. 발행 자체가 실패하면 recoverer 예외가
+		// 위로 전파되어 에러 핸들러가 다시 다루므로, 그때 알리는 건 이르다.
+		ConsumerAwareRecordRecoverer alertingRecoverer = (record, consumer, exception) -> {
+			recoverer.accept(record, consumer, exception);
+			dltAlertNotifier.notifyParked(record, exception);
+		};
+
+		return new DefaultErrorHandler(alertingRecoverer, backOff);
 	}
 
 	@Bean
