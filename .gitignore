@@ -61,6 +61,10 @@ docker-compose.yml
 !/docs/superpowers/
 # 플러그인이 남기는 상태 파일은 그 안에서도 제외한다.
 /docs/superpowers/**/.omc/
+
+# Alertmanager 실제 설정은 디스코드 웹훅 URL 을 담고 있어 EC2 에만 둔다.
+# 예제(alertmanager.example.yml)만 추적한다 - .env.prod 와 같은 패턴.
+/monitoring/alertmanager/alertmanager.yml
 application-docker.yml
 application-secret.yml
 serviceAccountKey.json
