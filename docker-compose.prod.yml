@@ -408,6 +408,11 @@ services:
       - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     mem_limit: 128m
     memswap_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
     logging: *logging
 
   grafana:
@@ -433,7 +438,8 @@ services:
       - ./monitoring/grafana/dashboards/comatching-baseline.json:/var/lib/grafana/dashboards/comatching-baseline.json:ro
       - grafana-data:/var/lib/grafana
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
     mem_limit: 256m
     memswap_limit: 256m
     logging: *logging

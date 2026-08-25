@@ -28,7 +28,9 @@ START_ID="${START_ID:-1000001}"
 OUT_DIR="${OUT_DIR:-./out}"
 
 mysql_exec() {
-  mysql -h "$RDS_ENDPOINT" -u "$RDS_USERNAME" -p"$RDS_PASSWORD" \
+  # 비밀번호를 -p 인자로 주면 ps 에서 다른 사용자에게 보인다. 로컬 스크립트는
+  # 일회용 개발 비밀번호라 넘어갔지만 이쪽은 운영 RDS 자격증명이다.
+  MYSQL_PWD="$RDS_PASSWORD" mysql -h "$RDS_ENDPOINT" -u "$RDS_USERNAME" \
     --local-infile=1 --default-character-set=utf8mb4 "$@"
 }
 
