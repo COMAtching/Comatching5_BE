@@ -56,6 +56,11 @@ docker-compose.yml
 /database
 /docs/*
 !/docs/perf-log.md
+# 설계 문서(spec)는 추적한다. /docs/* 가 디렉터리째 막고 있어서 하위 파일만
+# 되살릴 수 없다 - 상위 디렉터리를 먼저 열어줘야 한다.
+!/docs/superpowers/
+# 플러그인이 남기는 상태 파일은 그 안에서도 제외한다.
+/docs/superpowers/**/.omc/
 application-docker.yml
 application-secret.yml
 serviceAccountKey.json
