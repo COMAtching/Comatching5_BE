@@ -8,7 +8,8 @@
 ```bash
 free -h; swapon --show; df -h /
 stat -fc %T /sys/fs/cgroup    # cgroup2fs 여야 한다
-docker info 2>/dev/null | grep -i "no swap limit" || echo "swap limit 지원 OK"
+# 스트림을 합쳐서(2>&1) STDERR 로 나오는 경고가 버려지지 않게 한다
+docker info 2>&1 | grep -i "no swap limit" && echo "!! memswap_limit 미지원 - 여기서 멈춘다" || echo "swap limit 지원 OK"
 ```
 
 마지막 줄이 "swap limit 지원 OK" 가 아니면 **여기서 멈춘다** —
@@ -95,7 +96,7 @@ docker stats --format "{{.Name}},{{.MemUsage}},{{.MemPerc}},{{.CPUPerc}}" >> ~/s
 
 ```bash
 cd ~/comatching
-docker compose -f docker-compose.prod.yml --env-file .env.prod down -v   # kafka/mongo/redis 볼륨 삭제
+docker compose -f docker-compose.prod.yml --env-file .env.prod down -v   # 명명 볼륨 5개 전부 삭제 - kafka/mongo/redis 는 물론 Prometheus TSDB(베이스라인·부하 기록)와 Grafana 상태까지 초기화된다. 남기고 싶은 지표가 있으면 §8 의 stats CSV 를 먼저 백업할 것.
 sed -i 's/^JPA_DDL_AUTO=.*/JPA_DDL_AUTO=create/' .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
 
