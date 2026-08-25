@@ -42,6 +42,8 @@ volumes:
   kafka-data:
   mongo-data:
   redis-data:
+  prometheus-data:
+  grafana-data:
 
 services:
 
@@ -364,3 +366,95 @@ services:
       timeout: 5s
       retries: 10
       start_period: 90s
+
+  # ---------- 모니터링 ----------
+  # 넷 다 comatching 네트워크 안이다. 호스트에 여는 건 grafana 의
+  # 127.0.0.1:3001 하나뿐이고, 보는 방법은 SSH 터널이다:
+  #   ssh -L 3001:localhost:3001 <user>@<EC2>
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: comatching-prometheus
+    restart: unless-stopped
+    networks: [comatching]
+    volumes:
+      - ./monitoring/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 시간과 크기 중 먼저 걸리는 쪽이 이긴다. 디스크가 차서 죽는 것보다
+      # 오래된 데이터를 버리는 게 낫다.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+    mem_limit: 512m
+    memswap_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: comatching-alertmanager
+    restart: unless-stopped
+    networks: [comatching]
+    volumes:
+      # 실제 파일은 EC2 에서 example 을 복사해 만든다(웹훅 URL 이 비밀값).
+      # 없으면 이 마운트가 실패하므로, 만들기 전에는 이 서비스가 뜨지 않는다.
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    mem_limit: 128m
+    memswap_limit: 128m
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: comatching-grafana
+    restart: unless-stopped
+    networks: [comatching]
+    # 루프백에만 바인딩한다. 게이트웨이 8080 과 같은 이유 - 보는 방법은
+    # SSH 터널뿐이고, 외부에 열면 보안그룹 한 겹이 유일한 방어선이 된다.
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # 로컬 스택은 익명 Viewer 를 켜뒀지만 운영은 터널 너머라도 계정을
+      # 요구한다. 터널 포트를 실수로 0.0.0.0 에 열었을 때의 마지막 겹이다.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ./monitoring/grafana/provisioning-prod:/etc/grafana/provisioning:ro
+      # baseline 만 올린다. loadtest 는 influxdb, mysql-queries 는 mysql
+      # 데이터소스를 참조해 운영에서 패널이 깨진다.
+      - ./monitoring/grafana/dashboards/comatching-baseline.json:/var/lib/grafana/dashboards/comatching-baseline.json:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    mem_limit: 256m
+    memswap_limit: 256m
+    logging: *logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: comatching-node-exporter
+    restart: unless-stopped
+    networks: [comatching]
+    # 호스트 지표(CPU·메모리·디스크·스왑)를 읽어야 해서 이 컨테이너만
+    # 예외적으로 호스트 네임스페이스를 본다. 전부 읽기 전용이다.
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|var/lib/docker/.+)($$|/)
+    mem_limit: 64m
+    memswap_limit: 64m
+    logging: *logging
