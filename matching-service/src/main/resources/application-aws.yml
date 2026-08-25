@@ -85,7 +85,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        # 컨테이너 밖(호스트 포트 매핑·게이트웨이 라우트)으로 나가는 길이
+        # 없는 포트라 그대로 연다. Prometheus 가 컴포즈 네트워크 안에서 긁는다.
+        include: health,prometheus
   endpoint:
     health:
       # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
