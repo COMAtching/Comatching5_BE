@@ -92,6 +92,11 @@ public class ChatServiceImpl implements ChatService {
 		if (!isBlockedByReceiver) {
 			updateChatRoomInfo(chatRoom, request, savedMessage.getId(), sentAt);
 			publishNotificationEvent(chatRoom, request, sentAt);
+		} else {
+			// 요약·알림은 차단 수신자에게 새 메시지 힌트를 주지 않으려 스킵하지만,
+			// 활성화까지 스킵하면 방이 영구 WAITING 으로 남아 차단을 풀어도
+			// target 목록에 방이 나타나지 않는다.
+			chatRoomRepository.activateRoom(chatRoom.getId());
 		}
 
 		return ChatMessageResponse.from(savedMessage, 1);
