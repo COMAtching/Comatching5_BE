@@ -30,6 +30,9 @@ mkdir -p "$RUN_DIR"
 
 HOST="${HOST:-localhost}"
 PORT="${PORT:-8080}"
+# 운영은 nginx 443 뒤라 https 로 가야 한다. 게이트웨이 8080 은 루프백
+# 바인딩이라 외부에서 직접 닿지 않는다.
+SCHEME="${SCHEME:-http}"
 INFLUX_HOST="${INFLUX_HOST:-localhost}"
 
 echo "════════════════════════════════════════════════════════════"
@@ -47,7 +50,7 @@ else
   echo "✅ jmeter $(jmeter --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
 fi
 
-code=$(curl -s -o /dev/null -w '%{http_code}' "http://$HOST:$PORT/api/auth/participants" || echo 000)
+code=$(curl -s -o /dev/null -w '%{http_code}' "$SCHEME://$HOST:$PORT/api/auth/participants" || echo 000)
 if [ "$code" = "200" ]; then
   echo "✅ 게이트웨이 $HOST:$PORT — 대상 엔드포인트 200"
 else
@@ -111,7 +114,7 @@ set +e
 jmeter -n -t "$PLAN" \
   -l "$RUN_DIR/result.jtl" \
   -j "$RUN_DIR/jmeter.log" \
-  -Jhost="$HOST" -Jport="$PORT" -JinfluxHost="$INFLUX_HOST" \
+  -Jhost="$HOST" -Jport="$PORT" -Jscheme="$SCHEME" -JinfluxHost="$INFLUX_HOST" \
   -JtestTitle="$NAME-$STAMP" \
   -Jjmeter.save.saveservice.output_format=csv
 JM_RC=$?
