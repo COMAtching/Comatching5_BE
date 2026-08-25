@@ -4,6 +4,8 @@
 # 단계가 셋으로 나뉜 이유:
 #   build   Gradle 을 한 번만 돌려 jar 6개를 만든다. 서비스가 6개라고 Gradle 을
 #           6번 돌리면 common-module 컴파일을 6번 반복하게 된다.
+#           테스트는 여기서 돌리지 않는다 - PR 시점에 test.yml 이 이미 돌렸다.
+#           배포를 붙잡고 다시 도는 것은 같은 검증을 두 번 하는 셈이다.
 #   images  jar 하나씩 받아 얇은 런타임 이미지로 만들어 GHCR 에 올린다.
 #           서비스끼리 의존이 없으니 6개가 동시에 돈다(matrix).
 #   deploy  EC2 에 SSH 로 들어가 pull 하고 compose 를 다시 올린다.
@@ -37,7 +39,7 @@ env:
 
 jobs:
   build:
-    name: jar 빌드 + 테스트
+    name: jar 빌드
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,21 +53,14 @@ jobs:
 
       - run: chmod +x gradlew
 
-      # build = 컴파일 + 테스트 + bootJar. 테스트가 통과해야 이미지가 만들어진다.
-      # matching-service 는 Testcontainers(MySQL)를, 카프카 IT 는 EmbeddedKafka 를
-      # 쓴다. 둘 다 ubuntu-latest 러너에서 돈다.
-      # 테스트가 발목을 잡으면 이 줄을 `./gradlew bootJar` 로 바꾸면 되지만,
-      # 그러면 검증 없이 운영에 나간다는 뜻이다.
-      - name: 빌드 및 테스트
-        run: ./gradlew build --no-daemon
-
-      - name: 테스트 리포트 보관
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: '*/build/reports/tests/**'
-          retention-days: 7
+      # bootJar 만 돌린다. `build` 를 쓰면 테스트까지 다시 도는데, 그 검증은
+      # PR 단계(test.yml)에서 이미 끝났다.
+      #
+      # 다만 build/libs 에 jar 가 하나만 생기지는 않는다 - Spring Boot 는
+      # bootJar(실행 가능)와 별개로 jar 태스크가 -plain.jar 를 만들 수 있어,
+      # 아래 이미지 잡에서 실행 가능한 쪽을 골라낸다.
+      - name: jar 빌드
+        run: ./gradlew bootJar --no-daemon
 
       - name: jar 보관
         uses: actions/upload-artifact@v4
@@ -102,11 +97,23 @@ jobs:
 
       # 컨텍스트에 app.jar 하나만 둔다. 소스 전체를 컨텍스트로 넘기면
       # 도커 데몬에 수십 MB 를 전송하고 캐시도 쉽게 깨진다.
+      #
+      # -plain.jar 를 걸러내는 이유: `./gradlew build` 는 bootJar 와 jar 를
+      # 둘 다 돌려서 build/libs 에 jar 가 두 개 생긴다(실행 가능한 것과
+      # 클래스만 든 -plain). 그대로 cp 하면 대상이 디렉터리가 아니라고 실패하고,
+      # 설령 통과해도 어느 쪽이 복사될지 알 수 없다.
       - name: 빌드 컨텍스트 준비
         run: |
           set -euo pipefail
           mkdir -p ci-context
-          cp jars/${{ matrix.service }}/build/libs/*.jar ci-context/app.jar
+          JAR=$(find "jars/${{ matrix.service }}/build/libs" -name '*.jar' ! -name '*-plain.jar')
+          COUNT=$(echo "$JAR" | grep -c . || true)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "실행 가능한 jar 가 정확히 하나여야 하는데 ${COUNT}개다:"
+            ls -la "jars/${{ matrix.service }}/build/libs"
+            exit 1
+          fi
+          cp "$JAR" ci-context/app.jar
           ls -la ci-context
 
       - uses: docker/setup-buildx-action@v3
