@@ -23,6 +23,7 @@ import com.comatching.chat.domain.enums.MessageType;
 import com.comatching.chat.domain.service.chat.ChatService;
 import com.comatching.chat.domain.service.chatroom.ChatRoomService;
 import com.comatching.chat.domain.service.redis.RedisPublisher;
+import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.service.S3Service;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,4 +110,29 @@ class ChatControllerTest {
 		then(redisPublisher).should().publish(any(ChannelTopic.class), eq(response));
 	}
 
+	@Test
+	@DisplayName("REST로도 읽음 처리할 수 있고 READ 이벤트가 상대에게 전파된다")
+	void markAsRead_viaRestPublishesReadEvent() {
+		// given - WebSocket 이 아직 안 붙었거나 끊긴 상태에서 방을 연 경우
+		ChatMessageResponse readResponse = new ChatMessageResponse(
+			null,
+			ROOM_ID,
+			MEMBER_ID,
+			null,
+			MessageType.READ,
+			LocalDateTime.of(2026, 8, 26, 10, 0),
+			0
+		);
+		MemberInfo memberInfo = new MemberInfo(MEMBER_ID, "user@test.com", "ROLE_USER");
+
+		given(chatService.markAsRead(ROOM_ID, MEMBER_ID)).willReturn(readResponse);
+		given(redisPublisher.publish(any(ChannelTopic.class), eq(readResponse))).willReturn(1L);
+
+		// when
+		chatController.markAsRead(ROOM_ID, memberInfo);
+
+		// then
+		then(chatService).should().markAsRead(ROOM_ID, MEMBER_ID);
+		then(redisPublisher).should().publish(any(ChannelTopic.class), eq(readResponse));
+	}
 }

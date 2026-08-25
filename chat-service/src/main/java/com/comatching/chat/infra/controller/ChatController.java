@@ -103,4 +103,16 @@ public class ChatController {
 		return ResponseEntity.ok(ApiResponse.ok(messages));
 	}
 
+	// 읽음 처리의 REST 경로. WebSocket 이 아직 안 붙었거나 끊긴 채로 방을 열면
+	// 히스토리는 HTTP 로 읽히는데 읽음은 기록될 길이 없었다. READ 는 WS 때와
+	// 같이 Redis 로 발행해 상대 화면의 "1" 도 같이 지운다.
+	@PostMapping("/api/chat/rooms/{roomId}/read")
+	public ResponseEntity<ApiResponse<Void>> markAsRead(
+		@PathVariable String roomId,
+		@CurrentMember MemberInfo memberInfo) {
+
+		ChatMessageResponse readResponse = chatService.markAsRead(roomId, memberInfo.memberId());
+		redisPublisher.publish(topic, readResponse);
+		return ResponseEntity.ok(ApiResponse.ok());
+	}
 }
