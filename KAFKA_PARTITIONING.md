@@ -81,8 +81,8 @@ flowchart LR
 
 ### 1. 프로듀서에 메시지 키(memberId) 부여 — 증설의 선행 조건
 
-`UserEventPublisher` 의 네 토픽(`member-signup` · `member-update` ·
-`member-withdraw` · `profile-updates`) 전부 `memberId` 를 키로 발행한다.
+`UserEventPublisher` 의 세 토픽(`member-signup` · `member-withdraw` ·
+`profile-updates`) 전부 `memberId` 를 키로 발행한다.
 
 ```java
 stringKafkaTemplate.send(topic, String.valueOf(memberId), message);

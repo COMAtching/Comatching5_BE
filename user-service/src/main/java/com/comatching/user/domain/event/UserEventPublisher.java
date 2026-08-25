@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberAuthEvent;
-import com.comatching.common.dto.event.member.MemberUpdateEvent;
 import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,7 +25,6 @@ public class UserEventPublisher {
 	private final ObjectMapper objectMapper;
 
 	private static final String TOPIC_SIGNUP = "member-signup";
-	private static final String TOPIC_UPDATE = "member-update";
 	private static final String TOPIC_WITHDRAW = "member-withdraw";
 	private static final String TOPIC_MATCHING_PROFILE_UPDATE = "profile-updates"; // 매칭 서비스용 토픽
 
@@ -43,14 +41,6 @@ public class UserEventPublisher {
 			.build();
 
 		sendToKafka(TOPIC_SIGNUP, memberKey(profile.memberId()), event);
-	}
-
-	/**
-	 * 회원정보 수정 이벤트 발행
-	 * - 구독: Chat Service (채팅방 내 닉네임/프사 캐시 갱신), Matching Service
-	 */
-	public void sendUpdateEvent(MemberUpdateEvent event) {
-		sendToKafka(TOPIC_UPDATE, memberKey(event.memberId()), event);
 	}
 
 	public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
