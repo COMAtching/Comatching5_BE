@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -29,6 +30,8 @@ import com.comatching.chat.domain.repository.UnreadCountCondition;
 import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.chat.infra.client.MemberClient;
+import com.comatching.common.dto.chat.ChatRoomEnsureRequest;
+import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
@@ -301,6 +304,74 @@ class ChatRoomServiceImplTest {
 				tuple(100L, "room-100"),
 				tuple(101L, "room-101")
 			);
+	}
+
+	@Test
+	@DisplayName("ensure는 방이 없는 매칭만 그 자리에서 만들고 전체 참조를 돌려준다")
+	void ensureChatRooms_createsMissingRoomsAndReturnsAllReferences() {
+		// given - 100번 매칭은 방이 있고 101번은 Kafka 유실 등으로 방이 없다
+		ChatRoom existingRoom = chatRoom("room-100", 100L, MEMBER_ID, OTHER_MEMBER_ID, LocalDateTime.now());
+		given(chatRoomRepository.findByMatchingIdIn(List.of(100L, 101L)))
+			.willReturn(List.of(existingRoom));
+		given(chatRoomRepository.save(any(ChatRoom.class))).willAnswer(invocation -> {
+			ChatRoom saved = invocation.getArgument(0);
+			ReflectionTestUtils.setField(saved, "id", "room-101");
+			return saved;
+		});
+
+		List<ChatRoomEnsureRequest> requests = List.of(
+			new ChatRoomEnsureRequest(100L, MEMBER_ID, OTHER_MEMBER_ID),
+			new ChatRoomEnsureRequest(101L, MEMBER_ID, SECOND_OTHER_MEMBER_ID)
+		);
+
+		// when
+		List<ChatRoomReferenceResponse> result = chatRoomService.ensureChatRooms(requests);
+
+		// then
+		assertThat(result).extracting("matchingId", "chatRoomId")
+			.containsExactlyInAnyOrder(
+				tuple(100L, "room-100"),
+				tuple(101L, "room-101")
+			);
+		then(chatRoomRepository).should().save(argThat(room ->
+			room.getMatchingId().equals(101L)
+				&& room.getInitiatorUserId().equals(MEMBER_ID)
+				&& room.getTargetUserId().equals(SECOND_OTHER_MEMBER_ID)));
+	}
+
+	@Test
+	@DisplayName("ensure는 방이 전부 있으면 아무것도 만들지 않는다")
+	void ensureChatRooms_createsNothingWhenAllRoomsExist() {
+		// given
+		ChatRoom existingRoom = chatRoom("room-100", 100L, MEMBER_ID, OTHER_MEMBER_ID, LocalDateTime.now());
+		given(chatRoomRepository.findByMatchingIdIn(List.of(100L)))
+			.willReturn(List.of(existingRoom));
+
+		// when
+		List<ChatRoomReferenceResponse> result =
+			chatRoomService.ensureChatRooms(List.of(new ChatRoomEnsureRequest(100L, MEMBER_ID, OTHER_MEMBER_ID)));
+
+		// then
+		assertThat(result).extracting("chatRoomId").containsExactly("room-100");
+		then(chatRoomRepository).should(never()).save(any(ChatRoom.class));
+	}
+
+	@Test
+	@DisplayName("ensure는 동시 생성 충돌이 나면 이미 만들어진 방을 다시 읽어 돌려준다")
+	void ensureChatRooms_recoversFromDuplicateKeyRace() {
+		// given - findByMatchingIdIn 과 save 사이에 Kafka 컨슈머가 먼저 방을 만든 경우
+		given(chatRoomRepository.findByMatchingIdIn(List.of(100L))).willReturn(List.of());
+		given(chatRoomRepository.save(any(ChatRoom.class)))
+			.willThrow(new DuplicateKeyException("matchingId dup"));
+		ChatRoom concurrentlyCreated = chatRoom("room-100", 100L, MEMBER_ID, OTHER_MEMBER_ID, LocalDateTime.now());
+		given(chatRoomRepository.findByMatchingId(100L)).willReturn(Optional.of(concurrentlyCreated));
+
+		// when
+		List<ChatRoomReferenceResponse> result =
+			chatRoomService.ensureChatRooms(List.of(new ChatRoomEnsureRequest(100L, MEMBER_ID, OTHER_MEMBER_ID)));
+
+		// then
+		assertThat(result).extracting("chatRoomId").containsExactly("room-100");
 	}
 
 	private ChatRoom chatRoom(String id, Long matchingId, Long initiatorId, Long targetId, LocalDateTime readAt) {

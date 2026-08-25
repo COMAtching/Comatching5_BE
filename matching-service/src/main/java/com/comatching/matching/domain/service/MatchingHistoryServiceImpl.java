@@ -3,7 +3,6 @@ package com.comatching.matching.domain.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -11,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.comatching.common.dto.chat.ChatRoomEnsureRequest;
 import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.matching.MatchingHistoryReferenceResponse;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -76,18 +76,25 @@ public class MatchingHistoryServiceImpl implements MatchingHistoryService{
 		return PagingResponse.from(resultPage);
 	}
 
+	// 조회가 곧 보장이다. 방 생성은 매칭 성공 Kafka 이벤트에만 의존했는데,
+	// 발행이 유실되면 그 매칭은 영구히 방이 없었다. ensure 는 방이 없으면
+	// chat-service 가 그 자리에서 만들므로 유실분이 이력 조회 시점에 복구된다.
 	private Map<Long, String> getChatRoomIdMap(Page<MatchingHistory> histories) {
-		List<Long> matchingIds = histories.stream()
-			.map(MatchingHistory::getId)
-			.filter(Objects::nonNull)
+		List<ChatRoomEnsureRequest> ensureRequests = histories.stream()
+			.filter(history -> history.getId() != null)
+			.map(history -> new ChatRoomEnsureRequest(
+				history.getId(),
+				history.getMemberId(),
+				history.getPartnerId()
+			))
 			.distinct()
 			.toList();
 
-		if (matchingIds.isEmpty()) {
+		if (ensureRequests.isEmpty()) {
 			return Map.of();
 		}
 
-		List<ChatRoomReferenceResponse> chatRooms = chatRoomClient.getChatRoomReferences(matchingIds);
+		List<ChatRoomReferenceResponse> chatRooms = chatRoomClient.ensureChatRooms(ensureRequests);
 		if (chatRooms == null || chatRooms.isEmpty()) {
 			return Map.of();
 		}
