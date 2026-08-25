@@ -1,0 +1,53 @@
+# ============================================================
+# PR 을 열거나 갱신하면 테스트를 돌린다.
+#
+# 배포 워크플로(deploy.yml)에서 테스트를 뺀 대신 여기로 옮겼다. 검증이
+# 사라진 게 아니라 시점이 앞당겨진 것이다 - main 에 머지된 뒤 배포를
+# 붙잡고 있는 대신, PR 을 보고 있는 동안 백그라운드로 돌아간다.
+#
+# 이 검증이 실제로 게이트가 되려면 브랜치 보호가 필요하다:
+#   Settings > Branches > main > Require status checks to pass
+#   에서 "테스트" 체크를 필수로 지정한다. 없으면 빨간 PR 도 머지된다.
+# ============================================================
+name: test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# PR 에 새 커밋을 올리면 직전 실행은 의미가 없다. 취소해서 러너를 아낀다.
+concurrency:
+  group: test-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+
+      # matching-service 는 Testcontainers(MySQL)를, 카프카 IT 는
+      # EmbeddedKafka 를 쓴다. 둘 다 ubuntu-latest 러너에서 돈다.
+      - name: 테스트
+        run: ./gradlew test --no-daemon
+
+      # 실패했을 때만이 아니라 항상 올린다. 통과했지만 오래 걸린 테스트를
+      # 찾아볼 때도 리포트가 필요하다.
+      - name: 테스트 리포트 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '*/build/reports/tests/**'
+          retention-days: 7
