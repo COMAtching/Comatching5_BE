@@ -20,7 +20,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -41,6 +43,7 @@ import org.springframework.test.context.TestPropertySource;
  *  1) 계속 실패하면 정해진 횟수만큼 재시도한 뒤 <토픽>.DLT 로 옮겨진다 (조용한 유실 아님)
  *  2) 일시적 실패는 재시도로 회복되고 DLT 로 가지 않는다
  *  3) 원본 키와 위치 헤더가 DLT 에 보존된다 (어느 회원 건인지 추적 가능)
+ *  4) DLT 이동 시에만 알림이 발화한다 (회복된 실패는 알리지 않는다)
  */
 @SpringBootTest(classes = {
 	KafkaProducerConfig.class,
@@ -104,6 +107,11 @@ class KafkaRetryAndDltIT {
 
 		// 최초 1회 + 재시도 3회. 즉시 포기하지도, 무한히 매달리지도 않는다.
 		assertThat(listeners.alwaysFailsAttempts.get()).isEqualTo(4);
+
+		// DLT 이동은 사람에게 알려진다. 적재를 이틀(tombstone TTL) 안에
+		// 알아채야 재처리가 의미 있기 때문이다.
+		assertThat(listeners.alerts)
+			.anySatisfy(alert -> assertThat(alert).contains(ALWAYS_FAILS_TOPIC + ".DLT"));
 	}
 
 	@Test
@@ -115,8 +123,11 @@ class KafkaRetryAndDltIT {
 			.atMost(30, TimeUnit.SECONDS)
 			.untilAsserted(() -> assertThat(listeners.recovered).contains(PAYLOAD_AT_LISTENER));
 
-		// 2번째 시도에서 성공했으므로 DLT 는 비어 있어야 한다
+		// 2번째 시도에서 성공했으므로 DLT 는 비어 있어야 하고, 알림도 없어야 한다.
+		// 회복된 실패까지 알리면 알림이 늑대소년이 된다.
 		assertThat(pollOne(RECOVERS_TOPIC + ".DLT", Duration.ofSeconds(5))).isNull();
+		assertThat(listeners.alerts)
+			.noneSatisfy(alert -> assertThat(alert).contains(RECOVERS_TOPIC));
 	}
 
 	private ConsumerRecord<String, String> pollOne(String topic, Duration timeout) {
@@ -147,6 +158,20 @@ class KafkaRetryAndDltIT {
 		final AtomicInteger alwaysFailsAttempts = new AtomicInteger();
 		final AtomicInteger recoversAttempts = new AtomicInteger();
 		final List<String> recovered = new CopyOnWriteArrayList<>();
+		final List<String> alerts = new CopyOnWriteArrayList<>();
+
+		// 실제 웹훅 대신 전송 내용을 기록한다. HTTP 를 목으로 갈아끼우는 게 아니라
+		// 전송 직전 지점(deliver)만 가로채므로 쿨다운·메시지 조립은 실물이 돈다.
+		@Bean
+		@Primary
+		KafkaDltAlertNotifier recordingDltAlertNotifier() {
+			return new KafkaDltAlertNotifier("http://recording-stub", "kafka-retry-dlt-it", Duration.ZERO) {
+				@Override
+				protected void deliver(String message) {
+					alerts.add(message);
+				}
+			};
+		}
 
 		@KafkaListener(topics = ALWAYS_FAILS_TOPIC, groupId = "always-fails-group")
 		void alwaysFails(String payload) {
