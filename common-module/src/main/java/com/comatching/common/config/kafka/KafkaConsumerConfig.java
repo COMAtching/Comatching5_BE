@@ -51,13 +51,19 @@ public class KafkaConsumerConfig {
 		return factory;
 	}
 
-	// 이 팩토리는 yml 의 spring.kafka.consumer.* 를 읽지 않으므로(수동 구성)
-	// auto.offset.reset 을 명시하지 않으면 클라이언트 기본값 latest 가 적용된다.
-	// latest 는 파티션 증설과 만나면 유실이 된다: 새 파티션에는 커밋 오프셋이
-	// 없어서, 컨슈머 그룹이 그 파티션을 처음 배정받기 전에 발행된 메시지를
-	// 로그 끝으로 건너뛴다(탈퇴 메일 누락, 후보 tombstone 미기록). earliest 는
-	// 커밋 오프셋이 있는 기존 파티션에는 영향이 없고 새 파티션만 처음부터 읽는다.
-	private static final String AUTO_OFFSET_RESET = "earliest";
+	// 이 팩토리는 spring.kafka.consumer.* 를 자동설정으로 받지 않고(수동 구성)
+	// 필요한 값만 골라 읽는다. auto.offset.reset 은 yml 이 진실이 되어야 한다 -
+	// 예전에는 여기에 상수로 박혀 있어서, yml 에 latest 라고 적어둔 서비스도
+	// 실제로는 earliest 로 돌았다. 설정 파일과 실제 동작이 어긋나면 나중에
+	// yml 을 고친 사람이 아무 일도 일어나지 않는 이유를 찾지 못한다.
+	//
+	// 기본값을 earliest 로 두는 이유: latest 는 파티션 증설과 만나면 유실이 된다.
+	// 새 파티션에는 커밋 오프셋이 없어서, 컨슈머 그룹이 그 파티션을 처음
+	// 배정받기 전에 발행된 메시지를 로그 끝으로 건너뛴다(탈퇴 메일 누락, 후보
+	// tombstone 미기록). earliest 는 커밋 오프셋이 있는 기존 파티션에는 영향이
+	// 없고 새 파티션만 처음부터 읽는다. 바꾸려면 그 대가를 알고 바꿔야 한다.
+	@Value("${spring.kafka.consumer.auto-offset-reset:earliest}")
+	private String autoOffsetReset;
 
 	public static final String DLT_SUFFIX = ".DLT";
 
@@ -149,7 +155,7 @@ public class KafkaConsumerConfig {
 		Map<String, Object> config = new HashMap<>();
 		config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, AUTO_OFFSET_RESET);
+		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
 		config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		return withMetrics(new DefaultKafkaConsumerFactory<>(config));
@@ -160,7 +166,7 @@ public class KafkaConsumerConfig {
 		Map<String, Object> config = new HashMap<>();
 		config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, AUTO_OFFSET_RESET);
+		config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
 		config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		// JsonDeserializer 를 그대로 쓰면 역직렬화 실패가 poll 단계에서 터진다.
 		// 그 단계에는 에러 핸들러가 개입할 수 없어서 오프셋이 넘어가지 못하고
