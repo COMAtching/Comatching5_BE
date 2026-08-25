@@ -11,7 +11,8 @@ spring:
       host: ${REDIS_ENDPOINT}
       port: ${REDIS_PORT:6379}
       ssl:
-        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:true}
+        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
+        enabled: ${REDIS_SSL_ENABLED:true}
 
   cloud:
     gateway:
@@ -21,10 +22,11 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
+                # 운영에는 실제 프론트 출처만 둔다. allowCredentials: true 와
+                # localhost 출처를 함께 두면 로컬에서 뜬 아무 페이지나 사용자의
+                # 쿠키를 실어 이 API 를 부를 수 있다.
                 allowedOrigins:
                   - "https://comatching.site"
-                  - "http://localhost:3000"
-                  - "http://localhost:5173"
                 allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
                 allowedHeaders: "*"
                 allowCredentials: true
@@ -55,12 +57,24 @@ spring:
               predicates:
                 - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
 
+            # ── Swagger 노출 스위치 (기본: 꺼짐) ────────────────────────────
+            #   끄기: SWAGGER_PATH_PREFIX 미설정
+            #         -> Path 가 /__swagger-off__/user-doc/** 이 되어 사실상 도달 불가
+            #   켜기: .env.prod 에 SWAGGER_PATH_PREFIX= (빈 값) 을 넣고 게이트웨이만 재기동
+            #         -> Path 가 /user-doc/** 로 복원된다
+            #
+            # 켠 상태에서도 AuthorizationHeaderFilter 는 반드시 붙어 있어야 한다.
+            # 이 필터만이 클라이언트가 보낸 X-Member-* 헤더를 지우고 JWT 에서 다시
+            # 채운다. RewritePath 는 접두사만 떼고 임의 경로를 그대로 뒤로 넘기므로,
+            # 필터가 없으면 /user-doc/api/... 로 아무 엔드포인트나 부르면서 헤더를
+            # 위조할 수 있다 - 게이트웨이 인증이 통째로 우회된다.
             - id: user-service-swagger
               uri: http://user-service:9000
               predicates:
-                - Path=/user-doc/**
+                - Path=${SWAGGER_PATH_PREFIX:/__swagger-off__}/user-doc/**
               filters:
-                - RewritePath=/user-doc/(?<segment>.*), /$\{segment}
+                - AuthorizationHeaderFilter
+                - RewritePath=${SWAGGER_PATH_PREFIX:/__swagger-off__}/user-doc/(?<segment>.*), /$\{segment}
 
             - id: matching-service
               uri: http://matching-service:9001
@@ -69,12 +83,14 @@ spring:
               filters:
                 - AuthorizationHeaderFilter
 
+            # Swagger 스위치 - 위 user-service-swagger 주석 참고.
             - id: matching-service-swagger
               uri: http://matching-service:9001
               predicates:
-                - Path=/matching-doc/**
+                - Path=${SWAGGER_PATH_PREFIX:/__swagger-off__}/matching-doc/**
               filters:
-                - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
+                - AuthorizationHeaderFilter
+                - RewritePath=${SWAGGER_PATH_PREFIX:/__swagger-off__}/matching-doc/(?<segment>.*), /$\{segment}
 
             - id: chat-service
               uri: http://chat-service:9003
@@ -83,12 +99,14 @@ spring:
               filters:
                 - AuthorizationHeaderFilter
 
+            # Swagger 스위치 - 위 user-service-swagger 주석 참고.
             - id: chat-service-swagger
               uri: http://chat-service:9003
               predicates:
-                - Path=/chat-doc/**
+                - Path=${SWAGGER_PATH_PREFIX:/__swagger-off__}/chat-doc/**
               filters:
-                - RewritePath=/chat-doc/(?<segment>.*), /$\{segment}
+                - AuthorizationHeaderFilter
+                - RewritePath=${SWAGGER_PATH_PREFIX:/__swagger-off__}/chat-doc/(?<segment>.*), /$\{segment}
 
             - id: item-service
               uri: http://item-service:9006
@@ -123,3 +141,8 @@ management:
     web:
       exposure:
         include: health
+  endpoint:
+    health:
+      # 게이트웨이의 8080 은 외부에 열려 있다. always 로 두면 인증 없이
+      # DB/Redis 구성요소 상태와 접속 정보 일부가 그대로 드러난다.
+      show-details: never
