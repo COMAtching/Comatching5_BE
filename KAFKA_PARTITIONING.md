@@ -124,11 +124,17 @@ flowchart LR
   관리를 끈다(KafkaAdmin 이 기동 시 접속을 시도하며 타임아웃까지 기다리는
   것을 막는다).
 
-### 3. 컨슈머 병렬성 활용 — `concurrency = 3`
+### 3. 컨슈머 병렬성 — 설정값 (`matching.kafka.candidate-listener-concurrency`)
 
-두 `@KafkaListener` 의 concurrency 를 파티션 수와 같은 상수
-(`KafkaTopicConfig.CANDIDATE_LISTENER_CONCURRENCY`)로 묶었다. 파티션 수보다
-큰 값은 유휴 스레드만 만들기 때문에 두 숫자는 한 곳에서 관리한다.
+두 `@KafkaListener` 의 concurrency 는 설정값이다(기본 3). 처음에는 파티션
+수와 같은 상수로 묶었지만, 두 숫자의 성격이 달라서 풀었다. 파티션 수는
+늘릴 수만 있는 비가역 결정이라 코드에 박는 게 맞고, concurrency 는 재기동으로
+바꿀 수 있는 데다 적정값이 실제 트래픽·인스턴스 수를 본 뒤에야 정해지므로
+그 판단을 코드 상수로 미리 닫아 둘 이유가 없다.
+
+조정 범위: 파티션 수(3)를 넘는 값은 유휴 스레드만 만들므로 상한은 3.
+줄이는 것은 자유다 — 회원 단위 순서는 "같은 키 = 같은 파티션"이라는
+프로듀서 쪽 속성으로 보장되므로 소비 스레드 수를 줄여도 깨지지 않는다.
 
 ### 4. 탈퇴 tombstone — 키로는 못 막는 역전을 닫는다
 

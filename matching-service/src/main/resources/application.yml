@@ -59,6 +59,10 @@ spring:
         bucket: ${AWS_S3_BUCKET}
 
 matching:
+  kafka:
+    # member-withdraw · profile-updates 리스너 병렬도. 상한은 파티션 수(3) —
+    # 넘는 값은 유휴 스레드만 만든다. 트래픽·인스턴스 수를 보고 조정한다.
+    candidate-listener-concurrency: 3
   tombstone:
     # profile-updates retention(KafkaTopicConfig, 1일)보다 길어야 한다.
     # 근거는 WithdrawnMemberCleanupScheduler 주석 참고.

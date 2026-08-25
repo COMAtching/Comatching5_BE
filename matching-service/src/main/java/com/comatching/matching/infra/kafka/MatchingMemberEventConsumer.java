@@ -15,8 +15,8 @@ public class MatchingMemberEventConsumer {
 
 	private final CandidateService candidateService;
 
-	// concurrency 는 파티션 수(KafkaTopicConfig)와 묶여 있다. 프로듀서가 memberId 를
-	// 키로 걸어 주므로 같은 회원의 이벤트는 항상 같은 파티션 = 같은 스레드로 온다.
+	// concurrency 는 설정값(상한은 파티션 수, KafkaTopicConfig 참고). 프로듀서가
+	// memberId 를 키로 걸어 주므로 같은 회원의 이벤트는 항상 같은 파티션으로 온다.
 	@KafkaListener(topics = "member-withdraw", groupId = "matching-service-group",
 		concurrency = KafkaTopicConfig.CANDIDATE_LISTENER_CONCURRENCY)
 	public void handleMemberWithdraw(MemberWithdrawnEvent event) {

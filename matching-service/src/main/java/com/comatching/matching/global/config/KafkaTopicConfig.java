@@ -34,9 +34,14 @@ public class KafkaTopicConfig {
 
 	public static final int CANDIDATE_TOPIC_PARTITIONS = 3;
 
-	// @KafkaListener 의 concurrency 는 String 만 받는다. 파티션 수보다 큰 값은
-	// 유휴 스레드만 만들므로 두 상수는 반드시 같은 값을 가리켜야 한다.
-	public static final String CANDIDATE_LISTENER_CONCURRENCY = "" + CANDIDATE_TOPIC_PARTITIONS;
+	// 리스너 병렬도는 파티션 수와 달리 운영 중에 조정할 여지를 남긴다. 파티션은
+	// 늘릴 수만 있는 비가역 결정이지만 concurrency 는 재기동만으로 바꿀 수 있고,
+	// 적정값은 실제 트래픽과 인스턴스 수를 본 뒤에야 정할 수 있기 때문이다.
+	// 조정 범위: 파티션 수(3)를 넘는 값은 유휴 스레드만 만들므로 상한은 3,
+	// 줄이는 것은 자유다 — 회원 단위 순서는 "같은 키 = 같은 파티션"(프로듀서
+	// 속성)으로 보장되므로 스레드 수를 줄여도 깨지지 않는다.
+	public static final String CANDIDATE_LISTENER_CONCURRENCY =
+		"${matching.kafka.candidate-listener-concurrency:3}";
 
 	private static final short REPLICATION_FACTOR = 1;
 
