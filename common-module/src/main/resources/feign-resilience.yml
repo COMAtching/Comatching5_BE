@@ -1,0 +1,33 @@
+# Feign 내부 호출 공통 타임아웃 설정.
+# Feign 클라이언트를 쓰는 서비스의 application.yml 에서
+# spring.config.import: classpath:feign-resilience.yml 로 불러온다.
+# 값이 이 파일 한 곳에만 존재해야 서비스 간 설정 드리프트가 안 생긴다.
+#
+# 같은 EC2 호스트 안의 내부 REST 호출 전제라 공격적으로 잡는다.
+# OpenFeign 기본값(connect 10s / read 60s)은 피호출 서비스가 멈추면
+# 호출 서비스의 톰캣 스레드를 60초씩 붙잡아 장애를 그대로 전파한다.
+#
+# 두 값은 항목별로 독립 상속된다. FeignClientFactoryBean 은 default 블록을
+# 먼저 적용해 필드를 채운 뒤 클라이언트별 블록을 덧씌우는데, 클라이언트
+# 블록에 없는 항목은 앞 단계 값을 그대로 유지한다 —
+# read-timeout 만 적어도 connect 는 default 의 1s 가 남는다.
+# 아래에서 항목마다 두 값을 다 적는 건 유효 타임아웃을 한눈에 읽기 위한
+# 관례일 뿐 동작상 필수는 아니다. (키는 @FeignClient 의 name/contextId, 단위 ms)
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 1000
+            read-timeout: 3000
+          # 배치성 호출은 읽기 시간을 더 준다.
+          user-service: # POST /profiles/bulk (matching·chat 공용)
+            connect-timeout: 1000
+            read-timeout: 5000
+          chat-service: # POST /references, /ensure — 매칭 이력 일괄 조회·생성
+            connect-timeout: 1000
+            read-timeout: 5000
+          user-service-admin: # 관리자 페이징 조회
+            connect-timeout: 1000
+            read-timeout: 5000
