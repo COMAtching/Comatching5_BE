@@ -45,6 +45,13 @@ spring:
         # 시간 상한이 된다.
         disable-thread-pool: true
 
+comatching:
+  feign:
+    # 브레이커 open/복구 알림 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
+    # 전용 env 가 없으면 DLT 알림과 같은 웹훅을 쓴다 — 두 알림 모두
+    # "사람이 개입해야 하는 상태"라 받는 채널이 같은 게 자연스럽다.
+    circuit-breaker-alert-webhook-url: ${CIRCUIT_BREAKER_ALERT_WEBHOOK_URL:${DLT_ALERT_WEBHOOK_URL:}}
+
 resilience4j:
   circuitbreaker:
     configs:
