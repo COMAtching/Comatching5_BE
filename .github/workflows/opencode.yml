@@ -29,13 +29,9 @@ jobs:
 
       - uses: anomalyco/opencode/github@latest
         env:
-          # provider 등록 자체는 opencode.json 이 한다. 여기서는 키만 넘기는데,
-          # models.dev 가 Google provider 에 등록해 둔 이름이 셋이라 어느
-          # 쪽을 읽든 걸리도록 모두 채운다.
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # provider 등록 자체는 opencode.json 이 한다. 여기서는 키만 넘긴다.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: google/gemini-3.5-flash
+          model: anthropic/claude-haiku-4-5
           use_github_token: true
