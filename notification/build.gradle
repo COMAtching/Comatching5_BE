@@ -9,6 +9,7 @@ description = 'notification'
 dependencies {
     implementation(project(':common-module')) {
         exclude group: 'org.springframework.cloud', module: 'spring-cloud-starter-openfeign'
+        exclude group: 'org.springframework.cloud', module: 'spring-cloud-starter-circuitbreaker-resilience4j'
         exclude group: 'io.awspring.cloud', module: 'spring-cloud-aws-starter-s3'
     }
 
