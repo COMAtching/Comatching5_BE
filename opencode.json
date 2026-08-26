@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "google": {
+      "options": {
+        "apiKey": "{env:GEMINI_API_KEY}"
+      }
+    }
+  }
+}
