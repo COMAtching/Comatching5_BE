@@ -28,7 +28,7 @@ public class AdminNoticeController {
 
     @RequireRole(MemberRole.ROLE_ADMIN)
     @Operation(summary = "관리자 공지사항 목록 조회", description = "관리자가 등록된 전체 공지사항을 노출 시작시간 내림차순으로 조회합니다.")
-    @GetMapping("/admin/notices")
+    @GetMapping("v1/admin/notices")
     public ResponseEntity<ApiResponse<List<AdminNoticeResponse>>> getAdminNotices(
             @CurrentMember MemberInfo memberInfo
     ) {
@@ -37,7 +37,7 @@ public class AdminNoticeController {
 
     @RequireRole(MemberRole.ROLE_ADMIN)
     @Operation(summary = "공지사항 등록", description = "관리자가 제목, 내용, 시작시간, 종료시간으로 공지사항을 등록합니다.")
-    @PostMapping("/admin/notices")
+    @PostMapping("v1/admin/notices")
     public ResponseEntity<ApiResponse<Void>> createNotice(
             @CurrentMember MemberInfo memberInfo,
             @RequestBody @Valid NoticeCreateRequest request
@@ -48,7 +48,7 @@ public class AdminNoticeController {
 
     @RequireRole(MemberRole.ROLE_ADMIN)
     @Operation(summary = "공지사항 수정", description = "관리자가 기존 공지사항의 제목, 내용, 노출 기간을 수정합니다.")
-    @PatchMapping("/admin/notices/{noticeId}")
+    @PatchMapping("v1/admin/notices/{noticeId}")
     public ResponseEntity<ApiResponse<Void>> updateNotice(
             @CurrentMember MemberInfo memberInfo,
             @PathVariable Long noticeId,
@@ -60,7 +60,7 @@ public class AdminNoticeController {
 
     @RequireRole(MemberRole.ROLE_ADMIN)
     @Operation(summary = "공지사항 삭제", description = "관리자가 공지사항을 삭제합니다.")
-    @DeleteMapping("/admin/notices/{noticeId}")
+    @DeleteMapping("v1/admin/notices/{noticeId}")
     public ResponseEntity<ApiResponse<Void>> deleteNotice(
             @CurrentMember MemberInfo memberInfo,
             @PathVariable Long noticeId

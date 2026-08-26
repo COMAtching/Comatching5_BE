@@ -1,4 +1,9 @@
-package com.comatching.item.infra.controller;
+package com.comatching.item.infra.controller.admin;
+
+/*
+ * Temporarily disabled: admin user/item API has moved out of item-service.
+ * Keep the prior implementation here as a comment for the migration rollback.
+ *
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -69,3 +74,4 @@ public class AdminUserController {
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }
+*/

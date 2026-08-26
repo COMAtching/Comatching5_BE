@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Admin User API", description = "관리자 전용 사용자 조회 및 인벤토리 관리")
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 public class AdminMemberController {
 

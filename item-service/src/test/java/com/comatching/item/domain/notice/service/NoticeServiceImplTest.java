@@ -1,5 +1,9 @@
 package com.comatching.item.domain.notice.service;
 
+/*
+ * Temporarily disabled with the item-service notice API.
+ *
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -239,3 +243,4 @@ class NoticeServiceImplTest {
 			.isEqualTo(GeneralErrorCode.NOT_FOUND);
 	}
 }
+*/

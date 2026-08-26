@@ -1,4 +1,4 @@
-package com.comatching.item.infra.controller;
+package com.comatching.item.infra.controller.internal;
 
 import java.util.List;
 import java.util.Map;

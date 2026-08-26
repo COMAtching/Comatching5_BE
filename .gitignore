@@ -47,6 +47,7 @@ bin/
 .claudeignore
 .claude
 .mcp.json
+AGENTS.md
 CLAUDE.md
 scripts
 .idea
