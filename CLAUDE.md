@@ -22,3 +22,5 @@ Spring 기반 MSA. 서비스는 gateway / user / matching / chat / item / notifi
 - 운영 설정(`docker-compose.prod.yml`, `application-aws.yml`)은 EC2 단일 호스트에
   6개 JVM 이 함께 뜨는 전제로 메모리 한도가 잡혀 있다. 한도를 건드리는 변경은
   전체 예산과 함께 본다.
+
+<!-- Code Review 액션 동작 확인용 임시 변경. 확인 후 닫는다. -->
