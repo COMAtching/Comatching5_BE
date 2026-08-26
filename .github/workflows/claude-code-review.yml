@@ -41,7 +41,7 @@ jobs:
           # 스킬 frontmatter 에 같은 도구가 적혀 있어도 이 줄은 남겨야 한다.
           # 액션은 claude_args 의 --allowedTools 가 이름을 대야만 인라인
           # 코멘트용 MCP 서버를 띄운다.
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
-          # TODO(임시): 액션이 SDK 출력을 가려서 실패 원인이 로그에 안 남는다.
-          # 원인 확인용으로만 켠다. 공개 저장소라 확인 즉시 되돌릴 것.
-          show_full_output: true
+          # --max-turns: 리뷰 한 건이 파일 읽기·검색·코멘트로 10~20턴을 쓴다.
+          # 상한이 낮으면 리뷰를 끝내기 전에 잘리고, 없으면 폭주할 때 멈출
+          # 지점이 없다. 실행 1회당 상한이지 하루 총량이 아니다.
+          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment" --max-turns 30'
