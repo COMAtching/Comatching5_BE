@@ -1,5 +1,7 @@
 package com.comatching.common.config;
 
+import java.time.Duration;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.openfeign.CircuitBreakerNameResolver;
 import org.springframework.context.annotation.Bean;
@@ -7,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
 import feign.RequestInterceptor;
+import feign.Retryer;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 
 @Configuration
 public class InternalFeignConfig {
@@ -36,5 +40,34 @@ public class InternalFeignConfig {
 	@Bean
 	public CircuitBreakerNameResolver feignClientCircuitBreakerNameResolver() {
 		return (feignClientName, target, method) -> feignClientName;
+	}
+
+	/**
+	 * Spring Cloud OpenFeign 기본은 NEVER_RETRY. 이 빈이 그 기본을 대체한다.
+	 * 재시도 범위·근거는 InternalGetRetryer 참고.
+	 */
+	@Bean
+	public Retryer feignRetryer() {
+		return new InternalGetRetryer();
+	}
+
+	/**
+	 * 브레이커 open/복구를 웹훅으로 알린다. 브레이커는 Feign 호출 시점에
+	 * 레지스트리에 늦게 만들어지므로, 기존 항목 순회가 아니라 onEntryAdded
+	 * 훅으로 앞으로 만들어질 브레이커 전부에 리스너를 건다.
+	 */
+	@Bean
+	public CircuitBreakerAlertNotifier circuitBreakerAlertNotifier(
+		@Value("${comatching.feign.circuit-breaker-alert-webhook-url:}") String webhookUrl,
+		@Value("${spring.application.name:unknown}") String serviceName,
+		CircuitBreakerRegistry circuitBreakerRegistry
+	) {
+		CircuitBreakerAlertNotifier notifier =
+			new CircuitBreakerAlertNotifier(webhookUrl, serviceName, Duration.ofMinutes(5));
+
+		circuitBreakerRegistry.getEventPublisher().onEntryAdded(event ->
+			event.getAddedEntry().getEventPublisher().onStateTransition(notifier::onStateTransition)
+		);
+		return notifier;
 	}
 }
