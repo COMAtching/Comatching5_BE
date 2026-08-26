@@ -12,6 +12,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -50,6 +51,7 @@ import com.comatching.matching.support.MySqlContainerSupport;
 @ContextConfiguration(classes = CandidateServiceImplIT.Config.class)
 @Import(CandidateServiceImpl.class)
 @DisplayName("CandidateService 탈퇴-갱신 순서 역전 가드")
+@Tag("integration")
 class CandidateServiceImplIT extends MySqlContainerSupport {
 
 	private static final Long MEMBER_ID = 777L;

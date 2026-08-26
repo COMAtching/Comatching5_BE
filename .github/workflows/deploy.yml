@@ -60,7 +60,7 @@ jobs:
       # bootJar(실행 가능)와 별개로 jar 태스크가 -plain.jar 를 만들 수 있어,
       # 아래 이미지 잡에서 실행 가능한 쪽을 골라낸다.
       - name: jar 빌드
-        run: ./gradlew bootJar --no-daemon
+        run: ./gradlew bootJar
 
       - name: jar 보관
         uses: actions/upload-artifact@v4

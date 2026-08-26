@@ -39,7 +39,56 @@ subprojects {
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 
-    tasks.named('test') {
-        useJUnitPlatform()
+    // 테스트를 둘로 나눈다.
+    //   test             IO 가 붙지 않는 단위 테스트. PR 게이트가 보는 것은 이쪽이다.
+    //   integrationTest  EmbeddedKafka·Testcontainers 처럼 브로커나 DB 를 실제로 띄우는 것.
+    //
+    // 가르는 기준은 @Tag("integration") 하나뿐이다. 클래스 이름(*IT)으로 나누지 않는
+    // 이유는, 이름은 리팩터링에 딸려 바뀌지만 태그는 "이 테스트가 무엇을 필요로 하는가"를
+    // 직접 적어둔 것이라 따라다니기 때문이다.
+    //
+    // 주의 - useJUnitPlatform() 을 하위 모듈에서 다시 부르면 여기서 건 excludeTags 가
+    // 통째로 리셋된다. 통합 테스트가 조용히 단위 테스트에 섞여 들어오므로 하위
+    // build.gradle 에는 이 호출을 두지 않는다.
+    tasks.named('test', Test) {
+        useJUnitPlatform {
+            excludeTags 'integration'
+        }
+
+        // maxParallelForks 는 일부러 두지 않았다. org.gradle.parallel 이 이미 모듈
+        // 7개를 동시에 돌리고 있어서 2~4코어 러너는 그것만으로 찬다. 여기에 포크를
+        // 더 쪼개면 (병렬 모듈 × 포크) 만큼 JVM 이 뜨는데, 채울 유휴 코어는 없고
+        // 포크마다 기동·클래스로딩 비용만 새로 낸다. 전체가 30초대인 스위트에서는
+        // 그 비용이 이득보다 크다.
+        //
+        // 나중에 한 모듈에만 테스트가 몰려 다른 모듈이 놀게 되면, 그때 그 모듈의
+        // build.gradle 에서만 붙이면 된다.
+    }
+
+    tasks.register('integrationTest', Test) {
+        group = 'verification'
+        description = '브로커·DB 컨테이너가 필요한 통합 테스트를 실행한다.'
+
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
+        useJUnitPlatform {
+            includeTags 'integration'
+        }
+
+        // 통합 테스트가 없는 모듈(gateway, chat, item, notification)에서도 이 태스크는
+        // 돈다. 대상이 0개라고 실패하면 CI 가 빨개지므로 끈다.
+        filter {
+            failOnNoMatchingTests = false
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        // 통과한 테스트까지 표준 출력을 흘리면 CI 로그가 수천 줄이 되고, 정작
+        // 실패했을 때 스택트레이스를 찾기 어려워진다. 볼 것만 본다.
+        testLogging {
+            events 'skipped', 'failed'
+            exceptionFormat = 'full'
+        }
     }
 }

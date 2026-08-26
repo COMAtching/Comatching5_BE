@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -33,6 +34,7 @@ import com.comatching.matching.support.MySqlContainerSupport;
 @ContextConfiguration(classes = WithdrawnMemberCleanupSchedulerIT.Config.class)
 @Import(WithdrawnMemberCleanupScheduler.class)
 @DisplayName("탈퇴 tombstone TTL 정리 배치")
+@Tag("integration")
 class WithdrawnMemberCleanupSchedulerIT extends MySqlContainerSupport {
 
 	private static final long RETENTION_DAYS = 2;

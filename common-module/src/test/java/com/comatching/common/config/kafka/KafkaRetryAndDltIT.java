@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -64,6 +65,7 @@ import org.springframework.test.context.TestPropertySource;
 	"spring.kafka.consumer.group-id=kafka-retry-dlt-it"
 })
 @DisplayName("Kafka 재시도·DLT 정책")
+@Tag("integration")
 class KafkaRetryAndDltIT {
 
 	static final String ALWAYS_FAILS_TOPIC = "retry-it-always-fails";
