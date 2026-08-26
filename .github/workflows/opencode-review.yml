@@ -50,7 +50,7 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: google/gemini-3.7-flash
+          model: google/gemini-3.5-flash
           use_github_token: true
           prompt: |
             이 PR 의 변경분(base 브랜치 대비)을 코드 리뷰해라.
