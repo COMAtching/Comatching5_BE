@@ -42,3 +42,6 @@ jobs:
           # 액션은 claude_args 의 --allowedTools 가 이름을 대야만 인라인
           # 코멘트용 MCP 서버를 띄운다.
           claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # TODO(임시): 액션이 SDK 출력을 가려서 실패 원인이 로그에 안 남는다.
+          # 원인 확인용으로만 켠다. 공개 저장소라 확인 즉시 되돌릴 것.
+          show_full_output: true

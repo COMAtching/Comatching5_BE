@@ -47,7 +47,8 @@ bin/
 .claudeignore
 .claude
 .mcp.json
-CLAUDE.md
+# CLAUDE.md 는 추적한다. 개인 메모가 아니라 팀이 공유하는 프로젝트 규칙이고,
+# PR 리뷰 액션이 매 실행마다 읽어 docs/code-review-guidelines.md 로 간다.
 scripts
 .idea
 docker-compose.yml
