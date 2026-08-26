@@ -53,6 +53,16 @@ ACCESS_TOKEN=$TOKEN ./tools/perf/smoke.sh    # 11개 전부 ✅ 여야 진행
 
 ## 3. 실행 (사용자 없는 시간대 — 게이트웨이에 rate limiter 없음)
 
+**⚠️ 부하 직전에 배포 충돌 확인 (2026-08-26 실전에서 당한 것):**
+main 에 머지가 일어나면 deploy 워크플로가 EC2 컨테이너를 통째로 재생성한다.
+부하 도중 배포가 겹치면 게이트웨이가 내려가 에러 100% — 회차 전체 폐기다.
+
+```bash
+gh run list --workflow deploy --limit 1   # in_progress 면 끝날 때까지 대기
+```
+
+부하 도는 동안(±15분) main 머지는 보류할 것.
+
 ```bash
 # [EC2] 실측 기록 시작 (부하 끝나면 Ctrl-C)
 docker stats --format "{{.Name}},{{.MemUsage}},{{.MemPerc}},{{.CPUPerc}}" >> ~/stats-$(date +%F-%H%M).csv

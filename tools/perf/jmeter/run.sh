@@ -141,9 +141,14 @@ fi
 # ---------- 4. 요약 ----------
 echo ""
 [ -f "$RUN_DIR/cpu.log" ] && tail -5 "$RUN_DIR/cpu.log"
-# Windows Git Bash 는 python3 가 스토어 스텁이라 python 으로 폴백한다
-PY=$(command -v python3 || command -v python)
-"$PY" summarize.py "$RUN_DIR/result.jtl" | tee "$RUN_DIR/summary.txt"
+# Windows Git Bash 는 python3 가 "스토어 스텁"이라 command -v 로는 못 거른다.
+# 실제로 --version 이 도는 인터프리터를 고른다. cp949 콘솔 깨짐도 막는다.
+PY=""
+for c in python3 python; do
+  if "$c" --version >/dev/null 2>&1; then PY="$c"; break; fi
+done
+[ -n "$PY" ] || { echo "❌ python 이 없습니다"; exit 1; }
+PYTHONIOENCODING=utf-8 "$PY" summarize.py "$RUN_DIR/result.jtl" | tee "$RUN_DIR/summary.txt"
 
 # ---------- 5. HTML 리포트 ----------
 echo ""
