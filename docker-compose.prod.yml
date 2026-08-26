@@ -1,0 +1,345 @@
+# ============================================================
+# 운영(EC2 단일 인스턴스, t3.large) 구성.
+#
+# 기동 방식이 둘이고, image 와 build 를 함께 적어 둔 이유가 그것이다.
+#
+#   (1) CI 배포 - GitHub Actions 가 만들어 올린 이미지를 받아 띄운다.
+#       docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+#       docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+#
+#   (2) 이 자리에서 빌드 - CI 없이 급하게 올릴 때. 소스 전체가 있어야 한다.
+#       docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# 어떤 버전이 떠 있는지는 .env.prod 의 IMAGE_TAG 가 말해준다(배포 때 CI 가 커밋
+# SHA 로 갱신한다). 되돌리려면 그 값을 예전 SHA 로 바꾸고 (1) 을 다시 하면 된다.
+#
+# MySQL 은 RDS 라 여기 없다. Redis/MongoDB/Kafka 는 이 인스턴스의 컨테이너다.
+# 외부에 여는 포트는 게이트웨이 8080 하나뿐이다 - 나머지가 호스트에 노출되면
+# 서비스들이 X-Member-* 헤더를 그대로 믿기 때문에 인증이 무의미해진다.
+# ============================================================
+name: comatching
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-app: &app
+  env_file:
+    - .env.prod
+  environment:
+    SPRING_PROFILES_ACTIVE: aws
+  restart: unless-stopped
+  networks: [comatching]
+  logging: *logging
+
+networks:
+  comatching:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  mongo-data:
+  redis-data:
+
+services:
+
+  # ---------- 인프라 ----------
+
+  # named volume 은 이미지에 없는 경로에 붙으면 root 소유로 만들어진다.
+  # apache/kafka 는 uid 1000(appuser)으로 돌아서 그대로면 로그 디렉터리에
+  # 쓰지 못하고 죽는다. 한 번만 돌고 끝나는 권한 보정이다.
+  kafka-data-init:
+    image: busybox:1.36
+    container_name: comatching-kafka-data-init
+    command: sh -c "mkdir -p /data && chown -R 1000:1000 /data && chmod -R u+rwX,g+rwX /data"
+    volumes:
+      - kafka-data:/data
+    restart: "no"
+    logging: *logging
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: comatching-kafka
+    restart: unless-stopped
+    networks: [comatching]
+    depends_on:
+      kafka-data-init:
+        condition: service_completed_successfully
+    environment:
+      # KRaft 단독 모드. broker 와 controller 를 한 프로세스가 겸하고 쿼럼은
+      # 자기 자신이다. Zookeeper 는 필요 없다(3.5 deprecated, 4.0 제거).
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # 로컬 컴포즈는 localhost:9092 를 광고한다. 그대로 쓰면 클라이언트가
+      # 부트스트랩 직후 localhost 로 리다이렉트되어 전부 실패한다.
+      # 앱들의 aws 프로파일이 kafka:29092 를 보므로 그대로 광고한다.
+      KAFKA_LISTENERS: INTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # 토픽은 kafka-topic-init 이 스펙대로 만든다. auto-create 를 켜두면
+      # 오타 난 토픽 이름이 파티션 1개짜리로 조용히 생겨 원인을 찾기 어렵다.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+      # /tmp 가 아니라 볼륨 위에 둔다. DLT 에 세워둔 메시지와 컨슈머 오프셋이
+      # 컨테이너 재생성에 살아남아야 재적재가 의미를 갖는다.
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: "-Xmx1g -Xms512m"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    mem_limit: 1280m
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    logging: *logging
+
+  # auto-create 를 껐으므로 토픽을 누가 만들지 정해야 한다.
+  # 코드가 선언하는 토픽은 member-withdraw / profile-updates(matching-service)와
+  # *.DLT 뿐이고, member-signup · matching-success-topic · chat-notification 은
+  # 아무도 선언하지 않는다. 게다가 토픽을 선언하는 서비스보다 발행하는 서비스가
+  # 먼저 뜨면 발행이 실패한다. 여기서 전부 미리 만들어 순서 문제를 없앤다.
+  kafka-topic-init:
+    image: apache/kafka:3.9.0
+    container_name: comatching-kafka-topic-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks: [comatching]
+    restart: "no"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -euo pipefail
+        T=/opt/kafka/bin/kafka-topics.sh
+        BS=kafka:29092
+        RETENTION_1D=86400000
+
+        # 파티션 수는 코드의 선언과 일치시킨다. KafkaTopicConfig 가 기동 시
+        # 파티션이 모자라면 늘리지만, 미리 맞춰두면 그 경로를 탈 일이 없다.
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic member-signup
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic matching-success-topic
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic chat-notification
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 3 --topic member-withdraw --config retention.ms=$$RETENTION_1D
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 3 --topic profile-updates --config retention.ms=$$RETENTION_1D
+
+        # DLT 는 사람이 열어 보는 저용량 토픽이라 파티션 1개.
+        # retention 은 브로커 기본(7일)을 쓴다 - 원본(1일)보다 길어야 고치고
+        # 되돌릴 시간이 남는다.
+        for t in member-signup member-withdraw profile-updates matching-success-topic chat-notification; do
+          $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic $$t.DLT
+        done
+
+        echo "=== 토픽 준비 완료 ==="
+        $$T --bootstrap-server $$BS --list
+    logging: *logging
+
+  mongodb:
+    image: mongo:7
+    container_name: comatching-mongodb
+    restart: unless-stopped
+    networks: [comatching]
+    # 인증 없이 뜬다. 컨테이너 네트워크 밖으로 포트를 열지 않는 것이 유일한
+    # 방어선이므로 ports 를 추가하지 말 것.
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    volumes:
+      - mongo-data:/data/db
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: comatching-redis
+    restart: unless-stopped
+    networks: [comatching]
+    # maxmemory-policy 가 noeviction 인 것이 중요하다. allkeys-lru 로 두면
+    # 메모리가 찰 때 액세스 토큰 denylist 키가 조용히 evict 되고, 로그아웃으로
+    # 취소한 토큰이 다시 유효해진다(액세스 토큰 만료가 24시간이라 창이 길다).
+    # noeviction 은 대신 쓰기가 실패해서 시끄럽게 드러난다.
+    # appendonly: 재기동에도 denylist·리프레시 토큰이 살아남아야 한다.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis-data:/data
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  # ---------- 애플리케이션 ----------
+
+  user-service:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/user-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: user-service
+    container_name: comatching-user-service
+    depends_on:
+      kafka-topic-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  matching-service:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/matching-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: matching-service
+    container_name: comatching-matching-service
+    depends_on:
+      kafka-topic-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 640m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9001/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  chat-service:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/chat-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: chat-service
+    container_name: comatching-chat-service
+    depends_on:
+      kafka-topic-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    mem_limit: 576m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9003/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  item-service:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/item-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: item-service
+    container_name: comatching-item-service
+    depends_on:
+      kafka-topic-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 640m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9006/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  notification:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/notification:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: notification
+    container_name: comatching-notification
+    depends_on:
+      kafka-topic-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    mem_limit: 576m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9005/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  # 마지막에 뜬다. 뒤쪽 서비스가 준비되기 전에 게이트웨이가 트래픽을 받으면
+  # 첫 요청들이 502 로 떨어진다.
+  gateway-service:
+    <<: *app
+    image: ${IMAGE_PREFIX:-ghcr.io/comatching/comatching5_be}/gateway-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: gateway-service
+    container_name: comatching-gateway
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      matching-service:
+        condition: service_healthy
+      chat-service:
+        condition: service_healthy
+      item-service:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+    # 루프백에만 바인딩한다. TLS 종단이 같은 호스트의 nginx 라서 외부가 8080 에
+    # 직접 닿을 이유가 없다. 0.0.0.0 으로 열면 보안그룹 하나가 유일한 방어선이
+    # 되는데, 뒤쪽 서비스들이 X-Member-* 헤더를 그대로 믿기 때문에 그 한 겹이
+    # 뚫리면 인증이 통째로 무의미해진다.
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s

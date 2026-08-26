@@ -25,7 +25,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: chat-service-group
-      auto-offset-reset: latest
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
@@ -68,3 +68,11 @@ management:
         spring.kafka.listener: true
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
+
+# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
+# 이 서비스가 소비하는 토픽만 적는다.
+comatching:
+  kafka:
+    dlt-topics: matching-success-topic
+    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
+    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}

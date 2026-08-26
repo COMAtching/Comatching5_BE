@@ -44,7 +44,7 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: matching-service-group
-      auto-offset-reset: latest
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
@@ -57,6 +57,17 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: ${AWS_S3_BUCKET}
+
+matching:
+  kafka:
+    # member-withdraw · profile-updates 리스너 병렬도. 상한은 파티션 수(3) —
+    # 넘는 값은 유휴 스레드만 만든다. 트래픽·인스턴스 수를 보고 조정한다.
+    candidate-listener-concurrency: 3
+  tombstone:
+    # profile-updates retention(KafkaTopicConfig, 1일)보다 길어야 한다.
+    # 근거는 WithdrawnMemberCleanupScheduler 주석 참고.
+    retention-days: 2
+    cleanup-cron: "0 0 4 * * *"
 
 jwt:
   secret: ${JWT_SECRET}
@@ -87,3 +98,11 @@ management:
         spring.kafka.listener: true
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
+
+# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
+# 이 서비스가 소비하는 토픽만 적는다.
+comatching:
+  kafka:
+    dlt-topics: member-withdraw,profile-updates
+    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
+    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}

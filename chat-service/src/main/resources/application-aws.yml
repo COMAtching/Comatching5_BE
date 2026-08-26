@@ -22,16 +22,23 @@ spring:
       host: ${REDIS_ENDPOINT}
       port: 6379
       ssl:
-        enabled: true
+        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
+        enabled: ${REDIS_SSL_ENABLED:true}
 
   kafka:
     bootstrap-servers: kafka:29092
+    admin:
+      # KafkaAdmin 은 기동 시 선언된 토픽을 만든다. 기본값(false)이면 브로커에
+      # 못 붙어도 경고만 남기고 앱이 정상 기동해서, 토픽이 없는 채로 "성공한"
+      # 배포가 되고 발행·구독이 런타임에 조용히 실패한다. true 면 그 자리에서
+      # 컨텍스트 로딩이 깨져 배포 시점에 드러난다.
+      fail-fast: true
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: chat-service-group
-      auto-offset-reset: latest
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
@@ -60,3 +67,16 @@ management:
     web:
       exposure:
         include: health
+  endpoint:
+    health:
+      # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
+      # 인증 없이 그대로 드러난다.
+      show-details: never
+
+# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
+# 이 서비스가 소비하는 토픽만 적는다.
+comatching:
+  kafka:
+    dlt-topics: matching-success-topic
+    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
+    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}

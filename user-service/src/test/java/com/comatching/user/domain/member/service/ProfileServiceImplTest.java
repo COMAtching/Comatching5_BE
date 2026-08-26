@@ -373,7 +373,6 @@ class ProfileServiceImplTest {
 
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -427,7 +426,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -450,7 +448,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -473,7 +470,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -498,7 +494,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -523,7 +518,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -546,7 +540,6 @@ class ProfileServiceImplTest {
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -566,7 +559,6 @@ class ProfileServiceImplTest {
 
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -588,7 +580,6 @@ class ProfileServiceImplTest {
 
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
@@ -609,7 +600,6 @@ class ProfileServiceImplTest {
 
 			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendUpdateEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);

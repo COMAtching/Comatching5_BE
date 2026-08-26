@@ -1,0 +1,32 @@
+# MySQL 을 Grafana 에 직접 붙인다.
+#
+# == 왜 mysqld_exporter 가 아니라 직접 붙이나 ==
+# 우리가 보려는 건 performance_schema.events_statements_summary_by_digest 의
+# "이번 벤치 실행 한 번"에 대한 분해다. exporter 는 이걸 시계열 카운터로 바꾸는데,
+# 스냅샷 표를 보려는 목적엔 오히려 한 단계 멀어진다.
+# (부하 테스트 중 MySQL 상태를 시계열로 보려면 그때 exporter 를 따로 붙인다.)
+#
+# == 접속 경로 ==
+# MySQL 은 docker-compose.local.yml, Grafana 는 docker-compose.monitoring.yml 이라
+# 네트워크가 분리돼 있다. 그래서 컨테이너 이름이 아니라 호스트를 거쳐 간다.
+# 호스트 공개 포트가 3306 이 아니라 3307 인 점에 주의.
+#
+# 비밀번호는 .env 의 MYSQL_ROOT_PASSWORD 를 docker-compose 가 컨테이너에 넣어주고,
+# Grafana 가 프로비저닝 파일에서 $VAR 를 확장한다. 파일에 평문으로 박지 않는다.
+apiVersion: 1
+
+datasources:
+  - name: MySQL
+    type: mysql
+    uid: mysql
+    url: host.docker.internal:3307
+    user: root
+    database: performance_schema
+    isDefault: false
+    editable: false
+    secureJsonData:
+      password: $MYSQL_ROOT_PASSWORD
+    jsonData:
+      maxOpenConns: 4
+      maxIdleConns: 2
+      connMaxLifetime: 14400
