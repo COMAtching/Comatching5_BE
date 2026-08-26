@@ -19,6 +19,12 @@ Spring 기반 MSA. 서비스는 gateway / user / matching / chat / item / notifi
 - **서비스 경계를 넘는 변경은 하위 호환성을 특히 주의해서 본다** —
   `common-module` 의 DTO, 서비스 간 내부 API, Kafka 이벤트 스키마는
   배포 순서가 어긋나는 순간 깨진다.
+  - **단, PR 자동 리뷰(`claude-code-review.yml`)는 diff 에 나온 코드만 보고
+    끝낸다.** 다른 서비스로 건너가 소비 코드를 찾아 읽는 하위 호환성
+    분석은 턴·시간을 크게 늘린다 — diff 가 `common-module`/내부 API/Kafka
+    스키마를 건드리면 자동 리뷰는 코멘트에 "cross-service 영향 확인 필요"
+    한 줄만 남기고, 실제 분석은 PR 코멘트에 `@claude` 로 명시적으로
+    요청했을 때(`claude.yml`)만 수행한다.
 - 운영 설정(`docker-compose.prod.yml`, `application-aws.yml`)은 EC2 단일 호스트에
   6개 JVM 이 함께 뜨는 전제로 메모리 한도가 잡혀 있다. 한도를 건드리는 변경은
   전체 예산과 함께 본다.

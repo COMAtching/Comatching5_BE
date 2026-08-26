@@ -3,6 +3,12 @@
 #
 #   @claude ChatRoomPresenceTracker 가 동시성 안전한지 봐줘
 #   @claude 이 테스트 깨지는 원인 찾아줘
+#
+# common-module/내부 API/Kafka 스키마처럼 서비스 경계를 넘는 변경의 하위
+# 호환성 분석은 여기서 한다. claude-code-review.yml 은 diff 만 보는 얕은
+# 리뷰라 그 분석을 하지 않고, 대신 이 워크플로를 부르라는 코멘트만 남긴다.
+#
+#   @claude 이 PR 의 common-module 변경이 다른 서비스에 미치는 영향 봐줘
 name: Claude Code
 
 on:
