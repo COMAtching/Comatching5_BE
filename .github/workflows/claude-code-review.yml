@@ -47,6 +47,13 @@ jobs:
             리뷰는 이 턴 안에서 끝낸다. 서브에이전트를 백그라운드로 띄우고
             완료 알림을 기다리지 마라 - Actions 에는 알림을 받을 루프가 없어
             프로세스가 그대로 죽는다.
+
+            이 자동 리뷰는 diff 에 나온 코드만 본다. common-module 등
+            diff 밖의 다른 서비스로 건너가 소비 코드를 찾아 읽는 하위 호환성
+            분석은 하지 마라 - 시간이 몇 배로 늘어난다. diff 가
+            common-module 의 DTO, 서비스 간 내부 API, Kafka 이벤트 스키마를
+            건드린다면, 그 분석 대신 코멘트에 "cross-service 영향 확인이
+            필요합니다 - `@claude` 로 수동 리뷰를 요청하세요" 한 줄만 남겨라.
           # allowedTools 는 화이트리스트다. 목록에 없는 도구는 permissionMode
           # default + 비대화형 조합에서 그대로 거부된다.
           # - Skill: 없으면 /code-review 스킬 본체가 로드되지 못한다. 모델은
