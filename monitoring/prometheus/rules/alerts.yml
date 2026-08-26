@@ -1,0 +1,61 @@
+# 알림의 기준: "이게 울리면 하던 일을 멈춰야 하나".
+# critical = 예(지금 본다), warning = 아니오(오늘 안에 본다).
+groups:
+  - name: comatching
+    rules:
+      - alert: ServiceDown
+        expr: up{job="comatching-services"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.service }} 스크레이프 실패 2분"
+          description: "컨테이너가 죽었거나 actuator 가 응답하지 않는다. docker compose ps 부터 본다."
+
+      - alert: HighErrorRate
+        expr: >
+          sum by (service) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum by (service) (rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.service }} 5xx 비율 5% 초과 5분"
+          description: "값: {{ $value | humanizePercentage }}. 해당 서비스 로그부터 본다."
+
+      - alert: JvmHeapHigh
+        expr: >
+          sum by (service) (jvm_memory_used_bytes{area="heap"})
+            / sum by (service) (jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.service }} 힙 90% 초과 10분"
+          description: "OOMKill(-XX:+ExitOnOutOfMemoryError 로 즉사·재시작) 전조다."
+
+      - alert: KafkaConsumerLag
+        expr: kafka_consumer_fetch_manager_records_lag_max > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "컨슈머 lag 1000 초과 10분"
+          description: "{{ $labels.service }} 의 컨슈머가 밀리고 있다. DLT 적재 여부도 확인."
+
+      - alert: DiskSpaceLow
+        expr: >
+          1 - node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"} > 0.85
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "루트 디스크 85% 초과"
+          description: "docker image prune, Prometheus retention, 로그부터 의심한다."
+
+      # memswap_limit 핀 때문에 컨테이너는 스왑을 못 쓴다. 스왑이 실제로
+      # 쓰인다는 것은 호스트(sshd, docker 데몬 등)가 메모리 압박을 받고
+      # 있다는 뜻이다 - mem_limit 합 7,040m / 7.7GiB 예산의 조기 경보.
+      - alert: SwapInUse
+        expr: node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes > 256 * 1024 * 1024
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "호스트 스왑 사용 256MB 초과 10분"
+          description: "컨테이너 mem_limit 합이 호스트를 압박하고 있다. spec 4.1 의 완화 순서대로."

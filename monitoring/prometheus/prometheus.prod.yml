@@ -1,0 +1,43 @@
+# 운영(EC2) 전용. 로컬 prometheus.yml 과 두 가지가 다르다.
+#   - 같은 컴포즈 네트워크 안이라 host.docker.internal 이 아니라 컨테이너
+#     이름으로 간다.
+#   - 15s 간격. 5s 는 짧은 부하 테스트에서 데이터 포인트를 확보하려던
+#     값이라 상시 운영에는 과하다(TSDB 쓰기량과 카디널리티가 3배).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: comatching-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      # 게이트웨이만 관리 포트가 8081 이다. 8080 은 nginx 뒤로 외부에
+      # 노출되는 포트라 actuator 를 그쪽에 열 수 없다(application-aws.yml).
+      - targets: ['gateway-service:8081']
+        labels: { service: gateway-service }
+      - targets: ['user-service:9000']
+        labels: { service: user-service }
+      - targets: ['matching-service:9001']
+        labels: { service: matching-service }
+      - targets: ['chat-service:9003']
+        labels: { service: chat-service }
+      - targets: ['notification:9005']
+        labels: { service: notification }
+      - targets: ['item-service:9006']
+        labels: { service: item-service }
+
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

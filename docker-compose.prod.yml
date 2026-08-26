@@ -42,6 +42,8 @@ volumes:
   kafka-data:
   mongo-data:
   redis-data:
+  prometheus-data:
+  grafana-data:
 
 services:
 
@@ -95,6 +97,9 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     mem_limit: 1280m
+    # 힙(-Xmx1g) 밖 페이지캐시가 잠깐 넘칠 때를 위한 여유 256m. JVM 앱들과
+    # 달리 약간의 스왑은 허용하되 무제한(기본값: mem_limit 의 2배)은 막는다.
+    memswap_limit: 1536m
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 >/dev/null 2>&1"]
       interval: 10s
@@ -154,6 +159,8 @@ services:
     volumes:
       - mongo-data:/data/db
     mem_limit: 768m
+    # WiredTiger 캐시(0.25GB) 밖 워킹셋이 잠깐 넘칠 때를 위한 여유 128m.
+    memswap_limit: 896m
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -185,6 +192,9 @@ services:
     volumes:
       - redis-data:/data
     mem_limit: 320m
+    # AOF rewrite 가 fork 하며 copy-on-write 로 페이지를 복제한다. 그 순간
+    # 페이지가 스왑에 있으면 지연이 폭발하므로 스왑 사용을 0 으로 못박는다.
+    memswap_limit: 320m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -209,6 +219,13 @@ services:
       redis:
         condition: service_healthy
     mem_limit: 768m
+    # mem_limit 과 같은 값 = 스왑 사용 0. memswap_limit 을 생략하면 docker 가
+    # memory+swap 을 mem_limit 의 2배로 잡아서, 호스트에 스왑이 생기는 순간
+    # 실효 상한이 조용히 두 배가 된다. JVM 은 full GC 가 힙 전체를 훑으므로
+    # 스왑에 밀린 페이지를 EBS 에서 되읽으면 GC 한 번이 수십 초가 된다.
+    # 지금처럼 자기 한도에서 OOMKill 로 시끄럽게 죽는 편이 낫다
+    # (Dockerfile 의 -XX:+ExitOnOutOfMemoryError 와 같은 철학).
+    memswap_limit: 768m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9000/actuator/health"]
       interval: 15s
@@ -231,6 +248,7 @@ services:
       redis:
         condition: service_healthy
     mem_limit: 640m
+    memswap_limit: 640m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9001/actuator/health"]
       interval: 15s
@@ -255,6 +273,7 @@ services:
       mongodb:
         condition: service_healthy
     mem_limit: 576m
+    memswap_limit: 576m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9003/actuator/health"]
       interval: 15s
@@ -277,6 +296,7 @@ services:
       redis:
         condition: service_healthy
     mem_limit: 640m
+    memswap_limit: 640m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9006/actuator/health"]
       interval: 15s
@@ -299,6 +319,7 @@ services:
       redis:
         condition: service_healthy
     mem_limit: 576m
+    memswap_limit: 576m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9005/actuator/health"]
       interval: 15s
@@ -337,9 +358,109 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     mem_limit: 512m
+    memswap_limit: 512m
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      # 관리 포트가 8081 로 분리됐다 (application-aws.yml 참고).
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 90s
+
+  # ---------- 모니터링 ----------
+  # 넷 다 comatching 네트워크 안이다. 호스트에 여는 건 grafana 의
+  # 127.0.0.1:3001 하나뿐이고, 보는 방법은 SSH 터널이다:
+  #   ssh -L 3001:localhost:3001 <user>@<EC2>
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: comatching-prometheus
+    restart: unless-stopped
+    networks: [comatching]
+    volumes:
+      - ./monitoring/prometheus/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 시간과 크기 중 먼저 걸리는 쪽이 이긴다. 디스크가 차서 죽는 것보다
+      # 오래된 데이터를 버리는 게 낫다.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+    mem_limit: 512m
+    memswap_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: comatching-alertmanager
+    restart: unless-stopped
+    networks: [comatching]
+    volumes:
+      # 실제 파일은 EC2 에서 example 을 복사해 만든다(웹훅 URL 이 비밀값).
+      # 없으면 이 마운트가 실패하므로, 만들기 전에는 이 서비스가 뜨지 않는다.
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    mem_limit: 128m
+    memswap_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: comatching-grafana
+    restart: unless-stopped
+    networks: [comatching]
+    # 루프백에만 바인딩한다. 게이트웨이 8080 과 같은 이유 - 보는 방법은
+    # SSH 터널뿐이고, 외부에 열면 보안그룹 한 겹이 유일한 방어선이 된다.
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # 로컬 스택은 익명 Viewer 를 켜뒀지만 운영은 터널 너머라도 계정을
+      # 요구한다. 터널 포트를 실수로 0.0.0.0 에 열었을 때의 마지막 겹이다.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_DEFAULT_THEME: dark
+    volumes:
+      - ./monitoring/grafana/provisioning-prod:/etc/grafana/provisioning:ro
+      # baseline 만 올린다. loadtest 는 influxdb, mysql-queries 는 mysql
+      # 데이터소스를 참조해 운영에서 패널이 깨진다.
+      - ./monitoring/grafana/dashboards/comatching-baseline.json:/var/lib/grafana/dashboards/comatching-baseline.json:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    mem_limit: 256m
+    memswap_limit: 256m
+    logging: *logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: comatching-node-exporter
+    restart: unless-stopped
+    networks: [comatching]
+    # 호스트 지표(CPU·메모리·디스크·스왑)를 읽어야 해서 이 컨테이너만
+    # 예외적으로 호스트 네임스페이스를 본다. 전부 읽기 전용이다.
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|var/lib/docker/.+)($$|/)
+    mem_limit: 64m
+    memswap_limit: 64m
+    logging: *logging
