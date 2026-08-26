@@ -32,6 +32,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # 키가 실제로 러너까지 도달했는지 확인한다. 값은 찍지 않고 길이만 본다.
+      - name: GEMINI_API_KEY 확인
+        env:
+          K: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$K" ]; then echo "!! GEMINI_API_KEY 가 비어 있다"; exit 1; fi
+          echo "GEMINI_API_KEY 길이: ${#K}"
+
       - uses: anomalyco/opencode/github@latest
         env:
           # opencode 는 자격증명이 감지된 provider 만 로드한다. models.dev 가
