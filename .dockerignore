@@ -8,6 +8,26 @@
 .gradle
 build
 **/build
+
+# Gradle 빌드 설정을 이미지 빌드 컨텍스트에서 뺀다.
+#
+# 이 파일의 값(병렬 실행, 힙 2g)은 CI 러너와 개발 PC 를 상대로 잡은 것이다.
+# 그런데 Dockerfile 의 빌드 스테이지는 컨텍스트 루트에서 ./gradlew bootJar 를
+# 돌리므로, 그냥 두면 그 값이 여기까지 따라 들어온다.
+#
+# 문제는 이 빌드 스테이지를 쓰는 곳이 어디냐다. CI 배포는 Dockerfile.ci 로
+# 미리 만든 jar 만 복사하니 Gradle 을 돌리지 않는다. 이 스테이지가 실제로
+# 도는 경로는 docker-compose.prod.yml 이 문서화한 두 번째 기동
+# ("CI 없이 급하게 올릴 때" up -d --build) 하나뿐이고, 그건 운영 EC2
+# (t3.large, 8GB) 위에서 돈다. compose 의 mem_limit 합이 7040m(6.88GiB)라
+# 여유가 1GB 남짓인데, 하필 장애 대응으로 그 경로를 탈 때 이미 떠 있는
+# 서비스 JVM 들과 메모리를 다투게 된다.
+#
+# CLAUDE.md 가 "운영 설정은 EC2 단일 호스트에 6개 JVM 이 함께 뜨는 전제로
+# 메모리 한도가 잡혀 있다"고 못박은 예산이 그것이다. 여기서는 Gradle 기본값
+# (보수적인 힙, 순차 실행)으로 빌드하게 둔다 - 이 경로에서 아껴야 할 것은
+# 빌드 시간이 아니라 메모리다.
+gradle.properties
 .idea
 .vscode
 .claude
