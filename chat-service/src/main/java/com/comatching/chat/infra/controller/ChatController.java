@@ -1,6 +1,7 @@
 package com.comatching.chat.infra.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.listener.ChannelTopic;
@@ -59,13 +60,19 @@ public class ChatController {
 		@Payload ChatMessageRequest request,
 		SimpMessageHeaderAccessor headerAccessor) {
 
-		Long memberId = (Long)headerAccessor.getSessionAttributes().get("memberId");
-		String nickname = headerAccessor.getSessionAttributes().get("nickname").toString();
+		Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
+		Long memberId = (sessionAttributes == null) ? null : (Long)sessionAttributes.get("memberId");
 
 		if (memberId == null) {
 			log.error("인증되지 않은 사용자의 접근입니다.");
 			return;
 		}
+
+		// 닉네임은 알림 미리보기에만 쓴다. 프로필 완성 전에 발급된 토큰에는
+		// nickname 클레임이 없어서 게이트웨이가 헤더를 안 보내는데, 예전에는
+		// 여기서 바로 NPE 가 나 전송 자체가 죽었다.
+		Object rawNickname = sessionAttributes.get("nickname");
+		String nickname = (rawNickname == null) ? "" : rawNickname.toString();
 
 		ChatMessageRequest securedRequest = new ChatMessageRequest(
 			request.roomId(),
@@ -94,5 +101,18 @@ public class ChatController {
 
 		List<ChatMessageResponse> messages = chatService.getChatHistory(roomId, memberInfo.memberId(), pageable);
 		return ResponseEntity.ok(ApiResponse.ok(messages));
+	}
+
+	// 읽음 처리의 REST 경로. WebSocket 이 아직 안 붙었거나 끊긴 채로 방을 열면
+	// 히스토리는 HTTP 로 읽히는데 읽음은 기록될 길이 없었다. READ 는 WS 때와
+	// 같이 Redis 로 발행해 상대 화면의 "1" 도 같이 지운다.
+	@PostMapping("/api/chat/rooms/{roomId}/read")
+	public ResponseEntity<ApiResponse<Void>> markAsRead(
+		@PathVariable String roomId,
+		@CurrentMember MemberInfo memberInfo) {
+
+		ChatMessageResponse readResponse = chatService.markAsRead(roomId, memberInfo.memberId());
+		redisPublisher.publish(topic, readResponse);
+		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

@@ -62,4 +62,18 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
 		UpdateResult result = mongoTemplate.updateFirst(query, update, ChatRoom.class);
 		return result.getMatchedCount() > 0;
 	}
+
+	// 활성화만 따로 떼어낸 이유: 요약 갱신(updateLastMessageIfLatest)이 활성화를
+	// 겸하는데, 차단된 상대에게 보낸 메시지는 요약을 갱신하지 않아 방이 영구
+	// WAITING 으로 남았다. 차단이 풀린 뒤에도 target 에게 방이 보이려면
+	// 활성화는 요약과 독립적으로 일어나야 한다.
+	@Override
+	public boolean activateRoom(String roomId) {
+		UpdateResult result = mongoTemplate.updateFirst(
+			Query.query(Criteria.where("_id").is(roomId).and("status").is(ChatRoomStatus.WAITING)),
+			new Update().set("status", ChatRoomStatus.ACTIVE),
+			ChatRoom.class
+		);
+		return result.getModifiedCount() > 0;
+	}
 }
