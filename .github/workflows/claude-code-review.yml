@@ -61,6 +61,3 @@ jobs:
           # 상한이 낮으면 리뷰를 끝내기 전에 잘리고, 없으면 폭주할 때 멈출
           # 지점이 없다. 실행 1회당 상한이지 하루 총량이 아니다.
           claude_args: '--allowedTools "Skill,Bash,Read,Glob,Grep,Agent,mcp__github_inline_comment__create_inline_comment" --max-turns 30'
-          # 리뷰가 또 조용히 죽으면 로그에서 원인을 봐야 한다. 이 설정으로
-          # 몇 번 정상 동작하는 걸 확인하면 다시 지운다(기본값 false).
-          show_full_output: true
