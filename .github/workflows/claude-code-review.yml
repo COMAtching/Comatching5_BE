@@ -1,0 +1,44 @@
+# PR 이 열리거나 갱신될 때 Claude 가 자동으로 코드 리뷰를 남긴다.
+#
+# 리뷰 기준은 CLAUDE.md 가 가리키는 docs/code-review-guidelines.md 한 곳에서
+# 관리한다 - 프롬프트에 기준을 복붙해 두면 워크플로와 문서가 따로 논다.
+#
+# 수동 호출(코멘트에 @claude)은 claude.yml 이 담당한다.
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# 같은 PR 에 연속으로 푸시하면 이전 리뷰는 취소한다. synchronize 가 푸시마다
+# 발화하므로, 없으면 커밋 3개를 연달아 밀 때 리뷰를 3번 돌린다.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      # 액션의 기본 GitHub App 인증에 필요하다.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # API 크레딧이 아니라 Claude 구독으로 돌린다.
+          # 토큰은 `claude setup-token` 으로 만든다.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          # 스킬 frontmatter 에 같은 도구가 적혀 있어도 이 줄은 남겨야 한다.
+          # 액션은 claude_args 의 --allowedTools 가 이름을 대야만 인라인
+          # 코멘트용 MCP 서버를 띄운다.
+          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
