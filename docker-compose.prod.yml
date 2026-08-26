@@ -101,11 +101,20 @@ services:
     # 달리 약간의 스왑은 허용하되 무제한(기본값: mem_limit 의 2배)은 막는다.
     memswap_limit: 1536m
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 >/dev/null 2>&1"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 30s
+      # 예전엔 kafka-broker-api-versions.sh 였는데, 이 스크립트는 호출마다
+      # JVM 을 새로 띄워 한 번에 3~6초를 태운다. interval 10s 와 만나면
+      # 브로커 컨테이너가 유휴 상태에서도 시간의 30~40%를 헬스체크에 쓴다
+      # (2026-08-26 실측 — 2 vCPU 호스트 유휴 CPU 버스트의 주범).
+      # TCP 접속 확인으로 바꾼다. 브로커는 기동 마지막에 리스너를 열므로
+      # 포트가 열렸다 = 요청을 받는다이고, 이 헬스체크의 소비자는
+      # compose 기동 순서(kafka-topic-init·앱들의 depends_on)뿐이다.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka/29092"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+      # 기동 중에만 2초 간격으로 촘촘히 본다(engine 25+). 안정 상태는 30s.
+      start_interval: 2s
     logging: *logging
 
   # auto-create 를 껐으므로 토픽을 누가 만들지 정해야 한다.
@@ -162,11 +171,16 @@ services:
     # WiredTiger 캐시(0.25GB) 밖 워킹셋이 잠깐 넘칠 때를 위한 여유 128m.
     memswap_limit: 896m
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
+      # mongosh 는 Node.js 앱이라 호출마다 콜드스타트로 ~1초를 태운다.
+      # interval 10s 면 유휴 CPU 의 ~10%를 헬스체크가 먹는다 (2026-08-26 실측).
+      # mongod 는 스토리지 초기화가 끝난 뒤에야 리스너를 열므로
+      # TCP 접속 성공이 곧 준비됐다는 신호다.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/27017"]
+      interval: 30s
       timeout: 5s
-      retries: 20
-      start_period: 20s
+      retries: 10
+      start_period: 30s
+      start_interval: 2s
     logging: *logging
 
   redis:
