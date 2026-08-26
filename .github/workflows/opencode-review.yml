@@ -34,7 +34,12 @@ jobs:
 
       - uses: anomalyco/opencode/github@latest
         env:
+          # opencode 는 자격증명이 감지된 provider 만 로드한다. models.dev 가
+          # Google provider 에 등록해 둔 키 이름 세 가지를 모두 채워, 런타임이
+          # 어느 이름을 보든 google provider 가 켜지게 한다.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           model: google/gemini-3.7-flash
