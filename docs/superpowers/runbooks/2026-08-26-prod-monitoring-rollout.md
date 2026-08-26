@@ -75,7 +75,8 @@ ssh -L 3001:localhost:3001 <user>@43.200.211.135
 ## 7. 외부 업타임 감시
 
 UptimeRobot 등에서 웹으로 등록 (EC2 작업 없음):
-- URL: `https://srv.comatching.site/actuator/health`, 주기 5분
+- URL: `https://srv.comatching.site/api/auth/participants`, 주기 5분
+  (actuator 는 관리 포트 8081 로 분리되어 외부에서 404 다 — 공개 엔드포인트로 감시한다)
 - 알림: 인프라 디스코드 채널
 
 ## 8. 부하 테스트 (spec 7.2)

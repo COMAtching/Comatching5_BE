@@ -77,9 +77,10 @@ fi
 
 # 메모리. 1회차를 통째로 날린 진짜 원인이 여기였다 — CPU 100% 는 결과였고,
 # 원인은 8GB 맥에서 압축 메모리 3.3GB / 스왑 5.9GB 로 스래싱이 난 것이었다.
-JVMS=$(pgrep -f 'build/libs/.*\.jar' | wc -l | tr -d ' ')
+# pgrep/sysctl 은 macOS/리눅스 전용 — 없는 호스트(Windows Git Bash)에서는 건너뛴다
+JVMS=$( (pgrep -f 'build/libs/.*\.jar' 2>/dev/null || true) | wc -l | tr -d ' ')
 CONTAINERS=$(docker ps --format '{{.Names}}' | wc -l | tr -d ' ')
-SWAP_USED=$(sysctl -n vm.swapusage | sed -n 's/.*used = \([0-9.]*\)M.*/\1/p')
+SWAP_USED=$( (sysctl -n vm.swapusage 2>/dev/null || true) | sed -n 's/.*used = \([0-9.]*\)M.*/\1/p')
 echo "ℹ️  JVM $JVMS개 / 컨테이너 $CONTAINERS개 / 스왑 사용 ${SWAP_USED:-?}M"
 
 if docker ps --format '{{.Names}}' | grep -qE 'comatching-(kafka|mongo)'; then
@@ -95,11 +96,18 @@ fi
 
 # ---------- 2. CPU 샘플러 ----------
 echo ""
-../cpu_sampler.sh "$RUN_DIR/cpu.csv" 0 > "$RUN_DIR/cpu.log" 2>&1 &
-SAMPLER_PID=$!
-# 스크립트가 어떻게 끝나든(Ctrl-C 포함) 샘플러는 반드시 정리한다
-trap 'kill "$SAMPLER_PID" 2>/dev/null || true' EXIT
-echo "🖥️  CPU 샘플러 시작 (pid $SAMPLER_PID)"
+SAMPLER_PID=""
+if [ "$(uname -s)" = "Darwin" ]; then
+  ../cpu_sampler.sh "$RUN_DIR/cpu.csv" 0 > "$RUN_DIR/cpu.log" 2>&1 &
+  SAMPLER_PID=$!
+  # 스크립트가 어떻게 끝나든(Ctrl-C 포함) 샘플러는 반드시 정리한다
+  trap 'kill "$SAMPLER_PID" 2>/dev/null || true' EXIT
+  echo "🖥️  CPU 샘플러 시작 (pid $SAMPLER_PID)"
+else
+  # sampler 는 macOS 전용(sysctl/top). 부하기와 대상이 다른 호스트면
+  # 70% 폐기 기준의 대상은 부하기 CPU 뿐이므로 작업관리자로 관찰한다.
+  echo "ℹ️  cpu_sampler 는 macOS 전용 — 이 호스트에서는 건너뜀"
+fi
 
 # ---------- 3. JMeter ----------
 # 1회차엔 -Xmx2g 였는데, 8GB 맥에서는 부하기가 대상의 메모리를 뺏는 셈이었다.
@@ -120,9 +128,11 @@ jmeter -n -t "$PLAN" \
 JM_RC=$?
 set -e
 
-kill "$SAMPLER_PID" 2>/dev/null || true
-wait "$SAMPLER_PID" 2>/dev/null || true
-trap - EXIT
+if [ -n "$SAMPLER_PID" ]; then
+  kill "$SAMPLER_PID" 2>/dev/null || true
+  wait "$SAMPLER_PID" 2>/dev/null || true
+  trap - EXIT
+fi
 
 if [ "$JM_RC" -ne 0 ]; then
   echo "⚠️  JMeter 종료 코드 $JM_RC — $RUN_DIR/jmeter.log 를 확인하세요."
@@ -130,8 +140,15 @@ fi
 
 # ---------- 4. 요약 ----------
 echo ""
-cat "$RUN_DIR/cpu.log" | tail -5
-python3 summarize.py "$RUN_DIR/result.jtl" | tee "$RUN_DIR/summary.txt"
+[ -f "$RUN_DIR/cpu.log" ] && tail -5 "$RUN_DIR/cpu.log"
+# Windows Git Bash 는 python3 가 "스토어 스텁"이라 command -v 로는 못 거른다.
+# 실제로 --version 이 도는 인터프리터를 고른다. cp949 콘솔 깨짐도 막는다.
+PY=""
+for c in python3 python; do
+  if "$c" --version >/dev/null 2>&1; then PY="$c"; break; fi
+done
+[ -n "$PY" ] || { echo "❌ python 이 없습니다"; exit 1; }
+PYTHONIOENCODING=utf-8 "$PY" summarize.py "$RUN_DIR/result.jtl" | tee "$RUN_DIR/summary.txt"
 
 # ---------- 5. HTML 리포트 ----------
 echo ""
