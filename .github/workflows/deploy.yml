@@ -172,11 +172,13 @@ jobs:
             # --no-build: EC2 에서 소스를 빌드하지 않는다. 이미지는 이미 만들어져 있다.
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
 
-            # 배포마다 서비스 6개의 이미지가 새로 쌓인다. prune -f 는 태그
-            # 없는 것만 지우는데, 옛 커밋 SHA 이미지는 태그가 붙어 있어 그대로
-            # 남는다. -a 로 "컨테이너가 쓰지 않는 것"까지 대상에 넣되, 72시간은
-            # 남겨 최근 버전으로 되돌릴 여지를 둔다.
-            docker image prune -af --filter "until=72h"
+            # 배포마다 서비스 6개의 이미지(~3GB 세트)가 새로 쌓인다. prune -f 는
+            # 태그 없는 것만 지우는데, 옛 커밋 SHA 이미지는 태그가 붙어 있어
+            # 그대로 남는다. -a 로 "컨테이너가 쓰지 않는 것"을 전부 지운다.
+            # 예전엔 until=72h 로 롤백 여지를 뒀지만, 머지가 잦은 날 세대가
+            # 쌓여 29GB 디스크가 가득 차 배포 자체가 죽었다(2026-08-26).
+            # 롤백은 GHCR 에 남아 있는 이미지를 다시 pull 하면 된다.
+            docker image prune -af
 
       - name: 상태 확인
         uses: appleboy/ssh-action@v1
