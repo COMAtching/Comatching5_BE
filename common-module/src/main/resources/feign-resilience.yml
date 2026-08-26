@@ -7,9 +7,12 @@
 # OpenFeign 기본값(connect 10s / read 60s)은 피호출 서비스가 멈추면
 # 호출 서비스의 톰캣 스레드를 60초씩 붙잡아 장애를 그대로 전파한다.
 #
-# 주의: OpenFeign 은 한 config 블록에 connect-timeout 과 read-timeout 이
-# 둘 다 있어야 적용한다. 클라이언트별 항목에서 하나만 바꾸더라도
-# 두 값을 모두 적는다. (키는 @FeignClient 의 name/contextId, 단위 ms)
+# 두 값은 항목별로 독립 상속된다. FeignClientFactoryBean 은 default 블록을
+# 먼저 적용해 필드를 채운 뒤 클라이언트별 블록을 덧씌우는데, 클라이언트
+# 블록에 없는 항목은 앞 단계 값을 그대로 유지한다 —
+# read-timeout 만 적어도 connect 는 default 의 1s 가 남는다.
+# 아래에서 항목마다 두 값을 다 적는 건 유효 타임아웃을 한눈에 읽기 위한
+# 관례일 뿐 동작상 필수는 아니다. (키는 @FeignClient 의 name/contextId, 단위 ms)
 spring:
   cloud:
     openfeign:

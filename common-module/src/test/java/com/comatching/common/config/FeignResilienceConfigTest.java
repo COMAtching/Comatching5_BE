@@ -47,9 +47,11 @@ class FeignResilienceConfigTest {
 	@Test
 	@DisplayName("모든 클라이언트 항목은 connect·read 타임아웃을 둘 다 가진다")
 	void everyEntryHasBothTimeouts() throws IOException {
-		// OpenFeign 은 한 config 블록에 두 타임아웃이 모두 있어야 Options 를
-		// 만든다. 하나만 적힌 항목은 그 블록 전체가 무시되어 기본 60s 로
-		// 조용히 돌아가므로, 항목을 추가·수정할 때의 회귀를 여기서 막는다.
+		// 동작상 필수는 아니다 — FeignClientFactoryBean 은 default 블록을 먼저
+		// 적용한 뒤 클라이언트 블록을 덧씌우고, 없는 항목은 앞 단계 값을 그대로
+		// 유지하므로 read-timeout 만 적어도 connect 는 default 의 1s 가 남는다.
+		// 그래도 항목마다 두 값을 다 적게 강제하는 건, 유효 타임아웃을 상속을
+		// 머릿속으로 계산하지 않고 그 줄에서 바로 읽기 위해서다.
 		load().getConfig().forEach((name, config) -> {
 			assertThat(config.getConnectTimeout())
 				.as("%s 의 connect-timeout", name).isNotNull();
