@@ -5,11 +5,9 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.item.domain.admin.dto.AdminInventoryAction;
 import com.comatching.item.domain.admin.dto.AdminInventoryUpdateRequest;
 import com.comatching.item.domain.item.entity.Item;
@@ -26,15 +24,13 @@ import lombok.RequiredArgsConstructor;
 public class AdminInventoryAdjustmentService {
 
 	private static final LocalDateTime NO_EXPIRATION = LocalDateTime.of(2099, 12, 31, 23, 59, 59);
-	private static final int MAX_REASON_LENGTH = 255;
 
 	private final ItemRepository itemRepository;
 	private final ItemHistoryService historyService;
 
+	// request 검증은 이 파이프라인의 첫 단계인 AdminInventoryDedupeService.reserveOrThrow에서 이미 끝난 상태로 호출된다
 	@DistributedLock(key = "item:inventory", identifier = "#memberId + ':' + #request.itemType()", leaseTime = 10L)
 	public void adjust(Long adminId, Long memberId, AdminInventoryUpdateRequest request) {
-		validateRequest(request);
-
 		if (request.action() == AdminInventoryAction.ADD) {
 			addInventory(memberId, request);
 			saveAdminHistory(adminId, memberId, request, request.quantity());
@@ -84,12 +80,5 @@ public class AdminInventoryAdjustmentService {
 			quantity,
 			"관리자 조정(adminId=" + adminId + "): " + request.reason()
 		);
-	}
-
-	private void validateRequest(AdminInventoryUpdateRequest request) {
-		if (request == null || request.itemType() == null || request.action() == null || request.quantity() <= 0
-			|| !StringUtils.hasText(request.reason()) || request.reason().length() > MAX_REASON_LENGTH) {
-			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE);
-		}
 	}
 }

@@ -26,6 +26,9 @@ dependencies {
 	// Kafka
 	implementation 'org.springframework.kafka:spring-kafka'
 
+	// Feign - 기본 HttpURLConnection 클라이언트는 PATCH를 지원하지 않아 hc5로 교체
+	implementation 'io.github.openfeign:feign-hc5'
+
 	// Mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'

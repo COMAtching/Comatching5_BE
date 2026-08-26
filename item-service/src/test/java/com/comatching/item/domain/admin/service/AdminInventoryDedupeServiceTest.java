@@ -37,6 +37,9 @@ class AdminInventoryDedupeServiceTest {
 	@Mock
 	private RBucket<String> bucket;
 
+	@Mock
+	private AdminInventoryRequestValidator requestValidator;
+
 	@Test
 	@DisplayName("동일 조정 요청을 3초 TTL 키로 예약한다")
 	void shouldReserveDedupeKeyWithTtl() {

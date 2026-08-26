@@ -1,4 +1,4 @@
-package com.comatching.item.infra.controller;
+package com.comatching.item.infra.controller.admin;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

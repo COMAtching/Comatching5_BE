@@ -1,5 +1,10 @@
 package com.comatching.item.infra.client;
 
+/*
+ * Temporarily disabled with the item-service admin user API.
+ * This prevents requests to user-service for the migrated endpoints.
+ *
+
 import java.util.List;
 
 import org.springframework.cloud.openfeign.FeignClient;
@@ -24,3 +29,4 @@ public interface UserAdminClient {
 	@GetMapping("/{memberId}")
 	AdminUserProfileDto getUserDetail(@PathVariable Long memberId);
 }
+*/
