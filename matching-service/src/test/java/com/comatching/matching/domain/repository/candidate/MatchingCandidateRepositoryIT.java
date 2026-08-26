@@ -11,6 +11,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -44,6 +45,7 @@ import jakarta.persistence.EntityManager;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(classes = MatchingCandidateRepositoryIT.Config.class)
 @DisplayName("MatchingCandidateRepository 통합 테스트")
+@Tag("integration")
 class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 
 	private static final int MY_AGE = 24;
