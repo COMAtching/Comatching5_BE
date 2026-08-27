@@ -1,6 +1,8 @@
 package com.comatching.item.domain.item.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +29,12 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 	List<Item> findAllUsableItems(
 		@Param("memberId") Long memberId,
 		@Param("itemType") ItemType itemType);
+
+	Optional<Item> findFirstByMemberIdAndItemTypeAndQuantityGreaterThanEqualAndExpiredAtGreaterThanOrderByExpiredAtAscQuantityAsc(
+		Long memberId,
+		ItemType itemType,
+		int quantity,
+		LocalDateTime now);
 
 	@Query("SELECT i FROM Item i " +
 		"WHERE i.memberId = :memberId " +

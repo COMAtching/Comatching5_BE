@@ -63,4 +63,10 @@ public class RouletteReward {
         this.rangeEnd = rangeEnd;
         this.remainingCount = remainingCount;
     }
+
+    public void decreaseRemainingCount() {
+        if (remainingCount != null && remainingCount > 0) {
+            remainingCount--;
+        }
+    }
 }
