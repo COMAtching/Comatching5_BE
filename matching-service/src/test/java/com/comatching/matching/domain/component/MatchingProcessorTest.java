@@ -342,7 +342,7 @@ class MatchingProcessorTest {
 		void passesSamplingParameters() {
 			MatchingCandidateSearchCondition condition = capture(request().build());
 
-			assertThat(condition.sampleSize()).isEqualTo(5_000);
+			assertThat(condition.sampleSize()).isEqualTo(2_000);
 			assertThat(condition.randomStart())
 				.isBetween(0, MatchingCandidate.RANDOM_KEY_START_BOUND - 1);
 		}
