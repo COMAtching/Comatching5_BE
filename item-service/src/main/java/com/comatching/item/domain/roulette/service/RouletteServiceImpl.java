@@ -20,6 +20,7 @@ import com.comatching.item.domain.roulette.repository.RouletteHistoryRepository;
 import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
 import com.comatching.item.global.exception.ItemErrorCode;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,11 +94,19 @@ public class RouletteServiceImpl implements RouletteService {
                     .build());
             });
 
-        rouletteHistoryRepository.save(RouletteHistory.builder()
-            .memberId(memberInfo.memberId())
-            .reward(rouletteReward)
-            .rouletteType(rouletteType)
-            .build());
+        try {
+            rouletteHistoryRepository.save(RouletteHistory.builder()
+                .memberId(memberInfo.memberId())
+                .reward(rouletteReward)
+                .rouletteType(rouletteType)
+                .build());
+            rouletteHistoryRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            if (rouletteType == RouletteType.FREE) {
+                throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_FREE_ROULETTE);
+            }
+            throw exception;
+        }
 
         return new RouletteSpinResponse(rouletteReward.getRewardName());
     }

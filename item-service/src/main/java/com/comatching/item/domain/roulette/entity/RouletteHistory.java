@@ -1,5 +1,6 @@
 package com.comatching.item.domain.roulette.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.comatching.item.domain.roulette.enums.RouletteType;
@@ -14,6 +15,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +25,13 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+    name = "roulette_history",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_roulette_history_member_type_date",
+        columnNames = {"member_id", "roulette_type", "participation_date"}
+    )
+)
 public class RouletteHistory {
 
     @Id
@@ -41,6 +51,9 @@ public class RouletteHistory {
 
     private final LocalDateTime participatedAt = LocalDateTime.now();
 
+    @Column(name = "participation_date")
+    private LocalDate participationDate;
+
     @Builder
     public RouletteHistory(
             Long memberId,
@@ -50,5 +63,6 @@ public class RouletteHistory {
         this.memberId = memberId;
         this.reward = reward;
         this.rouletteType = rouletteType;
+        this.participationDate = rouletteType == RouletteType.FREE ? LocalDate.now() : null;
     }
 }

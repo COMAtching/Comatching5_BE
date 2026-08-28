@@ -30,6 +30,7 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 		@Param("memberId") Long memberId,
 		@Param("itemType") ItemType itemType);
 
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<Item> findFirstByMemberIdAndItemTypeAndQuantityGreaterThanEqualAndExpiredAtGreaterThanOrderByExpiredAtAscQuantityAsc(
 		Long memberId,
 		ItemType itemType,
