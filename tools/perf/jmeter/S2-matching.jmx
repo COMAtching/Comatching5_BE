@@ -99,11 +99,32 @@
       </CSVDataSet>
       <hashTree/>
 
+      <!-- DNS 우회. 2026-08-27 도메인이 registrar clientHold 로 존에서 내려가
+           전 세계 NXDOMAIN 이 됐다 (갱신 문제 — perf-log 회차 8 참고).
+           정적 매핑이면 도메인명·SNI·인증서 검증은 그대로 두고 이름풀이만
+           IP 로 바꾼다. DNS 가 복구돼도 같은 IP 라 동작 차이가 없고,
+           이름풀이 시간이 측정에서 빠지는 부수효과는 무시할 수준이다. -->
+      <DNSCacheManager guiclass="DNSCachePanel" testclass="DNSCacheManager" testname="DNS static host" enabled="true">
+        <collectionProp name="DNSCacheManager.servers"/>
+        <collectionProp name="DNSCacheManager.hosts">
+          <elementProp name="srv.comatching.site" elementType="StaticHost">
+            <stringProp name="StaticHost.Name">srv.comatching.site</stringProp>
+            <stringProp name="StaticHost.Address">${__P(hostIp,43.200.211.135)}</stringProp>
+          </elementProp>
+        </collectionProp>
+        <boolProp name="DNSCacheManager.clearEachIteration">false</boolProp>
+        <boolProp name="DNSCacheManager.isCustomResolver">true</boolProp>
+      </DNSCacheManager>
+      <hashTree/>
+
       <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Headers" enabled="true">
         <collectionProp name="HeaderManager.headers">
+          <!-- 게이트웨이 AuthorizationHeaderFilter 는 Authorization 헤더가 아니라
+               accessToken "쿠키"에서 토큰을 읽는다 (extractToken 참고).
+               스모크로 실측 확인 — Bearer 헤더는 401 TOKEN_MISSING 이 났다. -->
           <elementProp name="" elementType="Header">
-            <stringProp name="Header.name">Authorization</stringProp>
-            <stringProp name="Header.value">Bearer ${token}</stringProp>
+            <stringProp name="Header.name">Cookie</stringProp>
+            <stringProp name="Header.value">accessToken=${token}</stringProp>
           </elementProp>
           <elementProp name="" elementType="Header">
             <stringProp name="Header.name">Content-Type</stringProp>
