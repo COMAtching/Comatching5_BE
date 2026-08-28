@@ -32,6 +32,13 @@ spring:
       validation-timeout: 5000
 
   jpa:
+    # OSIV 를 끈다 (회차 9 실측). 켜져 있으면 요청 중 첫 DB 접근에서 잡은
+    # 커넥션을 "요청 끝"까지 놓지 않는다 — 트랜잭션 경계를 그어도 소용없음을
+    # 체크아웃 횟수(요청당 정확히 1회, 점유 350~420ms vs 순수 SQL ~25ms)로
+    # 확인했다. 풀 10개 ÷ 0.35s ≈ 29 RPS 가 매칭 처리량 상한이 된 원인.
+    # 끄기 전 전수 확인: 웹 경로에서 트랜잭션 밖 lazy 접근 0건
+    # (LAZY 인 hobbyCategories 는 SQL 점수식·@Transactional 컨슈머에서만 사용).
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: false
