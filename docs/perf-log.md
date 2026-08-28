@@ -601,3 +601,71 @@ interval 30s + `start_interval: 2s`(기동 중에만 촘촘히)로 조정했다.
 
 헬스체크 1회 실행 시간도 3~6초 → 0.07~0.17초. 2 vCPU 중 **~0.4코어가
 돌아왔다.** 다음 부하테스트(매칭 시나리오)는 이 상태를 기준선으로 돈다.
+
+## 회차 8 — S2 매칭, 쓰기 경로 첫 측정 (2026-08-28)
+
+**대상**: `POST /api/matching` — 락 → Feign 3회 → 표본 5,000 SQL → INSERT
+→ Kafka 발행 → (비동기) Mongo 채팅방 생성. S1과 정반대 극단.
+**조건**: 운영(EC2 2 vCPU), 시드 10만, VU 500계정 쿠키 토큰 로테이션,
+계단 10/25/50/100 RPS ×120초. 배포 태그 6783abf.
+
+측정 전에 두 가지가 터졌다:
+
+1. **도메인이 죽어 있었다.** 8/27 registrar clientHold 로 `comatching.site`
+   전체가 NXDOMAIN(갱신 문제). 서버는 정상이라 jmx 에 DNS 정적 매핑,
+   run.sh 에 `RESOLVE` 를 넣어 IP 직결로 우회했다. **부하와 무관하게
+   실사용자도 접속 불가였던 상태** — 부하테스트 준비가 운영 장애를 발견했다.
+2. **게이트웨이 인증은 Authorization 헤더가 아니다.** 스모크에서 Bearer 가
+   401 TOKEN_MISSING. `extractToken` 은 `accessToken` 쿠키만 읽는다.
+
+### 결과 (`results/S2-matching-20260828-141613`)
+
+| 계단 | 달성 | 에러% | p50 | p95 | p99 | max |
+|---|---|---|---|---|---|---|
+| 10 RPS | 100% | 0 | 131 | 282 | 433 | 878 |
+| 25 RPS | 100% | 0 | 469 | 1086 | 1394 | 1921 |
+| 50 RPS | 59% (29) | 0 | 1678 | 2070 | 2946 | 4246 |
+| 100 RPS | 30% (30) | 0 | 3397 | 3867 | 6345 | 6950 |
+
+**knee = 25 RPS (p95 1086ms). 실질 상한 ~30 RPS. 에러는 전 구간 0%.**
+
+### 관측 — 상한 30 은 CPU 가 아니라 커넥션 풀 수학이다
+
+50 RPS 계단에서 컨테이너 CPU 는 오히려 25 계단보다 **내려갔는데**
+(matching 54%→35%) 처리량은 29 에 박혔다. CPU 에 줄 선 게 아니라는 뜻이다.
+Prometheus 가 답을 줬다:
+
+```
+hikaricp_connections_active(matching-service)  = 10  (풀 상한)
+hikaricp_connections_pending                   = 38
+커넥션 1회 점유(usage) 평균: 113ms @10RPS 계단 → 337ms @100RPS 계단
+```
+
+**순수 SQL 은 ~25ms 인데 커넥션은 113~337ms 잡혀 있다.** 원인은
+OSIV — `open-in-view` 를 어디서도 끄지 않아 부트 기본값 true 로 돌고,
+`findBestCandidate` 는 트랜잭션 없는 네이티브 쿼리라 Hibernate 의
+release-after-transaction 이 발동할 트랜잭션 자체가 없다. 커넥션이
+상대 프로필 Feign 호출(부하 시 수백 ms)까지 쥔 채로 간다.
+풀 10개 ÷ 점유 0.33초 ≈ **30 RPS — 관측된 상한과 정확히 일치.**
+
+보조 관측:
+
+1. **knee(25 RPS)는 호스트 CPU 도 거들었다.** 25 계단에서 컨테이너 CPU
+   합계가 2 vCPU 의 ~81%. 풀을 고쳐도 다음 벽은 CPU 다.
+2. **회차 7 수정이 부하에서 검증됐다.** kafka 컨테이너 평균 8~12%
+   (회차 6에는 피크 179% 였다). mongodb 5%.
+3. **Kafka 비동기 체인은 병목이 아니다.** 매칭 11,592건 전부 채팅방 생성
+   (손실 0), 발행→Mongo 생성 지연 p50 0.01s / p95 0.04s / max 0.19s.
+   최고 부하에서도 컨슈머 랙이 쌓이지 않았다.
+   (측정은 사후 조인 — matching_history.matched_at ↔ chat_rooms.createdAt.
+   부하 중 kafka-consumer-groups.sh 를 돌리면 회차 7의 헬스체크와 같은
+   JVM 기동 오염이 생기므로 일부러 피했다.)
+4. matched_at 이 KST 로 저장돼 UTC 인 Mongo 와 9시간 어긋난다. 조인 시
+   보정했지만, 서비스 간 시각 비교가 생기는 순간 밟을 지뢰다.
+
+### 다음 지렛대
+
+1. **커넥션 점유를 SQL 시간으로 줄인다** — `open-in-view: false` 와/또는
+   `findBestCandidate` 에 `@Transactional(readOnly = true)`.
+   점유 330ms → ~30ms 면 풀이 정하는 상한이 30 → 수백 RPS 로 풀린다.
+2. 그 다음은 호스트 CPU(6 JVM / 2 vCPU) — 코드가 아니라 인프라의 영역.
