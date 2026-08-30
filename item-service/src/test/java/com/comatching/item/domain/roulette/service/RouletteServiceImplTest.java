@@ -11,7 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -61,7 +60,7 @@ class RouletteServiceImplTest {
 	@DisplayName("일반 아이템 보상은 아이템과 아이템 이력을 저장하고 보상명을 반환한다")
 	void shouldGrantItemRewardAndReturnRewardName() {
 		RouletteReward reward = reward(RouletteType.FREE, "옵션권 2장", ItemType.OPTION_TICKET, 2, null);
-		givenRewards(RouletteType.FREE, List.of(reward));
+		givenReward(RouletteType.FREE, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
 
@@ -85,26 +84,22 @@ class RouletteServiceImplTest {
 	}
 
 	@Test
-	@DisplayName("풀세트는 조회된 두 아이템을 모두 지급하고 대표 보상명을 반환한다")
+	@DisplayName("풀세트 한 행으로 옵션권과 매칭권을 모두 지급한다")
 	void shouldGrantEveryFullSetReward() {
-		RouletteReward matchingTicket = reward(
-			RouletteType.PAID, "풀세트", ItemType.MATCHING_TICKET, 1, 2);
-		RouletteReward optionTicket = reward(
-			RouletteType.PAID, "풀세트", ItemType.OPTION_TICKET, 3, 4);
-		Item rouletteTicket = givenRewards(RouletteType.PAID, List.of(matchingTicket, optionTicket));
+		RouletteReward fullSet = reward(RouletteType.PAID, "풀세트", null, 0, 2);
+		Item rouletteTicket = givenReward(RouletteType.PAID, fullSet);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.PAID);
 
 		assertThat(rouletteTicket.getQuantity()).isZero();
-		assertThat(matchingTicket.getRemainingCount()).isEqualTo(1);
-		assertThat(optionTicket.getRemainingCount()).isEqualTo(3);
+		assertThat(fullSet.getRemainingCount()).isEqualTo(1);
 		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
 		then(itemRepository).should(times(2)).save(itemCaptor.capture());
 		assertThat(itemCaptor.getAllValues())
 			.extracting(Item::getItemType, Item::getQuantity)
 			.containsExactly(
-				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, 1),
-				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, 3)
+				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, 3),
+				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, 1)
 			);
 		ArgumentCaptor<ItemHistory> itemHistoryCaptor = ArgumentCaptor.forClass(ItemHistory.class);
 		then(itemHistoryRepository).should(times(3)).save(itemHistoryCaptor.capture());
@@ -112,12 +107,13 @@ class RouletteServiceImplTest {
 			.extracting(ItemHistory::getItemType, ItemHistory::getHistoryType, ItemHistory::getQuantity)
 			.containsExactly(
 				org.assertj.core.groups.Tuple.tuple(ItemType.ROULETTE_TICKET, ItemHistoryType.USE, -1),
-				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, ItemHistoryType.EVENT, 1),
-				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, ItemHistoryType.EVENT, 3)
+				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, ItemHistoryType.EVENT, 3),
+				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, ItemHistoryType.EVENT, 1)
 			);
-		assertHistorySavedWith(matchingTicket, RouletteType.PAID);
+		assertHistorySavedWith(fullSet, RouletteType.PAID);
 		then(rouletteHistoryRepository).should(never())
-			.existsTodayByMemberIdAndRouletteType(MEMBER.memberId(), RouletteType.PAID);
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.PAID), any(LocalDateTime.class), any(LocalDateTime.class));
 		assertThat(response.rewardName()).isEqualTo("풀세트");
 	}
 
@@ -125,7 +121,7 @@ class RouletteServiceImplTest {
 	@DisplayName("상품권은 재고만 차감하고 룰렛 이력과 보상명을 남긴다")
 	void shouldRecordGiftCardWithoutGrantingItem() {
 		RouletteReward reward = reward(RouletteType.PAID, "1만원권 상품권", null, 1, 3);
-		givenRewards(RouletteType.PAID, List.of(reward));
+		givenReward(RouletteType.PAID, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.PAID);
 
@@ -146,7 +142,7 @@ class RouletteServiceImplTest {
 	@DisplayName("꽝은 아이템을 지급하지 않고 룰렛 이력과 보상명을 남긴다")
 	void shouldRecordNoPrizeWithoutGrantingItem() {
 		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
-		givenRewards(RouletteType.FREE, List.of(reward));
+		givenReward(RouletteType.FREE, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
 
@@ -159,8 +155,10 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("이미 무료 룰렛에 참여한 회원은 예외가 발생하고 보상을 처리하지 않는다")
 	void shouldRejectDuplicatedFreeRouletteParticipation() {
-		given(rouletteHistoryRepository.existsTodayByMemberIdAndRouletteType(
-			MEMBER.memberId(), RouletteType.FREE)).willReturn(true);
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.FREE),
+				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(true);
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.FREE))
 			.isInstanceOf(BusinessException.class)
@@ -195,11 +193,9 @@ class RouletteServiceImplTest {
 	@DisplayName("선택된 범위의 보상이 비어 있으면 다시 추첨한다")
 	void shouldRetryWhenSelectedRewardIsEmpty() {
 		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
-		given(rouletteHistoryRepository.existsTodayByMemberIdAndRouletteType(
-			MEMBER.memberId(), RouletteType.FREE)).willReturn(false);
 		given(rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(RouletteType.FREE), anyInt()))
-			.willReturn(List.of(), List.of(reward));
+			.willReturn(Optional.empty(), Optional.of(reward));
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
 
@@ -214,7 +210,7 @@ class RouletteServiceImplTest {
 	void shouldStopWhenItemSaveFails() {
 		RouletteReward reward = reward(
 			RouletteType.FREE, "옵션권 1장", ItemType.OPTION_TICKET, 1, null);
-		givenRewards(RouletteType.FREE, List.of(reward));
+		givenReward(RouletteType.FREE, reward);
 		given(itemRepository.save(any(Item.class))).willThrow(new RuntimeException("item save failed"));
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.FREE))
@@ -230,7 +226,7 @@ class RouletteServiceImplTest {
 	void shouldStopWhenItemHistorySaveFails() {
 		RouletteReward reward = reward(
 			RouletteType.FREE, "옵션권 1장", ItemType.OPTION_TICKET, 1, null);
-		givenRewards(RouletteType.FREE, List.of(reward));
+		givenReward(RouletteType.FREE, reward);
 		given(itemHistoryRepository.save(any(ItemHistory.class)))
 			.willThrow(new RuntimeException("item history save failed"));
 
@@ -246,7 +242,7 @@ class RouletteServiceImplTest {
 	@DisplayName("룰렛 이력 저장이 실패하면 예외를 그대로 전달한다")
 	void shouldPropagateRouletteHistorySaveFailure() {
 		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
-		givenRewards(RouletteType.FREE, List.of(reward));
+		givenReward(RouletteType.FREE, reward);
 		given(rouletteHistoryRepository.save(any(RouletteHistory.class)))
 			.willThrow(new RuntimeException("roulette history save failed"));
 
@@ -285,18 +281,20 @@ class RouletteServiceImplTest {
 		assertThat(reward.getRemainingCount()).isZero();
 	}
 
-	private Item givenRewards(RouletteType rouletteType, List<RouletteReward> rewards) {
+	private Item givenReward(RouletteType rouletteType, RouletteReward reward) {
 		Item rouletteTicket = null;
 		if (rouletteType == RouletteType.PAID) {
 			rouletteTicket = givenTicket();
 		}
 		if (rouletteType == RouletteType.FREE) {
-			given(rouletteHistoryRepository.existsTodayByMemberIdAndRouletteType(MEMBER.memberId(), rouletteType))
-				.willReturn(false);
+			given(rouletteHistoryRepository
+				.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+					eq(MEMBER.memberId()), eq(rouletteType),
+					any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
 		}
 		given(rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(rouletteType), anyInt()))
-			.willReturn(rewards);
+			.willReturn(Optional.of(reward));
 		return rouletteTicket;
 	}
 

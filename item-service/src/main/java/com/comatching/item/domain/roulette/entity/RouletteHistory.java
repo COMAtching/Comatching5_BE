@@ -16,7 +16,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,20 +24,14 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
-    name = "roulette_history",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_roulette_history_member_type_date",
-        columnNames = {"member_id", "roulette_type", "participation_date"}
-    )
-)
+@Table(name = "roulette_history")
 public class RouletteHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "member_id", nullable = false)
     private Long memberId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,9 +39,10 @@ public class RouletteHistory {
     private RouletteReward reward;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "roulette_type", nullable = false)
     private RouletteType rouletteType;
 
+    @Column(name = "participated_at",nullable = false)
     private final LocalDateTime participatedAt = LocalDateTime.now();
 
     @Column(name = "participation_date")
@@ -63,6 +57,8 @@ public class RouletteHistory {
         this.memberId = memberId;
         this.reward = reward;
         this.rouletteType = rouletteType;
-        this.participationDate = rouletteType == RouletteType.FREE ? LocalDate.now() : null;
+        this.participationDate = rouletteType == RouletteType.FREE
+            ? participatedAt.toLocalDate()
+            : null;
     }
 }

@@ -7,7 +7,8 @@ import static org.mockito.BDDMockito.given;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,29 +73,26 @@ class RouletteRewardRepositoryTest {
 		RouletteReward last = persist(reward(RouletteType.FREE, "마지막 보상", 5001, 10000, null));
 		flushAndClear();
 
-		List<RouletteReward> numberOne = rouletteRewardRepository
+		Optional<RouletteReward> numberOne = rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.FREE, 1);
-		List<RouletteReward> numberTenThousand = rouletteRewardRepository
+		Optional<RouletteReward> numberTenThousand = rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.FREE, 10000);
 
-		assertThat(numberOne).extracting(RouletteReward::getId).containsExactly(first.getId());
-		assertThat(numberTenThousand).extracting(RouletteReward::getId).containsExactly(last.getId());
+		assertThat(numberOne.orElseThrow().getId()).isEqualTo(first.getId());
+		assertThat(numberTenThousand.orElseThrow().getId()).isEqualTo(last.getId());
 	}
 
 	@Test
-	@DisplayName("동일 범위의 풀세트 두 행을 ID 오름차순으로 조회한다")
-	void shouldFindFullSetRewardsOrderedById() {
-		RouletteReward matchingTicket = persist(reward(
-			RouletteType.PAID, "풀세트", ItemType.MATCHING_TICKET, 8201, 9200, null));
-		RouletteReward optionTicket = persist(reward(
-			RouletteType.PAID, "풀세트", ItemType.OPTION_TICKET, 8201, 9200, null));
+	@DisplayName("풀세트 단일 행을 조회한다")
+	void shouldFindSingleFullSetReward() {
+		RouletteReward fullSet = persist(reward(
+			RouletteType.PAID, "풀세트", null, 8201, 9200, null));
 		flushAndClear();
 
-		List<RouletteReward> rewards = rouletteRewardRepository
+		Optional<RouletteReward> reward = rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.PAID, 8500);
 
-		assertThat(rewards).extracting(RouletteReward::getId)
-			.containsExactly(matchingTicket.getId(), optionTicket.getId());
+		assertThat(reward.orElseThrow().getId()).isEqualTo(fullSet.getId());
 	}
 
 	@Test
@@ -103,10 +101,10 @@ class RouletteRewardRepositoryTest {
 		persist(reward(RouletteType.PAID, "상품권", 9701, 9900, 0));
 		flushAndClear();
 
-		List<RouletteReward> rewards = rouletteRewardRepository
+		Optional<RouletteReward> reward = rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.PAID, 9800);
 
-		assertThat(rewards).isEmpty();
+		assertThat(reward).isEmpty();
 	}
 
 	@Test
@@ -116,10 +114,10 @@ class RouletteRewardRepositoryTest {
 		persist(reward(RouletteType.PAID, "유료 보상", 1, 10000, null));
 		flushAndClear();
 
-		List<RouletteReward> rewards = rouletteRewardRepository
+		Optional<RouletteReward> reward = rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.FREE, 5000);
 
-		assertThat(rewards).extracting(RouletteReward::getId).containsExactly(freeReward.getId());
+		assertThat(reward.orElseThrow().getId()).isEqualTo(freeReward.getId());
 	}
 
 	@Test
@@ -128,8 +126,7 @@ class RouletteRewardRepositoryTest {
 		persistHistory(1L, RouletteType.FREE);
 		flushAndClear();
 
-		boolean exists = rouletteHistoryRepository
-			.existsTodayByMemberIdAndRouletteType(1L, RouletteType.FREE);
+		boolean exists = existsHistoryToday(1L, RouletteType.FREE);
 
 		assertThat(exists).isTrue();
 	}
@@ -145,8 +142,7 @@ class RouletteRewardRepositoryTest {
 			history.getId());
 		entityManager.clear();
 
-		boolean exists = rouletteHistoryRepository
-			.existsTodayByMemberIdAndRouletteType(1L, RouletteType.FREE);
+		boolean exists = existsHistoryToday(1L, RouletteType.FREE);
 
 		assertThat(exists).isFalse();
 	}
@@ -157,8 +153,7 @@ class RouletteRewardRepositoryTest {
 		persistHistory(2L, RouletteType.FREE);
 		flushAndClear();
 
-		boolean exists = rouletteHistoryRepository
-			.existsTodayByMemberIdAndRouletteType(1L, RouletteType.FREE);
+		boolean exists = existsHistoryToday(1L, RouletteType.FREE);
 
 		assertThat(exists).isFalse();
 	}
@@ -169,8 +164,7 @@ class RouletteRewardRepositoryTest {
 		persistHistory(1L, RouletteType.PAID);
 		flushAndClear();
 
-		boolean exists = rouletteHistoryRepository
-			.existsTodayByMemberIdAndRouletteType(1L, RouletteType.FREE);
+		boolean exists = existsHistoryToday(1L, RouletteType.FREE);
 
 		assertThat(exists).isFalse();
 	}
@@ -215,6 +209,13 @@ class RouletteRewardRepositoryTest {
 			.reward(historyReward)
 			.rouletteType(rouletteType)
 			.build());
+	}
+
+	private boolean existsHistoryToday(Long memberId, RouletteType rouletteType) {
+		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+		return rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				memberId, rouletteType, todayStart, todayStart.plusDays(1));
 	}
 
 	private RouletteReward reward(
