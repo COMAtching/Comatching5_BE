@@ -7,8 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ItemType {
 	MATCHING_TICKET("매칭권", "기본 옵션만으로 매칭을 할 수 있는 아이템"),
-	OPTION_TICKET("옵션권", "같은 학과 제외, 중요 옵션 선택이 가능해지는 아이템"),
-	ROULETTE_TICKET("룰렛티켓", "룰렛을 돌릴 수 있는 티켓")
+	OPTION_TICKET("옵션권", "같은 학과 제외, 중요 옵션 선택이 가능해지는 아이템")
 	;
 
 	private final String name;

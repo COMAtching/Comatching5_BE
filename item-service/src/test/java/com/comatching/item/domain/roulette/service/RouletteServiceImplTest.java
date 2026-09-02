@@ -29,7 +29,9 @@ import com.comatching.item.domain.item.entity.ItemHistory;
 import com.comatching.item.domain.item.enums.ItemHistoryType;
 import com.comatching.item.domain.item.repository.ItemHistoryRepository;
 import com.comatching.item.domain.item.repository.ItemRepository;
-import com.comatching.item.domain.roulette.dto.RouletteSpinResponse;
+import com.comatching.item.domain.order.repository.OrderRepository;
+import com.comatching.item.domain.roulette.dto.response.RoulettePageResponse;
+import com.comatching.item.domain.roulette.dto.response.RouletteSpinResponse;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
 import com.comatching.item.domain.roulette.enums.RouletteType;
@@ -52,9 +54,101 @@ class RouletteServiceImplTest {
 	private ItemRepository itemRepository;
 	@Mock
 	private ItemHistoryRepository itemHistoryRepository;
+	@Mock
+	private OrderRepository orderRepository;
 
 	@InjectMocks
 	private RouletteServiceImpl rouletteService;
+
+	@Test
+	@DisplayName("오늘 무료 룰렛에 참여하지 않았으면 참여 가능하다")
+	void shouldAllowFreeRouletteWhenNotParticipatedToday() {
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.FREE),
+				any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(false);
+
+		RoulettePageResponse response = rouletteService.roulettePage(MEMBER, RouletteType.FREE);
+
+		assertThat(response.isPossible()).isTrue();
+		assertThat(response.totalPay()).isNull();
+		then(orderRepository).shouldHaveNoInteractions();
+	}
+
+	@Test
+	@DisplayName("오늘 무료 룰렛에 이미 참여했으면 참여할 수 없다")
+	void shouldRejectFreeRouletteWhenAlreadyParticipatedToday() {
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.FREE),
+				any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(true);
+
+		RoulettePageResponse response = rouletteService.roulettePage(MEMBER, RouletteType.FREE);
+
+		assertThat(response.isPossible()).isFalse();
+		assertThat(response.totalPay()).isNull();
+		then(orderRepository).shouldHaveNoInteractions();
+		then(rouletteHistoryRepository).should()
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.FREE),
+				any(LocalDateTime.class), any(LocalDateTime.class));
+	}
+
+	@Test
+	@DisplayName("오늘 결제액이 3500원이고 스페셜 룰렛에 참여하지 않았으면 참여 가능하다")
+	void shouldAllowSpecialRouletteAtMinimumPayment() {
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(3500L);
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
+				any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(false);
+
+		RoulettePageResponse response = rouletteService.roulettePage(MEMBER, RouletteType.SPECIAL);
+
+		assertThat(response.isPossible()).isTrue();
+		assertThat(response.totalPay()).isEqualTo(3500L);
+	}
+
+	@Test
+	@DisplayName("오늘 스페셜 룰렛에 이미 참여했으면 결제액이 충분해도 참여할 수 없다")
+	void shouldRejectSpecialRouletteWhenAlreadyParticipated() {
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(10000L);
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
+				any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(true);
+
+		RoulettePageResponse response = rouletteService.roulettePage(MEMBER, RouletteType.SPECIAL);
+
+		assertThat(response.isPossible()).isFalse();
+		assertThat(response.totalPay()).isEqualTo(10000L);
+	}
+
+	@Test
+	@DisplayName("오늘 결제액이 3500원 미만이면 스페셜 룰렛에 참여할 수 없다")
+	void shouldRejectSpecialRouletteWhenPaymentIsInsufficient() {
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(3499L);
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
+				any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(false);
+
+		RoulettePageResponse response = rouletteService.roulettePage(MEMBER, RouletteType.SPECIAL);
+
+		assertThat(response.isPossible()).isFalse();
+		assertThat(response.totalPay()).isEqualTo(3499L);
+	}
 
 	@Test
 	@DisplayName("일반 아이템 보상은 아이템과 아이템 이력을 저장하고 보상명을 반환한다")
@@ -86,12 +180,11 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("풀세트 한 행으로 옵션권과 매칭권을 모두 지급한다")
 	void shouldGrantEveryFullSetReward() {
-		RouletteReward fullSet = reward(RouletteType.PAID, "풀세트", null, 0, 2);
-		Item rouletteTicket = givenReward(RouletteType.PAID, fullSet);
+		RouletteReward fullSet = reward(RouletteType.SPECIAL, "풀세트", null, 0, 2);
+		givenReward(RouletteType.SPECIAL, fullSet);
 
-		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.PAID);
+		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL);
 
-		assertThat(rouletteTicket.getQuantity()).isZero();
 		assertThat(fullSet.getRemainingCount()).isEqualTo(1);
 		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
 		then(itemRepository).should(times(2)).save(itemCaptor.capture());
@@ -102,39 +195,29 @@ class RouletteServiceImplTest {
 				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, 1)
 			);
 		ArgumentCaptor<ItemHistory> itemHistoryCaptor = ArgumentCaptor.forClass(ItemHistory.class);
-		then(itemHistoryRepository).should(times(3)).save(itemHistoryCaptor.capture());
+		then(itemHistoryRepository).should(times(2)).save(itemHistoryCaptor.capture());
 		assertThat(itemHistoryCaptor.getAllValues())
 			.extracting(ItemHistory::getItemType, ItemHistory::getHistoryType, ItemHistory::getQuantity)
 			.containsExactly(
-				org.assertj.core.groups.Tuple.tuple(ItemType.ROULETTE_TICKET, ItemHistoryType.USE, -1),
 				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, ItemHistoryType.EVENT, 3),
 				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, ItemHistoryType.EVENT, 1)
 			);
-		assertHistorySavedWith(fullSet, RouletteType.PAID);
-		then(rouletteHistoryRepository).should(never())
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-				eq(MEMBER.memberId()), eq(RouletteType.PAID), any(LocalDateTime.class), any(LocalDateTime.class));
+		assertHistorySavedWith(fullSet, RouletteType.SPECIAL);
 		assertThat(response.rewardName()).isEqualTo("풀세트");
 	}
 
 	@Test
 	@DisplayName("상품권은 재고만 차감하고 룰렛 이력과 보상명을 남긴다")
 	void shouldRecordGiftCardWithoutGrantingItem() {
-		RouletteReward reward = reward(RouletteType.PAID, "1만원권 상품권", null, 1, 3);
-		givenReward(RouletteType.PAID, reward);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "1만원권 상품권", null, 1, 3);
+		givenReward(RouletteType.SPECIAL, reward);
 
-		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.PAID);
+		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL);
 
 		assertThat(reward.getRemainingCount()).isEqualTo(2);
 		then(itemRepository).should(never()).save(any(Item.class));
-		ArgumentCaptor<ItemHistory> itemHistoryCaptor = ArgumentCaptor.forClass(ItemHistory.class);
-		then(itemHistoryRepository).should().save(itemHistoryCaptor.capture());
-		assertThat(itemHistoryCaptor.getValue().getMemberId()).isEqualTo(MEMBER.memberId());
-		assertThat(itemHistoryCaptor.getValue().getItemType()).isEqualTo(ItemType.ROULETTE_TICKET);
-		assertThat(itemHistoryCaptor.getValue().getHistoryType()).isEqualTo(ItemHistoryType.USE);
-		assertThat(itemHistoryCaptor.getValue().getQuantity()).isEqualTo(-1);
-		assertThat(itemHistoryCaptor.getValue().getDescription()).isEqualTo(ItemType.ROULETTE_TICKET.getName());
-		assertHistorySavedWith(reward, RouletteType.PAID);
+		then(itemHistoryRepository).shouldHaveNoInteractions();
+		assertHistorySavedWith(reward, RouletteType.SPECIAL);
 		assertThat(response.rewardName()).isEqualTo("1만원권 상품권");
 	}
 
@@ -163,7 +246,7 @@ class RouletteServiceImplTest {
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.FREE))
 			.isInstanceOf(BusinessException.class)
 			.satisfies(exception -> assertThat(((BusinessException)exception).getErrorCode())
-				.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_FREE_ROULETTE));
+				.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE));
 
 		then(itemRepository).shouldHaveNoInteractions();
 		then(rouletteRewardRepository).shouldHaveNoInteractions();
@@ -172,19 +255,43 @@ class RouletteServiceImplTest {
 	}
 
 	@Test
-	@DisplayName("룰렛 티켓이 없으면 예외가 발생하고 추첨하지 않는다")
-	void shouldRejectWhenRouletteTicketDoesNotExist() {
-		given(itemRepository
-			.findFirstByMemberIdAndItemTypeAndQuantityGreaterThanEqualAndExpiredAtGreaterThanOrderByExpiredAtAscQuantityAsc(
-				eq(MEMBER.memberId()), eq(ItemType.ROULETTE_TICKET), eq(1), any(LocalDateTime.class)))
-			.willReturn(Optional.empty());
+	@DisplayName("이미 스페셜 룰렛에 참여한 회원은 예외가 발생하고 결제액과 보상을 조회하지 않는다")
+	void shouldRejectDuplicatedSpecialRouletteParticipation() {
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
+				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(true);
 
-		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.PAID))
+		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL))
 			.isInstanceOf(BusinessException.class)
 			.satisfies(exception -> assertThat(((BusinessException)exception).getErrorCode())
-				.isEqualTo(ItemErrorCode.NOT_ENOUGH_ITEM));
+				.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE));
+
+		then(orderRepository).shouldHaveNoInteractions();
+		then(rouletteRewardRepository).shouldHaveNoInteractions();
+		then(itemRepository).shouldHaveNoInteractions();
+		then(itemHistoryRepository).shouldHaveNoInteractions();
+		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+	}
+
+	@Test
+	@DisplayName("오늘 누적 결제액이 3500원 미만이면 예외가 발생하고 추첨하지 않는다")
+	void shouldRejectSpecialRouletteWhenPaymentIsBelowMinimum() {
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
+				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
+			.willReturn(3499L);
+
+		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(exception -> assertThat(((BusinessException)exception).getErrorCode())
+				.isEqualTo(ItemErrorCode.NOT_ENOUGH_PAYMENT_FOR_SPECIAL_ROULETTE));
 
 		then(rouletteRewardRepository).shouldHaveNoInteractions();
+		then(itemRepository).shouldHaveNoInteractions();
 		then(itemHistoryRepository).shouldHaveNoInteractions();
 		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
 	}
@@ -254,7 +361,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("제한 재고는 한 개 차감한다")
 	void shouldDecreaseLimitedRemainingCount() {
-		RouletteReward reward = reward(RouletteType.PAID, "상품권", null, 1, 2);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", null, 1, 2);
 
 		reward.decreaseRemainingCount();
 
@@ -274,37 +381,26 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("소진된 재고는 음수가 되지 않는다")
 	void shouldNotDecreaseRemainingCountBelowZero() {
-		RouletteReward reward = reward(RouletteType.PAID, "상품권", null, 1, 0);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", null, 1, 0);
 
 		reward.decreaseRemainingCount();
 
 		assertThat(reward.getRemainingCount()).isZero();
 	}
 
-	private Item givenReward(RouletteType rouletteType, RouletteReward reward) {
-		Item rouletteTicket = null;
-		if (rouletteType == RouletteType.PAID) {
-			rouletteTicket = givenTicket();
-		}
-		if (rouletteType == RouletteType.FREE) {
-			given(rouletteHistoryRepository
-				.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-					eq(MEMBER.memberId()), eq(rouletteType),
-					any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
+	private void givenReward(RouletteType rouletteType, RouletteReward reward) {
+		given(rouletteHistoryRepository
+			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+				eq(MEMBER.memberId()), eq(rouletteType),
+				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
+		if (rouletteType == RouletteType.SPECIAL) {
+			given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+				eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
+				.willReturn(3500L);
 		}
 		given(rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(rouletteType), anyInt()))
 			.willReturn(Optional.of(reward));
-		return rouletteTicket;
-	}
-
-	private Item givenTicket() {
-		Item rouletteTicket = rouletteTicket();
-		given(itemRepository
-			.findFirstByMemberIdAndItemTypeAndQuantityGreaterThanEqualAndExpiredAtGreaterThanOrderByExpiredAtAscQuantityAsc(
-				eq(MEMBER.memberId()), eq(ItemType.ROULETTE_TICKET), eq(1), any(LocalDateTime.class)))
-			.willReturn(Optional.of(rouletteTicket));
-		return rouletteTicket;
 	}
 
 	private void assertHistorySavedWith(RouletteReward reward, RouletteType rouletteType) {
@@ -333,12 +429,4 @@ class RouletteServiceImplTest {
 			.build();
 	}
 
-	private Item rouletteTicket() {
-		return Item.builder()
-			.memberId(MEMBER.memberId())
-			.itemType(ItemType.ROULETTE_TICKET)
-			.quantity(1)
-			.expiredAt(LocalDateTime.now().plusDays(1))
-			.build();
-	}
 }

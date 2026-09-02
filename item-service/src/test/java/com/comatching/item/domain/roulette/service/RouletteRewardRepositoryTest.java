@@ -35,6 +35,7 @@ import com.comatching.item.domain.item.entity.Item;
 import com.comatching.item.domain.item.entity.ItemHistory;
 import com.comatching.item.domain.item.repository.ItemHistoryRepository;
 import com.comatching.item.domain.item.repository.ItemRepository;
+import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
 import com.comatching.item.domain.roulette.enums.RouletteType;
@@ -65,6 +66,8 @@ class RouletteRewardRepositoryTest {
 
 	@MockitoBean
 	private ItemHistoryRepository itemHistoryRepository;
+	@MockitoBean
+	private OrderRepository orderRepository;
 
 	@Test
 	@DisplayName("난수 범위의 양 끝 1과 10000에 해당하는 보상을 조회한다")
@@ -86,11 +89,11 @@ class RouletteRewardRepositoryTest {
 	@DisplayName("풀세트 단일 행을 조회한다")
 	void shouldFindSingleFullSetReward() {
 		RouletteReward fullSet = persist(reward(
-			RouletteType.PAID, "풀세트", null, 8201, 9200, null));
+			RouletteType.SPECIAL, "풀세트", null, 8201, 9200, null));
 		flushAndClear();
 
 		Optional<RouletteReward> reward = rouletteRewardRepository
-			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.PAID, 8500);
+			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.SPECIAL, 8500);
 
 		assertThat(reward.orElseThrow().getId()).isEqualTo(fullSet.getId());
 	}
@@ -98,11 +101,11 @@ class RouletteRewardRepositoryTest {
 	@Test
 	@DisplayName("재고가 소진된 제한 보상은 조회하지 않는다")
 	void shouldExcludeOutOfStockReward() {
-		persist(reward(RouletteType.PAID, "상품권", 9701, 9900, 0));
+		persist(reward(RouletteType.SPECIAL, "상품권", 9701, 9900, 0));
 		flushAndClear();
 
 		Optional<RouletteReward> reward = rouletteRewardRepository
-			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.PAID, 9800);
+			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.SPECIAL, 9800);
 
 		assertThat(reward).isEmpty();
 	}
@@ -111,7 +114,7 @@ class RouletteRewardRepositoryTest {
 	@DisplayName("같은 난수 범위라도 요청한 룰렛 타입의 보상만 조회한다")
 	void shouldSeparateRewardsByRouletteType() {
 		RouletteReward freeReward = persist(reward(RouletteType.FREE, "무료 보상", 1, 10000, null));
-		persist(reward(RouletteType.PAID, "유료 보상", 1, 10000, null));
+		persist(reward(RouletteType.SPECIAL, "스페셜 보상", 1, 10000, null));
 		flushAndClear();
 
 		Optional<RouletteReward> reward = rouletteRewardRepository
@@ -159,9 +162,9 @@ class RouletteRewardRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("같은 회원의 오늘 PAID 참여 이력은 FREE 참여로 조회하지 않는다")
-	void shouldNotFindPaidHistoryAsFreeHistory() {
-		persistHistory(1L, RouletteType.PAID);
+	@DisplayName("같은 회원의 오늘 SPECIAL 참여 이력은 FREE 참여로 조회하지 않는다")
+	void shouldNotFindSpecialHistoryAsFreeHistory() {
+		persistHistory(1L, RouletteType.SPECIAL);
 		flushAndClear();
 
 		boolean exists = existsHistoryToday(1L, RouletteType.FREE);

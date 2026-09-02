@@ -13,7 +13,9 @@ import com.comatching.item.domain.item.entity.ItemHistory;
 import com.comatching.item.domain.item.enums.ItemHistoryType;
 import com.comatching.item.domain.item.repository.ItemHistoryRepository;
 import com.comatching.item.domain.item.repository.ItemRepository;
-import com.comatching.item.domain.roulette.dto.RouletteSpinResponse;
+import com.comatching.item.domain.order.repository.OrderRepository;
+import com.comatching.item.domain.roulette.dto.response.RoulettePageResponse;
+import com.comatching.item.domain.roulette.dto.response.RouletteSpinResponse;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
 import com.comatching.item.domain.roulette.enums.RouletteType;
@@ -28,48 +30,37 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 public class RouletteServiceImpl implements RouletteService {
 
+    private static final long SPECIAL_ROULETTE_MINIMUM_PAYMENT = 3500L;
+
     private final RouletteHistoryRepository rouletteHistoryRepository;
     private final RouletteRewardRepository rouletteRewardRepository;
     private final ItemRepository itemRepository;
     private final ItemHistoryRepository itemHistoryRepository;
+    private final OrderRepository orderRepository;
 
     @Override
     @Transactional
     public RouletteSpinResponse spinRoulette(MemberInfo memberInfo, RouletteType rouletteType) {
-        //  TODO: 반복적인 코드 메서드로 따로 빼기
-
-        // 타입이 무료인 경우 참여여부 검증 + 예외처리
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
-        if (rouletteType == RouletteType.FREE && rouletteHistoryRepository
+        // 오늘 참여한 결과 더이상 불가능
+        boolean isParticipatedToday = rouletteHistoryRepository
                 .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-                        memberInfo.memberId(), rouletteType, todayStart, tomorrowStart)) {
-            throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_FREE_ROULETTE);
+                        memberInfo.memberId(), rouletteType, todayStart, tomorrowStart);
+        if (isParticipatedToday) {
+            throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
         }
 
-        // 유료 룰렛의 경우 티켓 감소
-        if (rouletteType == RouletteType.PAID) {
-            Item rouletteTicket = itemRepository
-                .findFirstByMemberIdAndItemTypeAndQuantityGreaterThanEqualAndExpiredAtGreaterThanOrderByExpiredAtAscQuantityAsc(
-                    memberInfo.memberId(), ItemType.ROULETTE_TICKET, 1, LocalDateTime.now())
-                .orElseThrow(() -> new BusinessException(ItemErrorCode.NOT_ENOUGH_ITEM));
-
-            rouletteTicket.decrease(1);
-
-            itemHistoryRepository.save(ItemHistory.builder()
-                .memberId(memberInfo.memberId())
-                .itemType(ItemType.ROULETTE_TICKET)
-                .historyType(ItemHistoryType.USE)
-                .quantity(-1) //
-                .description(ItemType.ROULETTE_TICKET.getName())
-                .build());
-
-
+        // 결제액이 3500이하면 불가능
+        if (rouletteType == RouletteType.SPECIAL
+                && orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+                        memberInfo.memberId(), todayStart, tomorrowStart) < SPECIAL_ROULETTE_MINIMUM_PAYMENT) {
+            throw new BusinessException(ItemErrorCode.NOT_ENOUGH_PAYMENT_FOR_SPECIAL_ROULETTE);
         }
 
-        Optional<RouletteReward> rouletteReward;
         // 1 ~ 10000 사이의 난수 생성한 후에 db에 확률 range에 맞게 보상 가져오기 (만약 보상의 남은 갯수가 없다면 다시 난수 생성해서 추첨)
+        Optional<RouletteReward> rouletteReward;
         do {
             int rouletteNumber = ThreadLocalRandom.current().nextInt(1, 10_001);
             rouletteReward = rouletteRewardRepository
@@ -136,5 +127,24 @@ public class RouletteServiceImpl implements RouletteService {
 
 
         return new RouletteSpinResponse(rouletteReward.get().getRewardName());
+    }
+
+    @Override
+    public RoulettePageResponse roulettePage(MemberInfo memberInfo, RouletteType rouletteType) {
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+        boolean isParticipated = rouletteHistoryRepository
+                .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+                        memberInfo.memberId(), rouletteType, todayStart, tomorrowStart);
+
+
+        Long totalPay = rouletteType == RouletteType.SPECIAL
+                ? orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+                        memberInfo.memberId(), todayStart, tomorrowStart)
+                : null;
+        boolean isPossible = !isParticipated
+                && (rouletteType == RouletteType.FREE || totalPay >= SPECIAL_ROULETTE_MINIMUM_PAYMENT);
+
+        return new RoulettePageResponse(isPossible, totalPay);
     }
 }

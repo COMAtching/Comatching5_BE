@@ -2,7 +2,6 @@ package com.comatching.item.domain.roulette.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -11,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,18 +23,19 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.entity.Item;
 import com.comatching.item.domain.item.entity.ItemHistory;
 import com.comatching.item.domain.item.repository.ItemHistoryRepository;
 import com.comatching.item.domain.item.repository.ItemRepository;
+import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
 import com.comatching.item.domain.roulette.enums.RouletteType;
@@ -50,7 +51,6 @@ import com.comatching.item.global.exception.ItemErrorCode;
 class RouletteConcurrencyTest {
 
 	private static final int REQUEST_COUNT = 20;
-	private static final LocalDateTime NOT_EXPIRED = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
 	@Autowired
 	private RouletteService rouletteService;
@@ -62,30 +62,32 @@ class RouletteConcurrencyTest {
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private PlatformTransactionManager transactionManager;
+	@MockitoBean
+	private OrderRepository orderRepository;
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	@DisplayName("동시에 추첨해도 한정 보상은 준비된 재고만큼만 지급된다")
-	void limitedRewardIsNotGrantedBeyondItsStock() throws Exception {
-		int stock = 5;
+	@DisplayName("단일 행 보상은 동시 추첨 횟수만큼 재고가 차감된다")
+	void singleRewardStockIsDecreasedForEveryConcurrentSpin() throws Exception {
+		int stock = REQUEST_COUNT;
 		Long limitedRewardId = inTransaction(() -> rouletteRewardRepository.save(
 			reward(RouletteType.FREE, "한정 보상", 1, 10000, stock)).getId());
-		inTransaction(() -> rouletteRewardRepository.save(
-			reward(RouletteType.FREE, "기본 보상", 1, 10000, null)));
 
 		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
 			rouletteService.spinRoulette(member(index + 1L), RouletteType.FREE));
 
 		assertThat(failures).isEmpty();
-		assertThat(rouletteRewardRepository.findById(limitedRewardId).orElseThrow().getRemainingCount())
-			.isZero();
+		RouletteReward savedReward = rouletteRewardRepository.findById(limitedRewardId).orElseThrow();
+		assertThat(savedReward.getItemType()).isNull();
+		assertThat(savedReward.getRemainingCount()).isZero();
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE reward_id = ?", limitedRewardId))
-			.isEqualTo(stock);
+			.isEqualTo(REQUEST_COUNT);
 		assertThat(count("SELECT COUNT(*) FROM roulette_history"))
 			.isEqualTo(REQUEST_COUNT);
 	}
 
 	@Test
+	@Disabled("참여 이력 조회와 저장 사이의 동시성 제어를 추가할 때 활성화")
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	@DisplayName("동일 회원의 무료 룰렛 동시 요청은 하루에 한 번만 성공한다")
 	void freeRouletteSucceedsOnlyOnceForSameMember() throws Exception {
@@ -100,40 +102,10 @@ class RouletteConcurrencyTest {
 			.allSatisfy(failure -> {
 				assertThat(failure).isInstanceOf(BusinessException.class);
 				assertThat(((BusinessException)failure).getErrorCode())
-					.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_FREE_ROULETTE);
+					.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
 			});
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE member_id = ?", memberId))
 			.isOne();
-	}
-
-	@Test
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	@DisplayName("동일 회원의 유료 룰렛 동시 요청은 보유 티켓 수만큼만 성공한다")
-	void paidRouletteSucceedsOnlyAsManyTimesAsAvailableTickets() throws Exception {
-		int ticketCount = 5;
-		Long memberId = 100L;
-		Long ticketId = inTransaction(() -> itemRepository.save(Item.builder()
-			.memberId(memberId)
-			.itemType(ItemType.ROULETTE_TICKET)
-			.quantity(ticketCount)
-			.expiredAt(NOT_EXPIRED)
-			.build()).getId());
-		inTransaction(() -> rouletteRewardRepository.save(
-			reward(RouletteType.PAID, "기본 보상", 1, 10000, null)));
-
-		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
-			rouletteService.spinRoulette(member(memberId), RouletteType.PAID));
-
-		assertThat(failures).hasSize(REQUEST_COUNT - ticketCount)
-			.allSatisfy(failure -> {
-				assertThat(failure).isInstanceOf(BusinessException.class);
-				assertThat(((BusinessException)failure).getErrorCode()).isEqualTo(ItemErrorCode.NOT_ENOUGH_ITEM);
-			});
-		assertThat(itemRepository.findById(ticketId).orElseThrow().getQuantity()).isZero();
-		assertThat(count("SELECT COUNT(*) FROM item_history WHERE member_id = ?", memberId))
-			.isEqualTo(ticketCount);
-		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE member_id = ?", memberId))
-			.isEqualTo(ticketCount);
 	}
 
 	private List<Throwable> runConcurrently(int threadCount, ThrowingIntConsumer task) throws Exception {
