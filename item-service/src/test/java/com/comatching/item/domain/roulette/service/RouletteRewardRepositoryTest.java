@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -45,6 +46,7 @@ import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
 @DataJpaTest
 @ContextConfiguration(classes = RouletteRewardRepositoryTest.JpaTestConfig.class)
 @Import(RouletteServiceImpl.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @DisplayName("Roulette Repository 및 트랜잭션 테스트")
 class RouletteRewardRepositoryTest {
 
@@ -174,6 +176,49 @@ class RouletteRewardRepositoryTest {
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	@DisplayName("같은 회원의 같은 날짜와 같은 타입 참여 이력은 한 행만 저장된다")
+	void shouldRejectDuplicateHistoryForSameMemberTypeAndDate() {
+		Long rewardId = saveRewardInTransaction(RouletteType.FREE);
+		saveHistoryInTransaction(10L, RouletteType.FREE, rewardId);
+
+		assertThatThrownBy(() -> saveHistoryInTransaction(10L, RouletteType.FREE, rewardId))
+			.isInstanceOf(DataIntegrityViolationException.class);
+		assertThat(countHistory(10L, RouletteType.FREE)).isOne();
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	@DisplayName("같은 회원은 같은 날짜에 무료와 스페셜 룰렛에 각각 참여할 수 있다")
+	void shouldAllowFreeAndSpecialHistoryOnSameDate() {
+		Long rewardId = saveRewardInTransaction(RouletteType.FREE);
+
+		saveHistoryInTransaction(11L, RouletteType.FREE, rewardId);
+		saveHistoryInTransaction(11L, RouletteType.SPECIAL, rewardId);
+
+		assertThat(countHistory(11L, RouletteType.FREE)).isOne();
+		assertThat(countHistory(11L, RouletteType.SPECIAL)).isOne();
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	@DisplayName("같은 회원은 날짜가 바뀌면 같은 타입 룰렛에 다시 참여할 수 있다")
+	void shouldAllowSameRouletteTypeOnNextDate() {
+		Long rewardId = saveRewardInTransaction(RouletteType.FREE);
+		saveHistoryInTransaction(12L, RouletteType.FREE, rewardId);
+		LocalDate yesterday = LocalDate.now().minusDays(1);
+		jdbcTemplate.update(
+			"UPDATE roulette_history SET participated_at = ?, participation_date = ? WHERE member_id = ?",
+			Timestamp.valueOf(yesterday.atTime(12, 0)),
+			yesterday,
+			12L);
+
+		saveHistoryInTransaction(12L, RouletteType.FREE, rewardId);
+
+		assertThat(countHistory(12L, RouletteType.FREE)).isEqualTo(2);
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	@DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 	@DisplayName("아이템 이력 저장 실패 시 아이템과 룰렛 이력을 실제로 롤백한다")
 	void shouldRollbackSavedItemWhenItemHistorySaveFails() {
@@ -197,6 +242,30 @@ class RouletteRewardRepositoryTest {
 
 	private RouletteReward persist(RouletteReward reward) {
 		return entityManager.persist(reward);
+	}
+
+	private Long saveRewardInTransaction(RouletteType rouletteType) {
+		return new TransactionTemplate(transactionManager).execute(status ->
+			rouletteRewardRepository.saveAndFlush(
+				reward(rouletteType, "기본 보상", 1, 10000, null)).getId());
+	}
+
+	private void saveHistoryInTransaction(Long memberId, RouletteType rouletteType, Long rewardId) {
+		new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+			rouletteHistoryRepository.saveAndFlush(RouletteHistory.builder()
+				.memberId(memberId)
+				.reward(rouletteRewardRepository.findById(rewardId).orElseThrow())
+				.rouletteType(rouletteType)
+				.build()));
+	}
+
+	private long countHistory(Long memberId, RouletteType rouletteType) {
+		Long count = jdbcTemplate.queryForObject(
+			"SELECT COUNT(*) FROM roulette_history WHERE member_id = ? AND roulette_type = ?",
+			Long.class,
+			memberId,
+			rouletteType.name());
+		return count == null ? 0L : count;
 	}
 
 	private void flushAndClear() {

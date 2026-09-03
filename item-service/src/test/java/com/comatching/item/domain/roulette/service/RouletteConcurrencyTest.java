@@ -1,6 +1,9 @@
 package com.comatching.item.domain.roulette.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.entity.Item;
@@ -59,6 +62,8 @@ class RouletteConcurrencyTest {
 	@Autowired
 	private ItemRepository itemRepository;
 	@Autowired
+	private ItemHistoryRepository itemHistoryRepository;
+	@Autowired
 	private JdbcTemplate jdbcTemplate;
 	@Autowired
 	private PlatformTransactionManager transactionManager;
@@ -87,13 +92,12 @@ class RouletteConcurrencyTest {
 	}
 
 	@Test
-	@Disabled("참여 이력 조회와 저장 사이의 동시성 제어를 추가할 때 활성화")
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	@DisplayName("동일 회원의 무료 룰렛 동시 요청은 하루에 한 번만 성공한다")
 	void freeRouletteSucceedsOnlyOnceForSameMember() throws Exception {
 		Long memberId = 50L;
-		inTransaction(() -> rouletteRewardRepository.save(
-			reward(RouletteType.FREE, "기본 보상", 1, 10000, null)));
+		Long rewardId = inTransaction(() -> rouletteRewardRepository.save(
+			itemReward(RouletteType.FREE, "옵션권 1장", REQUEST_COUNT)).getId());
 
 		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
 			rouletteService.spinRoulette(member(memberId), RouletteType.FREE));
@@ -106,6 +110,41 @@ class RouletteConcurrencyTest {
 			});
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE member_id = ?", memberId))
 			.isOne();
+		assertThat(rouletteRewardRepository.findById(rewardId).orElseThrow().getRemainingCount())
+			.isEqualTo(REQUEST_COUNT - 1);
+		assertThat(itemRepository.count()).isOne();
+		assertThat(itemHistoryRepository.count()).isOne();
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	@DisplayName("동일 회원의 스페셜 룰렛 동시 요청은 하루에 한 번만 성공한다")
+	void specialRouletteSucceedsOnlyOnceForSameMember() throws Exception {
+		Long memberId = 51L;
+		Long rewardId = inTransaction(() -> rouletteRewardRepository.save(
+			itemReward(RouletteType.SPECIAL, "옵션권 1장", REQUEST_COUNT)).getId());
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+			eq(memberId), any(), any()))
+			.willReturn(3500L);
+
+		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
+			rouletteService.spinRoulette(member(memberId), RouletteType.SPECIAL));
+
+		assertThat(failures).hasSize(REQUEST_COUNT - 1)
+			.allSatisfy(failure -> {
+				assertThat(failure).isInstanceOf(BusinessException.class);
+				assertThat(((BusinessException)failure).getErrorCode())
+					.isEqualTo(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
+			});
+		assertThat(count(
+			"SELECT COUNT(*) FROM roulette_history WHERE member_id = ? AND roulette_type = ?",
+			memberId,
+			RouletteType.SPECIAL.name()))
+			.isOne();
+		assertThat(rouletteRewardRepository.findById(rewardId).orElseThrow().getRemainingCount())
+			.isEqualTo(REQUEST_COUNT - 1);
+		assertThat(itemRepository.count()).isOne();
+		assertThat(itemHistoryRepository.count()).isOne();
 	}
 
 	private List<Throwable> runConcurrently(int threadCount, ThrowingIntConsumer task) throws Exception {
@@ -161,6 +200,22 @@ class RouletteConcurrencyTest {
 			.quantity(0)
 			.rangeStart(rangeStart)
 			.rangeEnd(rangeEnd)
+			.remainingCount(remainingCount)
+			.build();
+	}
+
+	private RouletteReward itemReward(
+		RouletteType rouletteType,
+		String rewardName,
+		Integer remainingCount
+	) {
+		return RouletteReward.builder()
+			.rouletteType(rouletteType)
+			.rewardName(rewardName)
+			.itemType(ItemType.OPTION_TICKET)
+			.quantity(1)
+			.rangeStart(1)
+			.rangeEnd(10000)
 			.remainingCount(remainingCount)
 			.build();
 	}
