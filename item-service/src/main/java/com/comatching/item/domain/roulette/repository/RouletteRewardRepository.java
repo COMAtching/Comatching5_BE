@@ -26,4 +26,14 @@ public interface RouletteRewardRepository extends JpaRepository<RouletteReward, 
 	Optional<RouletteReward> findAvailableByRouletteTypeAndRouletteNumber(
 		@Param("rouletteType") RouletteType rouletteType,
 		@Param("rouletteNumber") int rouletteNumber);
+
+
+	@Query("""
+    SELECT COUNT(rr) > 0
+    FROM RouletteReward rr
+    WHERE rr.rouletteType = :rouletteType
+    AND (rr.remainingCount IS NULL OR rr.remainingCount > 0)
+    """)
+	boolean existsAvailableByRouletteType(
+			@Param("rouletteType") RouletteType rouletteType);
 }

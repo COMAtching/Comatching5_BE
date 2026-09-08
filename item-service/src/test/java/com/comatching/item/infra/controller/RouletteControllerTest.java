@@ -85,61 +85,66 @@ class RouletteControllerTest {
 	}
 
 	@Test
-	@DisplayName("GET /api/roulette는 FREE 룰렛 참여 가능 여부와 null 결제액을 반환한다")
-	void shouldReturnFreeRoulettePage() throws Exception {
-		given(rouletteService.roulettePage(any(MemberInfo.class), eq(RouletteType.FREE)))
-			.willReturn(new RoulettePageResponse(true, null));
+	@DisplayName("GET /api/roulette는 무료·스페셜 룰렛 참여 여부와 오늘 결제액을 반환한다")
+	void shouldReturnRoulettePage() throws Exception {
+		given(rouletteService.roulettePage(any(MemberInfo.class)))
+			.willReturn(new RoulettePageResponse(true, false, 3500L));
 
 		mockMvc.perform(get("/api/roulette")
-				.param("rouletteType", "FREE")
 				.header("X-Member-Id", "1")
 				.header("X-Member-Email", "member@example.com")
 				.header("X-Member-Role", "USER"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.code").value("GEN-000"))
 			.andExpect(jsonPath("$.status").value(200))
-			.andExpect(jsonPath("$.data.isPossible").value(true))
-			.andExpect(jsonPath("$.data.totalPay").doesNotExist());
+			.andExpect(jsonPath("$.data.isFreeParticipated").value(true))
+			.andExpect(jsonPath("$.data.isSpecialParticipated").value(false))
+			.andExpect(jsonPath("$.data.totalPay").value(3500));
 
 		ArgumentCaptor<MemberInfo> memberCaptor = ArgumentCaptor.forClass(MemberInfo.class);
-		then(rouletteService).should().roulettePage(memberCaptor.capture(), eq(RouletteType.FREE));
+		then(rouletteService).should().roulettePage(memberCaptor.capture());
 		assertThat(memberCaptor.getValue().memberId()).isEqualTo(1L);
 		assertThat(memberCaptor.getValue().email()).isEqualTo("member@example.com");
 		assertThat(memberCaptor.getValue().role()).isEqualTo("USER");
 	}
 
 	@Test
-	@DisplayName("GET /api/roulette는 SPECIAL 룰렛 참여 가능 여부와 오늘 결제액을 반환한다")
-	void shouldReturnSpecialRoulettePage() throws Exception {
-		given(rouletteService.roulettePage(any(MemberInfo.class), eq(RouletteType.SPECIAL)))
-			.willReturn(new RoulettePageResponse(false, 3499L));
+	@DisplayName("GET /api/roulette는 두 룰렛의 참여 여부를 독립적으로 반환한다")
+	void shouldReturnEachRouletteParticipationStatus() throws Exception {
+		given(rouletteService.roulettePage(any(MemberInfo.class)))
+			.willReturn(new RoulettePageResponse(false, true, 3499L));
 
 		mockMvc.perform(get("/api/roulette")
-				.param("rouletteType", "SPECIAL")
 				.header("X-Member-Id", "1")
 				.header("X-Member-Email", "member@example.com")
 				.header("X-Member-Role", "USER"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.code").value("GEN-000"))
 			.andExpect(jsonPath("$.status").value(200))
-			.andExpect(jsonPath("$.data.isPossible").value(false))
+			.andExpect(jsonPath("$.data.isFreeParticipated").value(false))
+			.andExpect(jsonPath("$.data.isSpecialParticipated").value(true))
 			.andExpect(jsonPath("$.data.totalPay").value(3499));
 
 		ArgumentCaptor<MemberInfo> memberCaptor = ArgumentCaptor.forClass(MemberInfo.class);
-		then(rouletteService).should().roulettePage(memberCaptor.capture(), eq(RouletteType.SPECIAL));
+		then(rouletteService).should().roulettePage(memberCaptor.capture());
 		assertThat(memberCaptor.getValue().memberId()).isEqualTo(1L);
 		assertThat(memberCaptor.getValue().email()).isEqualTo("member@example.com");
 		assertThat(memberCaptor.getValue().role()).isEqualTo("USER");
 	}
 
 	@Test
-	@DisplayName("GET /api/roulette는 rouletteType 쿼리 파라미터가 없으면 400을 반환한다")
-	void shouldRejectMissingRouletteTypeOnRoulettePage() throws Exception {
-		mockMvc.perform(get("/api/roulette")
-				.header("X-Member-Id", "1"))
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value(GeneralErrorCode.MISSING_REQUEST_PARAMETER.getCode()));
+	@DisplayName("GET /api/roulette는 rouletteType 쿼리 파라미터를 요구하지 않는다")
+	void shouldNotRequireRouletteTypeOnRoulettePage() throws Exception {
+		given(rouletteService.roulettePage(any(MemberInfo.class)))
+			.willReturn(new RoulettePageResponse(false, false, 0L));
 
-		then(rouletteService).shouldHaveNoInteractions();
+		mockMvc.perform(get("/api/roulette")
+				.header("X-Member-Id", "1")
+				.header("X-Member-Email", "member@example.com")
+				.header("X-Member-Role", "USER"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.isFreeParticipated").value(false))
+			.andExpect(jsonPath("$.data.isSpecialParticipated").value(false))
+			.andExpect(jsonPath("$.data.totalPay").value(0));
 	}
 }

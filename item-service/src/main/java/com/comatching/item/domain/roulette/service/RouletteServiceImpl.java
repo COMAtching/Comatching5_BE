@@ -53,104 +53,96 @@ public class RouletteServiceImpl implements RouletteService {
             throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
         }
 
-        // 결제액이 3500이하면 불가능
+        // 결제액이 3500미만이면 불가능
         if (rouletteType == RouletteType.SPECIAL
                 && orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
                         memberInfo.memberId(), todayStart, tomorrowStart) < SPECIAL_ROULETTE_MINIMUM_PAYMENT) {
             throw new BusinessException(ItemErrorCode.NOT_ENOUGH_PAYMENT_FOR_SPECIAL_ROULETTE);
         }
 
-        // 1 ~ 10000 사이의 난수 생성한 후에 db에 확률 range에 맞게 보상 가져오기 (만약 보상의 남은 갯수가 없다면 다시 난수 생성해서 추첨)
-        Optional<RouletteReward> rouletteReward;
-        do {
-            int rouletteNumber = ThreadLocalRandom.current().nextInt(1, 10_001);
-            rouletteReward = rouletteRewardRepository
-                .findAvailableByRouletteTypeAndRouletteNumber(rouletteType, rouletteNumber);
-        } while (rouletteReward.isEmpty());
-
-
+        RouletteReward rouletteReward = drawAvailableReward(rouletteType);
 
         // 보상에 따른 아이템 및 아이템 기록 룰렛 기록 추가
-        if (rouletteReward.get().getRewardName().equals("풀세트")) {
-            itemRepository.save(Item.builder()
-                    .memberId(memberInfo.memberId())
-                    .itemType(ItemType.OPTION_TICKET)
-                    .quantity(3)
-                    .expiredAt(LocalDateTime.of(9999, 12, 31, 23, 59, 59))
-                    .build());
-            itemHistoryRepository.save(ItemHistory.builder()
-                    .memberId(memberInfo.memberId())
-                    .itemType(ItemType.OPTION_TICKET)
-                    .historyType(ItemHistoryType.EVENT)
-                    .quantity(3)
-                    .description(ItemType.OPTION_TICKET.getName())
-                    .build());
-
-            itemRepository.save(Item.builder()
-                    .memberId(memberInfo.memberId())
-                    .itemType(ItemType.MATCHING_TICKET)
-                    .quantity(1)
-                    .expiredAt(LocalDateTime.of(9999, 12, 31, 23, 59, 59))
-                    .build());
-            itemHistoryRepository.save(ItemHistory.builder()
-                    .memberId(memberInfo.memberId())
-                    .itemType(ItemType.MATCHING_TICKET)
-                    .historyType(ItemHistoryType.EVENT)
-                    .quantity(1)
-                    .description(ItemType.MATCHING_TICKET.getName())
-                    .build());
-
-        } else if (rouletteReward.get().getItemType() != null) {
-            itemRepository.save(Item.builder()
-                    .memberId(memberInfo.memberId())
-                    .quantity(rouletteReward.get().getQuantity())
-                    .expiredAt(LocalDateTime.of(9999, 12, 31, 23, 59, 59))
-                    .itemType(rouletteReward.get().getItemType())
-                    .build());
-            itemHistoryRepository.save(ItemHistory.builder()
-                    .memberId(memberInfo.memberId())
-                    .itemType(rouletteReward.get().getItemType())
-                    .historyType(ItemHistoryType.EVENT)
-                    .quantity(rouletteReward.get().getQuantity())
-                    .description(rouletteReward.get().getItemType().getName())
-                    .build());
-        }
+        grantReward(memberInfo.memberId(), rouletteReward);
 
         // 남은 아이템 수 감소
-        rouletteReward.get().decreaseRemainingCount();
+        rouletteReward.decreaseRemainingCount();
 
-
+        // 기록 남기기
         try {
             rouletteHistoryRepository.save(RouletteHistory.builder()
                 .memberId(memberInfo.memberId())
-                .reward(rouletteReward.get())
+                .reward(rouletteReward)
                 .rouletteType(rouletteType)
                 .build());
             rouletteHistoryRepository.flush();
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
         }
-
-
-        return new RouletteSpinResponse(rouletteReward.get().getRewardName());
+        return new RouletteSpinResponse(rouletteReward.getRewardName());
     }
 
     @Override
-    public RoulettePageResponse roulettePage(MemberInfo memberInfo, RouletteType rouletteType) {
+    public RoulettePageResponse roulettePage(MemberInfo memberInfo) {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime tomorrowStart = todayStart.plusDays(1);
-        boolean isParticipated = rouletteHistoryRepository
+
+        boolean isFreeParticipated = rouletteHistoryRepository
                 .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-                        memberInfo.memberId(), rouletteType, todayStart, tomorrowStart);
+                        memberInfo.memberId(), RouletteType.FREE, todayStart, tomorrowStart);
+
+        boolean isSpecialParticipated = rouletteHistoryRepository
+                .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+                        memberInfo.memberId(), RouletteType.SPECIAL, todayStart, tomorrowStart);
+
+        long totalPay = orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
+                        memberInfo.memberId(), todayStart, tomorrowStart);
+
+        return new RoulettePageResponse(isFreeParticipated, isSpecialParticipated, totalPay);
+    }
+
+    private RouletteReward drawAvailableReward(RouletteType rouletteType) {
+        Optional<RouletteReward> rouletteReward;
+        do {
+            int rouletteNumber = ThreadLocalRandom.current().nextInt(1, 10_001);
+            rouletteReward = rouletteRewardRepository
+                    .findAvailableByRouletteTypeAndRouletteNumber(rouletteType, rouletteNumber);
+        } while (rouletteReward.isEmpty()
+                && rouletteRewardRepository.existsAvailableByRouletteType(rouletteType));
+
+        if (rouletteReward.isEmpty()) {
+            throw new BusinessException(ItemErrorCode.NO_AVAILABLE_ROULETTE_REWARD);
+        }
+
+        return rouletteReward.get();
+    }
+
+    private void grantReward(Long memberId, RouletteReward rouletteReward) {
+        if (rouletteReward.getRewardName().equals("풀세트")) {
+            saveRewardItem(memberId, ItemType.OPTION_TICKET, 3);
+            saveRewardItem(memberId, ItemType.MATCHING_TICKET, 1);
+        } else if (rouletteReward.getItemType() != null) {
+            saveRewardItem(memberId, rouletteReward.getItemType(), rouletteReward.getQuantity());
+        }
+    }
 
 
-        Long totalPay = rouletteType == RouletteType.SPECIAL
-                ? orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
-                        memberInfo.memberId(), todayStart, tomorrowStart)
-                : null;
-        boolean isPossible = !isParticipated
-                && (rouletteType == RouletteType.FREE || totalPay >= SPECIAL_ROULETTE_MINIMUM_PAYMENT);
 
-        return new RoulettePageResponse(isPossible, totalPay);
+    // 보상을 저장하고 기록을 남겨주는 메서드
+    private void saveRewardItem(Long memberId, ItemType itemType, int quantity) {
+        itemRepository.save(Item.builder()
+                .memberId(memberId)
+                .itemType(itemType)
+                .quantity(quantity)
+                .expiredAt(LocalDateTime.of(9999, 12, 31, 23, 59, 59))
+                .build());
+
+        itemHistoryRepository.save(ItemHistory.builder()
+                .memberId(memberId)
+                .itemType(itemType)
+                .historyType(ItemHistoryType.EVENT)
+                .quantity(quantity)
+                .description(itemType.getName())
+                .build());
     }
 }

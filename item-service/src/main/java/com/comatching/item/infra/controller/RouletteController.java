@@ -30,9 +30,8 @@ public class RouletteController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<RoulettePageResponse>> roulettePage(
-            @CurrentMember MemberInfo memberInfo,
-            @RequestParam RouletteType rouletteType
+            @CurrentMember MemberInfo memberInfo
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(rouletteService.roulettePage(memberInfo, rouletteType)));
+        return ResponseEntity.ok(ApiResponse.ok(rouletteService.roulettePage(memberInfo)));
     }
 }

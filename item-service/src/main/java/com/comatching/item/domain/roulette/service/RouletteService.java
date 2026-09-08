@@ -8,5 +8,5 @@ import com.comatching.item.domain.roulette.enums.RouletteType;
 public interface RouletteService {
     RouletteSpinResponse spinRoulette(MemberInfo memberInfo, RouletteType rouletteType);
 
-    RoulettePageResponse roulettePage(MemberInfo memberInfo, RouletteType rouletteType);
+    RoulettePageResponse roulettePage(MemberInfo memberInfo);
 }
