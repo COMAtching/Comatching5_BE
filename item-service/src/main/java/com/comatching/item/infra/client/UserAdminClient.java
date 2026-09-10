@@ -5,8 +5,11 @@ import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.comatching.common.dto.member.AdminGiftCardUserProfileDto;
 import com.comatching.common.dto.member.AdminUserProfileDto;
 import com.comatching.common.dto.response.PagingResponse;
 
@@ -23,4 +26,7 @@ public interface UserAdminClient {
 
 	@GetMapping("/{memberId}")
 	AdminUserProfileDto getUserDetail(@PathVariable Long memberId);
+
+	@PostMapping("/bulk")
+	List<AdminGiftCardUserProfileDto> getUsersByIds(@RequestBody List<Long> memberIds);
 }

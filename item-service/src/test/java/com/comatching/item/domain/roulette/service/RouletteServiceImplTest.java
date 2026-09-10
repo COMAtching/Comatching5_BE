@@ -192,19 +192,20 @@ class RouletteServiceImplTest {
 		assertThat(itemHistoryCaptor.getValue().getQuantity()).isEqualTo(2);
 		assertThat(itemHistoryCaptor.getValue().getDescription()).isEqualTo(ItemType.OPTION_TICKET.getName());
 
-		assertHistorySavedWith(reward, RouletteType.FREE);
+		assertThat(reward.getRemainingCount()).isNull();
+		assertHistorySavedWith(reward, RouletteType.FREE, true);
 		assertThat(response.rewardName()).isEqualTo("옵션권 2장");
 	}
 
 	@Test
 	@DisplayName("풀세트 한 행으로 옵션권과 매칭권을 모두 지급한다")
 	void shouldGrantEveryFullSetReward() {
-		RouletteReward fullSet = reward(RouletteType.SPECIAL, "풀세트", RewardType.FULL_SET, 0, 2);
+		RouletteReward fullSet = reward(RouletteType.SPECIAL, "풀세트", RewardType.FULL_SET, 0, null);
 		givenReward(RouletteType.SPECIAL, fullSet);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL);
 
-		assertThat(fullSet.getRemainingCount()).isEqualTo(1);
+		assertThat(fullSet.getRemainingCount()).isNull();
 		ArgumentCaptor<Item> itemCaptor = ArgumentCaptor.forClass(Item.class);
 		then(itemRepository).should(times(2)).save(itemCaptor.capture());
 		assertThat(itemCaptor.getAllValues())
@@ -221,7 +222,7 @@ class RouletteServiceImplTest {
 				org.assertj.core.groups.Tuple.tuple(ItemType.OPTION_TICKET, ItemHistoryType.EVENT, 3),
 				org.assertj.core.groups.Tuple.tuple(ItemType.MATCHING_TICKET, ItemHistoryType.EVENT, 1)
 			);
-		assertHistorySavedWith(fullSet, RouletteType.SPECIAL);
+		assertHistorySavedWith(fullSet, RouletteType.SPECIAL, true);
 		assertThat(response.rewardName()).isEqualTo("풀세트");
 	}
 
@@ -236,7 +237,7 @@ class RouletteServiceImplTest {
 		assertThat(reward.getRemainingCount()).isEqualTo(2);
 		then(itemRepository).should(never()).save(any(Item.class));
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		assertHistorySavedWith(reward, RouletteType.SPECIAL);
+		assertHistorySavedWith(reward, RouletteType.SPECIAL, false);
 		assertThat(response.rewardName()).isEqualTo("1만원권 상품권");
 	}
 
@@ -250,7 +251,8 @@ class RouletteServiceImplTest {
 
 		then(itemRepository).should(never()).save(any(Item.class));
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		assertHistorySavedWith(reward, RouletteType.FREE);
+		assertThat(reward.getRemainingCount()).isNull();
+		assertHistorySavedWith(reward, RouletteType.FREE, false);
 		assertThat(response.rewardName()).isEqualTo("꽝");
 	}
 
@@ -270,7 +272,7 @@ class RouletteServiceImplTest {
 		then(itemRepository).shouldHaveNoInteractions();
 		then(rouletteRewardRepository).shouldHaveNoInteractions();
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+		then(rouletteHistoryRepository).should(never()).saveAndFlush(any(RouletteHistory.class));
 	}
 
 	@Test
@@ -290,7 +292,7 @@ class RouletteServiceImplTest {
 		then(rouletteRewardRepository).shouldHaveNoInteractions();
 		then(itemRepository).shouldHaveNoInteractions();
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+		then(rouletteHistoryRepository).should(never()).saveAndFlush(any(RouletteHistory.class));
 	}
 
 	@Test
@@ -312,7 +314,7 @@ class RouletteServiceImplTest {
 		then(rouletteRewardRepository).shouldHaveNoInteractions();
 		then(itemRepository).shouldHaveNoInteractions();
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+		then(rouletteHistoryRepository).should(never()).saveAndFlush(any(RouletteHistory.class));
 	}
 
 	@Test
@@ -322,14 +324,12 @@ class RouletteServiceImplTest {
 		given(rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(RouletteType.FREE), anyInt()))
 			.willReturn(Optional.empty(), Optional.of(reward));
-		given(rouletteRewardRepository.existsAvailableByRouletteType(RouletteType.FREE))
-			.willReturn(true);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
 
 		then(rouletteRewardRepository).should(times(2))
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(RouletteType.FREE), anyInt());
-		assertHistorySavedWith(reward, RouletteType.FREE);
+		assertHistorySavedWith(reward, RouletteType.FREE, false);
 		assertThat(response.rewardName()).isEqualTo("꽝");
 	}
 
@@ -346,7 +346,7 @@ class RouletteServiceImplTest {
 			.hasMessage("item save failed");
 
 		then(itemHistoryRepository).shouldHaveNoInteractions();
-		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+		then(rouletteHistoryRepository).should(never()).saveAndFlush(any(RouletteHistory.class));
 	}
 
 	@Test
@@ -363,7 +363,7 @@ class RouletteServiceImplTest {
 			.hasMessage("item history save failed");
 
 		then(itemRepository).should().save(any(Item.class));
-		then(rouletteHistoryRepository).should(never()).save(any(RouletteHistory.class));
+		then(rouletteHistoryRepository).should(never()).saveAndFlush(any(RouletteHistory.class));
 	}
 
 	@Test
@@ -371,7 +371,7 @@ class RouletteServiceImplTest {
 	void shouldPropagateRouletteHistorySaveFailure() {
 		RouletteReward reward = reward(RouletteType.FREE, "꽝", RewardType.NONE, 0, null);
 		givenReward(RouletteType.FREE, reward);
-		given(rouletteHistoryRepository.save(any(RouletteHistory.class)))
+		given(rouletteHistoryRepository.saveAndFlush(any(RouletteHistory.class)))
 			.willThrow(new RuntimeException("roulette history save failed"));
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.FREE))
@@ -424,12 +424,17 @@ class RouletteServiceImplTest {
 			.willReturn(Optional.of(reward));
 	}
 
-	private void assertHistorySavedWith(RouletteReward reward, RouletteType rouletteType) {
+	private void assertHistorySavedWith(
+		RouletteReward reward,
+		RouletteType rouletteType,
+		boolean rewardGranted
+	) {
 		ArgumentCaptor<RouletteHistory> historyCaptor = ArgumentCaptor.forClass(RouletteHistory.class);
-		then(rouletteHistoryRepository).should().save(historyCaptor.capture());
+		then(rouletteHistoryRepository).should().saveAndFlush(historyCaptor.capture());
 		assertThat(historyCaptor.getValue().getMemberId()).isEqualTo(MEMBER.memberId());
 		assertThat(historyCaptor.getValue().getReward()).isSameAs(reward);
 		assertThat(historyCaptor.getValue().getRouletteType()).isEqualTo(rouletteType);
+		assertThat(historyCaptor.getValue().isRewardGranted()).isEqualTo(rewardGranted);
 	}
 
 	private RouletteReward reward(

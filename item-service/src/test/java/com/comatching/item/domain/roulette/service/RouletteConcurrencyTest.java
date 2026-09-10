@@ -72,18 +72,20 @@ class RouletteConcurrencyTest {
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	@DisplayName("단일 행 보상은 동시 추첨 횟수만큼 재고가 차감된다")
-	void singleRewardStockIsDecreasedForEveryConcurrentSpin() throws Exception {
+	@DisplayName("단일 행 상품권은 동시 추첨 횟수만큼 재고가 차감된다")
+	void giftCardStockIsDecreasedForEveryConcurrentSpin() throws Exception {
 		int stock = REQUEST_COUNT;
 		Long limitedRewardId = inTransaction(() -> rouletteRewardRepository.save(
-			reward(RouletteType.FREE, "한정 보상", 1, 10000, stock)).getId());
+			reward(RouletteType.SPECIAL, "상품권", RewardType.GIFT_CARD, 1, 10000, stock)).getId());
+		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(any(), any(), any()))
+			.willReturn(3500L);
 
 		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
-			rouletteService.spinRoulette(member(index + 1L), RouletteType.FREE));
+			rouletteService.spinRoulette(member(index + 1L), RouletteType.SPECIAL));
 
 		assertThat(failures).isEmpty();
 		RouletteReward savedReward = rouletteRewardRepository.findById(limitedRewardId).orElseThrow();
-		assertThat(savedReward.getRewardType()).isEqualTo(RewardType.NONE);
+		assertThat(savedReward.getRewardType()).isEqualTo(RewardType.GIFT_CARD);
 		assertThat(savedReward.getRemainingCount()).isZero();
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE reward_id = ?", limitedRewardId))
 			.isEqualTo(REQUEST_COUNT);
@@ -97,7 +99,7 @@ class RouletteConcurrencyTest {
 	void freeRouletteSucceedsOnlyOnceForSameMember() throws Exception {
 		Long memberId = 50L;
 		Long rewardId = inTransaction(() -> rouletteRewardRepository.save(
-			itemReward(RouletteType.FREE, "옵션권 1장", REQUEST_COUNT)).getId());
+			itemReward(RouletteType.FREE, "옵션권 1장")).getId());
 
 		List<Throwable> failures = runConcurrently(REQUEST_COUNT, index ->
 			rouletteService.spinRoulette(member(memberId), RouletteType.FREE));
@@ -111,7 +113,7 @@ class RouletteConcurrencyTest {
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE member_id = ?", memberId))
 			.isOne();
 		assertThat(rouletteRewardRepository.findById(rewardId).orElseThrow().getRemainingCount())
-			.isEqualTo(REQUEST_COUNT - 1);
+			.isNull();
 		assertThat(itemRepository.count()).isOne();
 		assertThat(itemHistoryRepository.count()).isOne();
 	}
@@ -122,7 +124,7 @@ class RouletteConcurrencyTest {
 	void specialRouletteSucceedsOnlyOnceForSameMember() throws Exception {
 		Long memberId = 51L;
 		Long rewardId = inTransaction(() -> rouletteRewardRepository.save(
-			itemReward(RouletteType.SPECIAL, "옵션권 1장", REQUEST_COUNT)).getId());
+			itemReward(RouletteType.SPECIAL, "옵션권 1장")).getId());
 		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
 			eq(memberId), any(), any()))
 			.willReturn(3500L);
@@ -142,7 +144,7 @@ class RouletteConcurrencyTest {
 			RouletteType.SPECIAL.name()))
 			.isOne();
 		assertThat(rouletteRewardRepository.findById(rewardId).orElseThrow().getRemainingCount())
-			.isEqualTo(REQUEST_COUNT - 1);
+			.isNull();
 		assertThat(itemRepository.count()).isOne();
 		assertThat(itemHistoryRepository.count()).isOne();
 	}
@@ -190,6 +192,7 @@ class RouletteConcurrencyTest {
 	private RouletteReward reward(
 		RouletteType rouletteType,
 		String rewardName,
+		RewardType rewardType,
 		int rangeStart,
 		int rangeEnd,
 		Integer remainingCount
@@ -197,8 +200,8 @@ class RouletteConcurrencyTest {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
 			.rewardName(rewardName)
-			.rewardType(RewardType.NONE)
-			.quantity(0)
+			.rewardType(rewardType)
+			.quantity(rewardType == RewardType.GIFT_CARD ? 1 : 0)
 			.rangeStart(rangeStart)
 			.rangeEnd(rangeEnd)
 			.remainingCount(remainingCount)
@@ -207,8 +210,7 @@ class RouletteConcurrencyTest {
 
 	private RouletteReward itemReward(
 		RouletteType rouletteType,
-		String rewardName,
-		Integer remainingCount
+		String rewardName
 	) {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
@@ -217,7 +219,7 @@ class RouletteConcurrencyTest {
 			.quantity(1)
 			.rangeStart(1)
 			.rangeEnd(10000)
-			.remainingCount(remainingCount)
+			.remainingCount(null)
 			.build();
 	}
 

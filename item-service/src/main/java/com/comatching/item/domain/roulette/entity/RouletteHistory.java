@@ -55,15 +55,27 @@ public class RouletteHistory {
     @Column(name = "participation_date", nullable = false)
     private LocalDate participationDate;
 
+    @Column(name = "reward_granted", nullable = false)
+    // 일반 아이템과 풀세트는 룰렛 처리 중 지급이 끝나면 true가 된다.
+    // 상품권은 관리자가 실제 지급한 뒤 지급 완료 API를 호출하기 전까지 false로 남는다.
+    private boolean rewardGranted;
+
     @Builder
     public RouletteHistory(
             Long memberId,
             RouletteReward reward,
-            RouletteType rouletteType
+            RouletteType rouletteType,
+            boolean rewardGranted
     ) {
         this.memberId = memberId;
         this.reward = reward;
         this.rouletteType = rouletteType;
         this.participationDate = participatedAt.toLocalDate();
+        this.rewardGranted = rewardGranted;
+    }
+
+    public void markRewardAsGranted() {
+        // 관리자가 상품권을 실제 지급한 뒤 지급 완료 상태로 변경한다.
+        this.rewardGranted = true;
     }
 }

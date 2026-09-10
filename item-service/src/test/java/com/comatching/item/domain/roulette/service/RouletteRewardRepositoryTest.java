@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -91,7 +92,7 @@ class RouletteRewardRepositoryTest {
 	@DisplayName("풀세트 단일 행을 조회한다")
 	void shouldFindSingleFullSetReward() {
 		RouletteReward fullSet = persist(reward(
-			RouletteType.SPECIAL, "풀세트", null, 8201, 9200, null));
+			RouletteType.SPECIAL, "풀세트", RewardType.FULL_SET, 8201, 9200, null));
 		flushAndClear();
 
 		Optional<RouletteReward> reward = rouletteRewardRepository
@@ -103,7 +104,8 @@ class RouletteRewardRepositoryTest {
 	@Test
 	@DisplayName("재고가 소진된 제한 보상은 조회하지 않는다")
 	void shouldExcludeOutOfStockReward() {
-		persist(reward(RouletteType.SPECIAL, "상품권", 9701, 9900, 0));
+		persist(reward(
+			RouletteType.SPECIAL, "상품권", RewardType.GIFT_CARD, 9701, 9900, 0));
 		flushAndClear();
 
 		Optional<RouletteReward> reward = rouletteRewardRepository
@@ -123,6 +125,61 @@ class RouletteRewardRepositoryTest {
 			.findAvailableByRouletteTypeAndRouletteNumber(RouletteType.FREE, 5000);
 
 		assertThat(reward.orElseThrow().getId()).isEqualTo(freeReward.getId());
+	}
+
+	@Test
+	@DisplayName("미지급 상품권 이력만 당첨 시각 역순으로 조회한다")
+	void shouldFindOnlyUnpaidGiftCardHistoriesInLatestOrder() {
+		RouletteReward giftCard = persist(reward(
+			RouletteType.SPECIAL, "1만원권 상품권", RewardType.GIFT_CARD, 9701, 9900, 3));
+		RouletteReward item = persist(reward(
+			RouletteType.SPECIAL, "옵션권 2장", RewardType.OPTION_TICKET, 1, 3900, null));
+		RouletteHistory olderUnpaid = entityManager.persist(RouletteHistory.builder()
+			.memberId(20L)
+			.reward(giftCard)
+			.rouletteType(RouletteType.SPECIAL)
+			.rewardGranted(false)
+			.build());
+		RouletteHistory paidGiftCard = entityManager.persist(RouletteHistory.builder()
+			.memberId(21L)
+			.reward(giftCard)
+			.rouletteType(RouletteType.SPECIAL)
+			.rewardGranted(true)
+			.build());
+		entityManager.persist(RouletteHistory.builder()
+			.memberId(22L)
+			.reward(item)
+			.rouletteType(RouletteType.SPECIAL)
+			.rewardGranted(false)
+			.build());
+		RouletteHistory newerUnpaid = entityManager.persist(RouletteHistory.builder()
+			.memberId(23L)
+			.reward(giftCard)
+			.rouletteType(RouletteType.SPECIAL)
+			.rewardGranted(false)
+			.build());
+		entityManager.flush();
+		jdbcTemplate.update(
+			"UPDATE roulette_history SET participated_at = ? WHERE id = ?",
+			Timestamp.valueOf(LocalDate.now().atTime(10, 0)),
+			olderUnpaid.getId());
+		jdbcTemplate.update(
+			"UPDATE roulette_history SET participated_at = ? WHERE id = ?",
+			Timestamp.valueOf(LocalDate.now().atTime(12, 0)),
+			newerUnpaid.getId());
+		entityManager.clear();
+
+		List<RouletteHistory> histories = rouletteHistoryRepository
+			.findAllByReward_RewardTypeAndRewardGrantedFalseOrderByParticipatedAtDesc(RewardType.GIFT_CARD);
+
+		assertThat(histories).extracting(RouletteHistory::getId)
+			.containsExactly(newerUnpaid.getId(), olderUnpaid.getId());
+		assertThat(histories).allSatisfy(history -> {
+			assertThat(history.isRewardGranted()).isFalse();
+			assertThat(history.getReward().getRewardType()).isEqualTo(RewardType.GIFT_CARD);
+		});
+		assertThat(histories).extracting(RouletteHistory::getId)
+			.doesNotContain(paidGiftCard.getId());
 	}
 
 	@Test
@@ -224,7 +281,7 @@ class RouletteRewardRepositoryTest {
 	void shouldRollbackSavedItemWhenItemHistorySaveFails() {
 		TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 		transactionTemplate.executeWithoutResult(status -> rouletteRewardRepository.saveAndFlush(
-			reward(RouletteType.FREE, "옵션권 1장", RewardType.OPTION_TICKET, 1, 10000, 2)));
+			reward(RouletteType.FREE, "옵션권 1장", RewardType.OPTION_TICKET, 1, 10000, null)));
 		given(itemHistoryRepository.save(any(ItemHistory.class)))
 			.willThrow(new RuntimeException("item history save failed"));
 
@@ -237,7 +294,7 @@ class RouletteRewardRepositoryTest {
 		assertThat(rouletteHistoryRepository.count()).isZero();
 		assertThat(rouletteRewardRepository.findAll())
 			.extracting(RouletteReward::getRemainingCount)
-			.containsExactly(2);
+			.containsExactly((Integer)null);
 	}
 
 	private RouletteReward persist(RouletteReward reward) {
@@ -275,7 +332,7 @@ class RouletteRewardRepositoryTest {
 
 	private RouletteHistory persistHistory(Long memberId, RouletteType rouletteType) {
 		RouletteReward historyReward = persist(reward(
-			RouletteType.FREE, "꽝", null, 1, 10000, 999999));
+			RouletteType.FREE, "꽝", RewardType.NONE, 1, 10000, null));
 		return entityManager.persist(RouletteHistory.builder()
 			.memberId(memberId)
 			.reward(historyReward)

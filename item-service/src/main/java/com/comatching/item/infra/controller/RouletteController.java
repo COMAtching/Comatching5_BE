@@ -8,7 +8,6 @@ import com.comatching.item.domain.roulette.dto.response.RouletteSpinResponse;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 import com.comatching.item.domain.roulette.service.RouletteService;
 import io.swagger.v3.oas.annotations.Operation;
-import jdk.jfr.Description;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +19,7 @@ public class RouletteController {
     private final RouletteService rouletteService;
 
     @PostMapping("/{rouletteType}/spins")
-    @Operation(summary = "룰렛 돌리는 api", description = "")
+    @Operation(summary = "룰렛 돌리는 api", description = "무료 룰렛과 유료 룰렛 (1일 1회 제한)")
     public ResponseEntity<ApiResponse<RouletteSpinResponse>> spinRoulette(
             @CurrentMember MemberInfo memberInfo,
             @PathVariable RouletteType rouletteType

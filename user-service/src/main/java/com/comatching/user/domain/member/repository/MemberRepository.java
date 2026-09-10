@@ -1,5 +1,6 @@
 package com.comatching.user.domain.member.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -55,6 +56,17 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 		"AND m.role = :role")
 	Optional<Member> findAdminMemberById(
 		@Param("memberId") Long memberId,
+		@Param("status") MemberStatus status,
+		@Param("role") MemberRole role
+	);
+
+	@Query("SELECT m FROM Member m " +
+		"JOIN FETCH m.profile p " +
+		"WHERE m.id IN :memberIds " +
+		"AND m.status = :status " +
+		"AND m.role = :role")
+	List<Member> findAdminMembersByIds(
+		@Param("memberIds") List<Long> memberIds,
 		@Param("status") MemberStatus status,
 		@Param("role") MemberRole role
 	);
