@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/api/roulette")
+@RequestMapping("/api/items/roulette")
 public class RouletteController {
     private final RouletteService rouletteService;
 
