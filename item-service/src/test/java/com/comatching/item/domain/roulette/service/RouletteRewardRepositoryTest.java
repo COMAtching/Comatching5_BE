@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.item.domain.item.entity.Item;
 import com.comatching.item.domain.item.entity.ItemHistory;
@@ -39,6 +38,7 @@ import com.comatching.item.domain.item.repository.ItemRepository;
 import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
+import com.comatching.item.domain.roulette.enums.RewardType;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 import com.comatching.item.domain.roulette.repository.RouletteHistoryRepository;
 import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
@@ -224,7 +224,7 @@ class RouletteRewardRepositoryTest {
 	void shouldRollbackSavedItemWhenItemHistorySaveFails() {
 		TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 		transactionTemplate.executeWithoutResult(status -> rouletteRewardRepository.saveAndFlush(
-			reward(RouletteType.FREE, "옵션권 1장", ItemType.OPTION_TICKET, 1, 10000, 2)));
+			reward(RouletteType.FREE, "옵션권 1장", RewardType.OPTION_TICKET, 1, 10000, 2)));
 		given(itemHistoryRepository.save(any(ItemHistory.class)))
 			.willThrow(new RuntimeException("item history save failed"));
 
@@ -297,13 +297,13 @@ class RouletteRewardRepositoryTest {
 		int rangeEnd,
 		Integer remainingCount
 	) {
-		return reward(rouletteType, rewardName, null, rangeStart, rangeEnd, remainingCount);
+		return reward(rouletteType, rewardName, RewardType.NONE, rangeStart, rangeEnd, remainingCount);
 	}
 
 	private RouletteReward reward(
 		RouletteType rouletteType,
 		String rewardName,
-		ItemType itemType,
+		RewardType rewardType,
 		int rangeStart,
 		int rangeEnd,
 		Integer remainingCount
@@ -311,8 +311,8 @@ class RouletteRewardRepositoryTest {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
 			.rewardName(rewardName)
-			.itemType(itemType)
-			.quantity(itemType == null ? 0 : 1)
+			.rewardType(rewardType)
+			.quantity(rewardType.getItemType() == null ? 0 : 1)
 			.rangeStart(rangeStart)
 			.rangeEnd(rangeEnd)
 			.remainingCount(remainingCount)

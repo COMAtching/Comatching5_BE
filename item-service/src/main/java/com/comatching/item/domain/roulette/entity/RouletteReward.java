@@ -1,6 +1,6 @@
 package com.comatching.item.domain.roulette.entity;
 
-import com.comatching.common.domain.enums.ItemType;
+import com.comatching.item.domain.roulette.enums.RewardType;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 
 import jakarta.persistence.Column;
@@ -32,7 +32,8 @@ public class RouletteReward {
     private String rewardName;
 
     @Enumerated(EnumType.STRING)
-    private ItemType itemType;
+    @Column(nullable = false)
+    private RewardType rewardType;
 
     @Column(nullable = false)
     private int quantity;
@@ -49,7 +50,7 @@ public class RouletteReward {
     public RouletteReward(
             RouletteType rouletteType,
             String rewardName,
-            ItemType itemType,
+            RewardType rewardType,
             int quantity,
             int rangeStart,
             int rangeEnd,
@@ -57,7 +58,7 @@ public class RouletteReward {
     ) {
         this.rouletteType = rouletteType;
         this.rewardName = rewardName;
-        this.itemType = itemType;
+        this.rewardType = rewardType;
         this.quantity = quantity;
         this.rangeStart = rangeStart;
         this.rangeEnd = rangeEnd;

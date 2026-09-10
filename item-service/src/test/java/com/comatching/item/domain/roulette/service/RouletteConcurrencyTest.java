@@ -31,7 +31,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.item.domain.item.entity.Item;
@@ -41,6 +40,7 @@ import com.comatching.item.domain.item.repository.ItemRepository;
 import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
+import com.comatching.item.domain.roulette.enums.RewardType;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 import com.comatching.item.domain.roulette.repository.RouletteHistoryRepository;
 import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
@@ -83,7 +83,7 @@ class RouletteConcurrencyTest {
 
 		assertThat(failures).isEmpty();
 		RouletteReward savedReward = rouletteRewardRepository.findById(limitedRewardId).orElseThrow();
-		assertThat(savedReward.getItemType()).isNull();
+		assertThat(savedReward.getRewardType()).isEqualTo(RewardType.NONE);
 		assertThat(savedReward.getRemainingCount()).isZero();
 		assertThat(count("SELECT COUNT(*) FROM roulette_history WHERE reward_id = ?", limitedRewardId))
 			.isEqualTo(REQUEST_COUNT);
@@ -197,6 +197,7 @@ class RouletteConcurrencyTest {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
 			.rewardName(rewardName)
+			.rewardType(RewardType.NONE)
 			.quantity(0)
 			.rangeStart(rangeStart)
 			.rangeEnd(rangeEnd)
@@ -212,7 +213,7 @@ class RouletteConcurrencyTest {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
 			.rewardName(rewardName)
-			.itemType(ItemType.OPTION_TICKET)
+			.rewardType(RewardType.OPTION_TICKET)
 			.quantity(1)
 			.rangeStart(1)
 			.rangeEnd(10000)

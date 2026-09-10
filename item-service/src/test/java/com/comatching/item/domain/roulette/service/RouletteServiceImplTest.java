@@ -34,6 +34,7 @@ import com.comatching.item.domain.roulette.dto.response.RoulettePageResponse;
 import com.comatching.item.domain.roulette.dto.response.RouletteSpinResponse;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
+import com.comatching.item.domain.roulette.enums.RewardType;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 import com.comatching.item.domain.roulette.repository.RouletteHistoryRepository;
 import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
@@ -171,7 +172,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("일반 아이템 보상은 아이템과 아이템 이력을 저장하고 보상명을 반환한다")
 	void shouldGrantItemRewardAndReturnRewardName() {
-		RouletteReward reward = reward(RouletteType.FREE, "옵션권 2장", ItemType.OPTION_TICKET, 2, null);
+		RouletteReward reward = reward(RouletteType.FREE, "옵션권 2장", RewardType.OPTION_TICKET, 2, null);
 		givenReward(RouletteType.FREE, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
@@ -198,7 +199,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("풀세트 한 행으로 옵션권과 매칭권을 모두 지급한다")
 	void shouldGrantEveryFullSetReward() {
-		RouletteReward fullSet = reward(RouletteType.SPECIAL, "풀세트", null, 0, 2);
+		RouletteReward fullSet = reward(RouletteType.SPECIAL, "풀세트", RewardType.FULL_SET, 0, 2);
 		givenReward(RouletteType.SPECIAL, fullSet);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL);
@@ -227,7 +228,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("상품권은 재고만 차감하고 룰렛 이력과 보상명을 남긴다")
 	void shouldRecordGiftCardWithoutGrantingItem() {
-		RouletteReward reward = reward(RouletteType.SPECIAL, "1만원권 상품권", null, 1, 3);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "1만원권 상품권", RewardType.GIFT_CARD, 1, 3);
 		givenReward(RouletteType.SPECIAL, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL);
@@ -242,7 +243,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("꽝은 아이템을 지급하지 않고 룰렛 이력과 보상명을 남긴다")
 	void shouldRecordNoPrizeWithoutGrantingItem() {
-		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
+		RouletteReward reward = reward(RouletteType.FREE, "꽝", RewardType.NONE, 0, null);
 		givenReward(RouletteType.FREE, reward);
 
 		RouletteSpinResponse response = rouletteService.spinRoulette(MEMBER, RouletteType.FREE);
@@ -317,7 +318,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("선택된 범위의 보상이 비어 있으면 다시 추첨한다")
 	void shouldRetryWhenSelectedRewardIsEmpty() {
-		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
+		RouletteReward reward = reward(RouletteType.FREE, "꽝", RewardType.NONE, 0, null);
 		given(rouletteRewardRepository
 			.findAvailableByRouletteTypeAndRouletteNumber(eq(RouletteType.FREE), anyInt()))
 			.willReturn(Optional.empty(), Optional.of(reward));
@@ -336,7 +337,7 @@ class RouletteServiceImplTest {
 	@DisplayName("아이템 저장이 실패하면 아이템 이력과 룰렛 이력을 저장하지 않는다")
 	void shouldStopWhenItemSaveFails() {
 		RouletteReward reward = reward(
-			RouletteType.FREE, "옵션권 1장", ItemType.OPTION_TICKET, 1, null);
+			RouletteType.FREE, "옵션권 1장", RewardType.OPTION_TICKET, 1, null);
 		givenReward(RouletteType.FREE, reward);
 		given(itemRepository.save(any(Item.class))).willThrow(new RuntimeException("item save failed"));
 
@@ -352,7 +353,7 @@ class RouletteServiceImplTest {
 	@DisplayName("아이템 이력 저장이 실패하면 룰렛 이력을 저장하지 않는다")
 	void shouldStopWhenItemHistorySaveFails() {
 		RouletteReward reward = reward(
-			RouletteType.FREE, "옵션권 1장", ItemType.OPTION_TICKET, 1, null);
+			RouletteType.FREE, "옵션권 1장", RewardType.OPTION_TICKET, 1, null);
 		givenReward(RouletteType.FREE, reward);
 		given(itemHistoryRepository.save(any(ItemHistory.class)))
 			.willThrow(new RuntimeException("item history save failed"));
@@ -368,7 +369,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("룰렛 이력 저장이 실패하면 예외를 그대로 전달한다")
 	void shouldPropagateRouletteHistorySaveFailure() {
-		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
+		RouletteReward reward = reward(RouletteType.FREE, "꽝", RewardType.NONE, 0, null);
 		givenReward(RouletteType.FREE, reward);
 		given(rouletteHistoryRepository.save(any(RouletteHistory.class)))
 			.willThrow(new RuntimeException("roulette history save failed"));
@@ -381,7 +382,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("제한 재고는 한 개 차감한다")
 	void shouldDecreaseLimitedRemainingCount() {
-		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", null, 1, 2);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", RewardType.GIFT_CARD, 1, 2);
 
 		reward.decreaseRemainingCount();
 
@@ -391,7 +392,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("무제한 보상은 재고를 변경하지 않는다")
 	void shouldNotChangeUnlimitedRemainingCount() {
-		RouletteReward reward = reward(RouletteType.FREE, "꽝", null, 0, null);
+		RouletteReward reward = reward(RouletteType.FREE, "꽝", RewardType.NONE, 0, null);
 
 		reward.decreaseRemainingCount();
 
@@ -401,7 +402,7 @@ class RouletteServiceImplTest {
 	@Test
 	@DisplayName("소진된 재고는 음수가 되지 않는다")
 	void shouldNotDecreaseRemainingCountBelowZero() {
-		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", null, 1, 0);
+		RouletteReward reward = reward(RouletteType.SPECIAL, "상품권", RewardType.GIFT_CARD, 1, 0);
 
 		reward.decreaseRemainingCount();
 
@@ -434,14 +435,14 @@ class RouletteServiceImplTest {
 	private RouletteReward reward(
 		RouletteType rouletteType,
 		String rewardName,
-		ItemType itemType,
+		RewardType rewardType,
 		int quantity,
 		Integer remainingCount
 	) {
 		return RouletteReward.builder()
 			.rouletteType(rouletteType)
 			.rewardName(rewardName)
-			.itemType(itemType)
+			.rewardType(rewardType)
 			.quantity(quantity)
 			.rangeStart(1)
 			.rangeEnd(1)

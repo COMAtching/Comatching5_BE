@@ -18,6 +18,7 @@ import com.comatching.item.domain.roulette.dto.response.RoulettePageResponse;
 import com.comatching.item.domain.roulette.dto.response.RouletteSpinResponse;
 import com.comatching.item.domain.roulette.entity.RouletteHistory;
 import com.comatching.item.domain.roulette.entity.RouletteReward;
+import com.comatching.item.domain.roulette.enums.RewardType;
 import com.comatching.item.domain.roulette.enums.RouletteType;
 import com.comatching.item.domain.roulette.repository.RouletteHistoryRepository;
 import com.comatching.item.domain.roulette.repository.RouletteRewardRepository;
@@ -60,6 +61,7 @@ public class RouletteServiceImpl implements RouletteService {
             throw new BusinessException(ItemErrorCode.NOT_ENOUGH_PAYMENT_FOR_SPECIAL_ROULETTE);
         }
 
+        // 난수로 추첨
         RouletteReward rouletteReward = drawAvailableReward(rouletteType);
 
         // 보상에 따른 아이템 및 아이템 기록 룰렛 기록 추가
@@ -118,11 +120,12 @@ public class RouletteServiceImpl implements RouletteService {
     }
 
     private void grantReward(Long memberId, RouletteReward rouletteReward) {
-        if (rouletteReward.getRewardName().equals("풀세트")) {
+        RewardType rewardType = rouletteReward.getRewardType();
+        if (rewardType == RewardType.FULL_SET) {
             saveRewardItem(memberId, ItemType.OPTION_TICKET, 3);
             saveRewardItem(memberId, ItemType.MATCHING_TICKET, 1);
-        } else if (rouletteReward.getItemType() != null) {
-            saveRewardItem(memberId, rouletteReward.getItemType(), rouletteReward.getQuantity());
+        } else if (rewardType.getItemType() != null) {
+            saveRewardItem(memberId, rewardType.getItemType(), rouletteReward.getQuantity());
         }
     }
 
