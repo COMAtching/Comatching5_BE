@@ -50,7 +50,9 @@ else
   echo "✅ jmeter $(jmeter --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
 fi
 
-code=$(curl -s -o /dev/null -w '%{http_code}' "$SCHEME://$HOST:$PORT/api/auth/participants" || echo 000)
+# RESOLVE="host:port:ip" 를 주면 DNS 를 거치지 않고 그 IP 로 붙는다.
+# 2026-08-27 도메인 clientHold 로 NXDOMAIN 이 된 상황에서 추가 (회차 8).
+code=$(curl -s ${RESOLVE:+--resolve "$RESOLVE"} -o /dev/null -w '%{http_code}' "$SCHEME://$HOST:$PORT/api/auth/participants" || echo 000)
 if [ "$code" = "200" ]; then
   echo "✅ 게이트웨이 $HOST:$PORT — 대상 엔드포인트 200"
 else

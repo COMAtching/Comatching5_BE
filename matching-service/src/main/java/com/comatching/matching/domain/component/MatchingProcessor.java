@@ -52,7 +52,14 @@ import java.util.concurrent.ThreadLocalRandom;
 public class MatchingProcessor {
 
     private static final int MAX_ALLOWED_AGE = 27;
-    private static final int SAMPLE_SIZE = 5_000;
+    /**
+     * 5,000 → 2,000 (회차 10). 상한 29 RPS 의 병목이 RDS CPU(db.t3.micro 2 vCPU,
+     * 6개 서비스 공유)로 확정됐고, 후보 쿼리의 temp table·정렬 대상이 표본
+     * 크기에 비례한다. 회차 3 분포표 기준 80점 이상 확보율은 5,000=99.9% →
+     * 2,000=94.2% — 사용자는 점수를 보지 못하고 동점 그룹 무작위 선택 구조라
+     * 체감 차이가 없는 반면 RDS CPU 는 표본에 비례해 돌아온다.
+     */
+    private static final int SAMPLE_SIZE = 2_000;
 
     private final MatchingCandidateRepository candidateRepository;
     private final MatchingHistoryRepository historyRepository;

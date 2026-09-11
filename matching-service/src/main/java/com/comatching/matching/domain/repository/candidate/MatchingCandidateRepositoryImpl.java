@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -84,7 +85,17 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 
     private final EntityManager em;
 
+    /**
+     * readOnly 트랜잭션이 성능 수정이다 (회차 8).
+     * 이 메서드는 네이티브 쿼리라 트랜잭션 없이 돌면 Hibernate 의
+     * release-after-transaction 이 발동할 트랜잭션이 없고, OSIV 세션이
+     * 닫히는 요청 끝까지 커넥션을 쥔다 — 상대 프로필 Feign 호출까지 포함해서.
+     * 실측: 커넥션 점유 113~337ms (SQL 자체는 ~25ms), 풀 10개가
+     * 10 ÷ 0.33s ≈ 30 RPS 에서 처리량 상한이 됐다.
+     * 트랜잭션 경계를 쿼리에 딱 맞추면 점유가 SQL 시간으로 줄어든다.
+     */
     @Override
+    @Transactional(readOnly = true)
     public Optional<MatchingCandidate> findBestCandidate(MatchingCandidateSearchCondition condition) {
         Optional<MatchingCandidate> found = queryBestCandidate(condition);
 
