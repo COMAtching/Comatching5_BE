@@ -1,4 +1,4 @@
-package com.comatching.item.infra.controller;
+package com.comatching.user.infra.controller;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,10 +18,10 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.dto.response.PagingResponse;
-import com.comatching.item.domain.admin.dto.AdminInventoryUpdateRequest;
-import com.comatching.item.domain.admin.dto.AdminUserDetailResponse;
-import com.comatching.item.domain.admin.dto.AdminUserSummaryResponse;
-import com.comatching.item.domain.admin.service.AdminUserItemService;
+import com.comatching.user.domain.admin.user.dto.AdminInventoryUpdateRequest;
+import com.comatching.user.domain.admin.user.dto.AdminUserDetailResponse;
+import com.comatching.user.domain.admin.user.dto.AdminUserSummaryResponse;
+import com.comatching.user.domain.admin.user.service.AdminMemberService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,9 +32,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
-public class AdminUserController {
+public class AdminMemberController {
 
-	private final AdminUserItemService adminUserItemService;
+	private final AdminMemberService adminMemberService;
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
 	@Operation(summary = "사용자 목록 조회/검색", description = "관리자가 이메일/닉네임/이름 키워드로 사용자 목록을 페이징 조회합니다.")
@@ -44,7 +44,7 @@ public class AdminUserController {
 		@RequestParam(required = false) String keyword,
 		@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
 	) {
-		return ResponseEntity.ok(ApiResponse.ok(adminUserItemService.getUsers(keyword, pageable)));
+		return ResponseEntity.ok(ApiResponse.ok(adminMemberService.getUsers(keyword, pageable)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
@@ -54,7 +54,7 @@ public class AdminUserController {
 		@CurrentMember MemberInfo memberInfo,
 		@PathVariable Long memberId
 	) {
-		return ResponseEntity.ok(ApiResponse.ok(adminUserItemService.getUserDetail(memberId)));
+		return ResponseEntity.ok(ApiResponse.ok(adminMemberService.getUserDetail(memberId)));
 	}
 
 	@RequireRole(MemberRole.ROLE_ADMIN)
@@ -63,9 +63,9 @@ public class AdminUserController {
 	public ResponseEntity<ApiResponse<Void>> updateUserInventory(
 		@CurrentMember MemberInfo memberInfo,
 		@PathVariable Long memberId,
-		@RequestBody @Valid AdminInventoryUpdateRequest request
+		@Valid @RequestBody AdminInventoryUpdateRequest request
 	) {
-		adminUserItemService.updateUserInventory(memberInfo.memberId(), memberId, request);
+		adminMemberService.updateUserInventory(memberInfo.memberId(), memberId, request);
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

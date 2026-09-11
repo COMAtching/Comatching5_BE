@@ -1,4 +1,9 @@
-package com.comatching.item.infra.controller;
+package com.comatching.item.infra.controller.admin;
+
+/*
+ * Temporarily disabled: notice API has moved out of item-service.
+ * Keep the prior implementation here as a comment for the migration rollback.
+ *
 
 import java.util.List;
 
@@ -88,3 +93,4 @@ public class NoticeController {
 		return ResponseEntity.ok(ApiResponse.ok(noticeService.getActiveNotices()));
 	}
 }
+*/

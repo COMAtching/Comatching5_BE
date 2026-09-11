@@ -1,30 +1,24 @@
-package com.comatching.item.domain.notice.service;
+package com.comatching.user.domain.admin.notice.service;
 
-/*
- * Temporarily disabled with the item-service notice API.
- *
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.user.domain.admin.notice.dto.ActiveNoticeResponse;
+import com.comatching.user.domain.admin.notice.dto.AdminNoticeResponse;
+import com.comatching.user.domain.admin.notice.dto.NoticeCreateRequest;
+import com.comatching.user.domain.admin.notice.dto.NoticeUpdateRequest;
+import com.comatching.user.domain.admin.notice.entity.Notice;
+import com.comatching.user.domain.admin.notice.repository.NoticeRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
-import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
-import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
-import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
-import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
-import com.comatching.item.domain.notice.entity.Notice;
-import com.comatching.item.domain.notice.repository.NoticeRepository;
-
-import lombok.RequiredArgsConstructor;
-
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class NoticeServiceImpl implements NoticeService {
+public class AdminNoticeServiceImpl implements AdminNoticeService {
 
 	private final NoticeRepository noticeRepository;
 
@@ -91,4 +85,3 @@ public class NoticeServiceImpl implements NoticeService {
 		}
 	}
 }
-*/

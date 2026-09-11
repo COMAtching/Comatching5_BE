@@ -1,5 +1,9 @@
 package com.comatching.item.domain.notice.service;
 
+/*
+ * Temporarily disabled with the item-service notice API.
+ *
+
 import java.util.List;
 
 import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
@@ -19,3 +23,4 @@ public interface NoticeService {
 
 	List<AdminNoticeResponse> getAdminNotices();
 }
+*/

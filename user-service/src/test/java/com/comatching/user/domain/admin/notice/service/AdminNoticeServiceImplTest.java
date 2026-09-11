@@ -1,8 +1,4 @@
-package com.comatching.item.domain.notice.service;
-
-/*
- * Temporarily disabled with the item-service notice API.
- *
+package com.comatching.user.domain.admin.notice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,19 +21,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
-import com.comatching.item.domain.notice.dto.AdminNoticeResponse;
-import com.comatching.item.domain.notice.dto.ActiveNoticeResponse;
-import com.comatching.item.domain.notice.dto.NoticeCreateRequest;
-import com.comatching.item.domain.notice.dto.NoticeUpdateRequest;
-import com.comatching.item.domain.notice.entity.Notice;
-import com.comatching.item.domain.notice.repository.NoticeRepository;
+import com.comatching.user.domain.admin.notice.dto.ActiveNoticeResponse;
+import com.comatching.user.domain.admin.notice.dto.AdminNoticeResponse;
+import com.comatching.user.domain.admin.notice.dto.NoticeCreateRequest;
+import com.comatching.user.domain.admin.notice.dto.NoticeUpdateRequest;
+import com.comatching.user.domain.admin.notice.entity.Notice;
+import com.comatching.user.domain.admin.notice.repository.NoticeRepository;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("NoticeServiceImpl 테스트")
-class NoticeServiceImplTest {
+@DisplayName("AdminNoticeServiceImpl 테스트")
+class AdminNoticeServiceImplTest {
 
 	@InjectMocks
-	private NoticeServiceImpl noticeService;
+	private AdminNoticeServiceImpl adminNoticeService;
 
 	@Mock
 	private NoticeRepository noticeRepository;
@@ -56,7 +52,7 @@ class NoticeServiceImplTest {
 		given(noticeRepository.save(any(Notice.class))).willAnswer(invocation -> invocation.getArgument(0));
 
 		// when
-		noticeService.createNotice(request);
+		adminNoticeService.createNotice(request);
 
 		// then
 		ArgumentCaptor<Notice> noticeCaptor = ArgumentCaptor.forClass(Notice.class);
@@ -81,7 +77,7 @@ class NoticeServiceImplTest {
 		);
 
 		// when & then
-		assertThatThrownBy(() -> noticeService.createNotice(request))
+		assertThatThrownBy(() -> adminNoticeService.createNotice(request))
 			.isInstanceOf(BusinessException.class);
 	}
 
@@ -97,7 +93,7 @@ class NoticeServiceImplTest {
 		);
 
 		// when & then
-		assertThatThrownBy(() -> noticeService.createNotice(request))
+		assertThatThrownBy(() -> adminNoticeService.createNotice(request))
 			.isInstanceOf(BusinessException.class);
 	}
 
@@ -118,7 +114,7 @@ class NoticeServiceImplTest {
 			.willReturn(List.of(notice));
 
 		// when
-		List<ActiveNoticeResponse> responses = noticeService.getActiveNotices();
+		List<ActiveNoticeResponse> responses = adminNoticeService.getActiveNotices();
 
 		// then
 		assertThat(responses).hasSize(1);
@@ -152,7 +148,7 @@ class NoticeServiceImplTest {
 			.willReturn(List.of(activeNotice, expiredNotice));
 
 		// when
-		List<AdminNoticeResponse> responses = noticeService.getAdminNotices();
+		List<AdminNoticeResponse> responses = adminNoticeService.getAdminNotices();
 
 		// then
 		assertThat(responses).hasSize(2);
@@ -182,7 +178,7 @@ class NoticeServiceImplTest {
 		);
 
 		// when
-		noticeService.updateNotice(7L, request);
+		adminNoticeService.updateNotice(7L, request);
 
 		// then
 		assertThat(notice.getTitle()).isEqualTo("수정 제목");
@@ -204,7 +200,7 @@ class NoticeServiceImplTest {
 		given(noticeRepository.findById(999L)).willReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> noticeService.updateNotice(999L, request))
+		assertThatThrownBy(() -> adminNoticeService.updateNotice(999L, request))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(GeneralErrorCode.NOT_FOUND);
@@ -224,7 +220,7 @@ class NoticeServiceImplTest {
 		given(noticeRepository.findById(5L)).willReturn(Optional.of(notice));
 
 		// when
-		noticeService.deleteNotice(5L);
+		adminNoticeService.deleteNotice(5L);
 
 		// then
 		then(noticeRepository).should().delete(notice);
@@ -237,10 +233,9 @@ class NoticeServiceImplTest {
 		given(noticeRepository.findById(888L)).willReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> noticeService.deleteNotice(888L))
+		assertThatThrownBy(() -> adminNoticeService.deleteNotice(888L))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(GeneralErrorCode.NOT_FOUND);
 	}
 }
-*/
