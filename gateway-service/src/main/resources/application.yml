@@ -105,14 +105,14 @@ spring:
             - id: admin-user-notice
               uri: http://localhost:9000
               predicates:
-                - Path=/api/v1/admin/users/**, /api/v1/admin/notices/**
+                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**
               filters:
                 - AuthorizationHeaderFilter
 
             - id: admin-payment-product-items
               uri: http://localhost:9006
               predicates:
-                - Path=/api/v1/admin/shop/**, /api/v1/admin/payment/**
+                - Path=/api/v1/admin/shop/**, /api/v1/admin/payment/**, /api/v1/admin/roulette/**
               filters:
                 - AuthorizationHeaderFilter
 

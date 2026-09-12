@@ -64,7 +64,7 @@ class AdminMemberControllerTest {
 	}
 
 	@Test
-	@DisplayName("GET /api/admin/users - 사용자 목록을 조회한다")
+	@DisplayName("GET /api/v1/admin/users - 사용자 목록을 조회한다")
 	void getUsers_success() throws Exception {
 		// given
 		AdminUserSummaryResponse summary = new AdminUserSummaryResponse(
@@ -76,7 +76,7 @@ class AdminMemberControllerTest {
 		given(adminMemberService.getUsers(eq(null), any(Pageable.class))).willReturn(response);
 
 		// when & then
-		mockMvc.perform(get("/api/admin/users")
+		mockMvc.perform(get("/api/v1/admin/users")
 				.header("X-Member-Id", ADMIN_ID)
 				.header("X-Member-Role", "ROLE_ADMIN"))
 			.andExpect(status().isOk())
@@ -92,7 +92,7 @@ class AdminMemberControllerTest {
 	}
 
 	@Test
-	@DisplayName("GET /api/admin/users?keyword= - 키워드를 서비스로 그대로 전달한다")
+	@DisplayName("GET /api/v1/admin/users?keyword= - 키워드를 서비스로 그대로 전달한다")
 	void getUsers_withKeyword() throws Exception {
 		// given
 		PagingResponse<AdminUserSummaryResponse> response =
@@ -101,7 +101,7 @@ class AdminMemberControllerTest {
 		given(adminMemberService.getUsers(eq("nickname"), any(Pageable.class))).willReturn(response);
 
 		// when & then
-		mockMvc.perform(get("/api/admin/users")
+		mockMvc.perform(get("/api/v1/admin/users")
 				.param("keyword", "nickname")
 				.header("X-Member-Id", ADMIN_ID)
 				.header("X-Member-Role", "ROLE_ADMIN"))
@@ -113,16 +113,16 @@ class AdminMemberControllerTest {
 	}
 
 	@Test
-	@DisplayName("GET /api/admin/users - 인증 헤더가 없으면 예외가 발생한다")
+	@DisplayName("GET /api/v1/admin/users - 인증 헤더가 없으면 예외가 발생한다")
 	void getUsers_missingMemberIdHeader() throws Exception {
-		mockMvc.perform(get("/api/admin/users"))
+		mockMvc.perform(get("/api/v1/admin/users"))
 			.andExpect(status().isInternalServerError());
 
 		then(adminMemberService).shouldHaveNoInteractions();
 	}
 
 	@Test
-	@DisplayName("GET /api/admin/users/{memberId} - 사용자 상세와 인벤토리를 조회한다")
+	@DisplayName("GET /api/v1/admin/users/{memberId} - 사용자 상세와 인벤토리를 조회한다")
 	void getUserDetail_success() throws Exception {
 		// given
 		AdminUserDetailResponse detail = new AdminUserDetailResponse(
@@ -131,7 +131,7 @@ class AdminMemberControllerTest {
 		given(adminMemberService.getUserDetail(1L)).willReturn(detail);
 
 		// when & then
-		mockMvc.perform(get("/api/admin/users/{memberId}", 1L)
+		mockMvc.perform(get("/api/v1/admin/users/{memberId}", 1L)
 				.header("X-Member-Id", ADMIN_ID)
 				.header("X-Member-Role", "ROLE_ADMIN"))
 			.andExpect(status().isOk())
@@ -142,7 +142,7 @@ class AdminMemberControllerTest {
 	}
 
 	@Test
-	@DisplayName("PATCH /api/admin/users/{memberId}/items - 인벤토리 조정에 성공하면 200을 반환한다")
+	@DisplayName("PATCH /api/v1/admin/users/{memberId}/items - 인벤토리 조정에 성공하면 200을 반환한다")
 	void updateUserInventory_success() throws Exception {
 		// given
 		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
@@ -150,7 +150,7 @@ class AdminMemberControllerTest {
 		);
 
 		// when & then
-		mockMvc.perform(patch("/api/admin/users/{memberId}/items", 1L)
+		mockMvc.perform(patch("/api/v1/admin/users/{memberId}/items", 1L)
 				.header("X-Member-Id", ADMIN_ID)
 				.header("X-Member-Role", "ROLE_ADMIN")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -162,7 +162,7 @@ class AdminMemberControllerTest {
 	}
 
 	@Test
-	@DisplayName("PATCH /api/admin/users/{memberId}/items - 대상 사용자가 없으면 ITEM-004를 반환한다")
+	@DisplayName("PATCH /api/v1/admin/users/{memberId}/items - 대상 사용자가 없으면 ITEM-004를 반환한다")
 	void updateUserInventory_targetUserNotFound() throws Exception {
 		// given
 		AdminInventoryUpdateRequest request = new AdminInventoryUpdateRequest(
@@ -172,7 +172,7 @@ class AdminMemberControllerTest {
 			.given(adminMemberService).updateUserInventory(ADMIN_ID, 1L, request);
 
 		// when & then
-		mockMvc.perform(patch("/api/admin/users/{memberId}/items", 1L)
+		mockMvc.perform(patch("/api/v1/admin/users/{memberId}/items", 1L)
 				.header("X-Member-Id", ADMIN_ID)
 				.header("X-Member-Role", "ROLE_ADMIN")
 				.contentType(MediaType.APPLICATION_JSON)

@@ -198,9 +198,11 @@ class RouletteRewardRepositoryTest {
 	void shouldNotFindPastFreeHistory() {
 		RouletteHistory history = persistHistory(1L, RouletteType.FREE);
 		entityManager.flush();
+		LocalDate yesterday = LocalDate.now().minusDays(1);
 		jdbcTemplate.update(
-			"UPDATE roulette_history SET participated_at = ? WHERE id = ?",
-			Timestamp.valueOf(LocalDate.now().minusDays(1).atTime(12, 0)),
+			"UPDATE roulette_history SET participated_at = ?, participation_date = ? WHERE id = ?",
+			Timestamp.valueOf(yesterday.atTime(12, 0)),
+			yesterday,
 			history.getId());
 		entityManager.clear();
 
@@ -341,10 +343,9 @@ class RouletteRewardRepositoryTest {
 	}
 
 	private boolean existsHistoryToday(Long memberId, RouletteType rouletteType) {
-		LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 		return rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-				memberId, rouletteType, todayStart, todayStart.plusDays(1));
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
+				memberId, rouletteType, LocalDate.now());
 	}
 
 	private RouletteReward reward(

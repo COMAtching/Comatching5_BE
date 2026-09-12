@@ -1,6 +1,6 @@
 package com.comatching.item.domain.roulette.repository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,11 +16,10 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 public interface RouletteHistoryRepository extends JpaRepository<RouletteHistory, Long> {
-	boolean existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+	boolean existsByMemberIdAndRouletteTypeAndParticipationDate(
 		Long memberId,
 		RouletteType rouletteType,
-		LocalDateTime startAt,
-		LocalDateTime endAt
+		LocalDate participationDate
 	);
 
 	@EntityGraph(attributePaths = "reward")

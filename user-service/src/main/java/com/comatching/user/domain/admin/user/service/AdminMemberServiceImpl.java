@@ -51,11 +51,14 @@ public class AdminMemberServiceImpl implements AdminMemberService {
 			.map(this::toAdminUserProfileDto);
 
 		List<AdminUserProfileDto> users = userPage.getContent();
-		Map<Long, AdminInventoryCounts> inventoryCountsByMemberId = itemAdminClient.getInventoryCounts(
-				users.stream()
-						.map(AdminUserProfileDto::id)
-						.toList()
-		);
+		Map<Long, AdminInventoryCounts> inventoryCountsByMemberId =
+				users.isEmpty()
+						? Map.of()
+						: itemAdminClient.getInventoryCounts(
+						users.stream()
+								.map(AdminUserProfileDto::id)
+								.toList()
+				);
 
 		List<AdminUserSummaryResponse> summaries = users.stream()
 				.map(user -> AdminUserSummaryResponse.from(
