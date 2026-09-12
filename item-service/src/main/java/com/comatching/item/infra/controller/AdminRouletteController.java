@@ -15,7 +15,7 @@ import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.item.domain.roulette.dto.response.AdminGiftCardWinnerResponse;
-import com.comatching.item.domain.roulette.service.AdminRouletteService;
+import com.comatching.item.domain.admin.service.AdminRouletteService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

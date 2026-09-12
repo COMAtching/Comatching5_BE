@@ -1,4 +1,4 @@
-package com.comatching.item.domain.roulette.service;
+package com.comatching.item.domain.admin.service;
 
 import java.util.List;
 import java.util.Map;
@@ -44,9 +44,10 @@ public class AdminRouletteServiceImpl implements AdminRouletteService {
 
         // 가져온 유저 정보 당첨 정보와 매핑
         return histories.stream()
+            .filter(history -> usersById.containsKey(history.getMemberId()))
             .map(history -> AdminGiftCardWinnerResponse.from(
                 history,
-                getUserOrThrow(usersById, history.getMemberId())
+                usersById.get(history.getMemberId())
             ))
             .toList();
     }
@@ -86,19 +87,6 @@ public class AdminRouletteServiceImpl implements AdminRouletteService {
         } catch (FeignException ignored) {
             throw new BusinessException(ItemErrorCode.USER_QUERY_FAILED);
         }
-    }
-
-    // user-service 배치 응답에서 당첨 이력의 memberId와 일치하는 회원 정보를 반환한다.
-    // 활성 회원 정보가 누락된 경우 정확한 지급 대상 명단을 만들 수 없으므로 ITEM-004 예외를 발생시킨다.
-    private AdminGiftCardUserProfileDto getUserOrThrow(
-        Map<Long, AdminGiftCardUserProfileDto> usersById,
-        Long memberId
-    ) {
-        AdminGiftCardUserProfileDto user = usersById.get(memberId);
-        if (user == null) {
-            throw new BusinessException(ItemErrorCode.TARGET_USER_NOT_FOUND);
-        }
-        return user;
     }
 
 }

@@ -1,4 +1,4 @@
-package com.comatching.item.domain.roulette.service;
+package com.comatching.item.domain.admin.service;
 
 import java.util.List;
 

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import java.util.Optional;
 
+import com.comatching.item.domain.admin.service.AdminRouletteServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -25,7 +25,7 @@ import com.comatching.common.exception.handler.GlobalExceptionHandler;
 import com.comatching.common.resolver.MemberInfoArgumentResolver;
 import com.comatching.item.domain.roulette.dto.response.AdminGiftCardWinnerResponse;
 import com.comatching.item.domain.roulette.enums.RouletteType;
-import com.comatching.item.domain.roulette.service.AdminRouletteService;
+import com.comatching.item.domain.admin.service.AdminRouletteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
