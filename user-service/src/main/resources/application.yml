@@ -12,6 +12,9 @@ server:
 client:
   url: ${CLIENT_URL:http://localhost:3000}
 
+item-service:
+  url: ${ITEM_SERVICE_URL:http://localhost:9006}
+
 auth:
   cookie:
     secure: ${AUTH_COOKIE_SECURE:false}

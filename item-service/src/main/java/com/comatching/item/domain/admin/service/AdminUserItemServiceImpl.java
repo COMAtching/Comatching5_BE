@@ -1,5 +1,9 @@
 package com.comatching.item.domain.admin.service;
 
+/*
+ * Temporarily disabled with the item-service admin user API.
+ *
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -159,3 +163,4 @@ public class AdminUserItemServiceImpl implements AdminUserItemService {
 			.toList();
 	}
 }
+*/

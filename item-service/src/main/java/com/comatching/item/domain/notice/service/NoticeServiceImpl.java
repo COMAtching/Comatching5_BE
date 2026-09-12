@@ -1,5 +1,9 @@
 package com.comatching.item.domain.notice.service;
 
+/*
+ * Temporarily disabled with the item-service notice API.
+ *
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -87,3 +91,4 @@ public class NoticeServiceImpl implements NoticeService {
 		}
 	}
 }
+*/
