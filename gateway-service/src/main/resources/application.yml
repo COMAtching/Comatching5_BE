@@ -105,7 +105,7 @@ spring:
             - id: admin-user-notice
               uri: http://localhost:9000
               predicates:
-                - Path=/api/v1/admin/users/**, /api/v1/admin/notices/**
+                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**
               filters:
                 - AuthorizationHeaderFilter
 
