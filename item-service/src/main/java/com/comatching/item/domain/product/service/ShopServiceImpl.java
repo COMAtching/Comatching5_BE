@@ -67,7 +67,7 @@ public class ShopServiceImpl implements ShopService {
 
 	@Override
 	@DistributedLock(key = "order:pending", identifier = "#memberId")
-	public void requestPurchase(Long memberId, Long productId) {
+	public void requestPurchase(Long memberId, Long productId, int quantity) {
 		Product product = productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(ItemErrorCode.PRODUCT_NOT_FOUND));
 
@@ -81,7 +81,7 @@ public class ShopServiceImpl implements ShopService {
 			throw new BusinessException(PaymentErrorCode.PENDING_REQUEST_ALREADY_EXISTS);
 		}
 
-		validatePurchaseLimit(memberId, product, now);
+		validatePurchaseLimit(memberId, product, now, quantity);
 		validatePurchaseCountLimit(memberId, product, now);
 
 		OrdererInfoDto ordererInfo = userOrderClient.getOrdererInfo(memberId);
@@ -95,8 +95,8 @@ public class ShopServiceImpl implements ShopService {
 			.requestedItemName(product.getName())
 			.requesterRealName(realName)
 			.requesterUsername(username)
-			.requestedPrice(product.getPrice())
-			.expectedPrice(product.getPrice())
+			.requestedPrice(product.getPrice() * quantity)
+			.expectedPrice(product.getPrice() *  quantity)
 			.requestedAt(now)
 			.expiresAt(now.plusMinutes(paymentOrderProperties.expireMinutes()))
 			.build();
@@ -104,7 +104,7 @@ public class ShopServiceImpl implements ShopService {
 		product.getRewards().forEach(reward -> order.addOrderItem(
 			OrderItem.builder()
 				.itemType(reward.getItemType())
-				.quantity(reward.getQuantity())
+				.quantity(reward.getQuantity() * quantity)
 				.build()
 		));
 
@@ -200,11 +200,11 @@ public class ShopServiceImpl implements ShopService {
 		);
 	}
 
-	private void validatePurchaseLimit(Long memberId, Product product, LocalDateTime now) {
+	private void validatePurchaseLimit(Long memberId, Product product, LocalDateTime now, int quantity) {
 		Map<ItemType, Integer> requestedQuantityByType = getRequestedQuantityByType(product);
 
 		for (ItemType itemType : LIMITED_ITEM_TYPES) {
-			int requestedQuantity = requestedQuantityByType.getOrDefault(itemType, 0);
+			int requestedQuantity = requestedQuantityByType.getOrDefault(itemType, 0) * quantity;
 			if (requestedQuantity == 0) {
 				continue;
 			}
