@@ -112,7 +112,7 @@ spring:
             - id: admin-payment-product-items
               uri: http://localhost:9006
               predicates:
-                - Path=/api/v1/admin/shop/**, /api/v1/admin/payment/**
+                - Path=/api/v1/admin/shop/**, /api/v1/admin/payment/**, /api/v1/admin/roulette/**
               filters:
                 - AuthorizationHeaderFilter
 

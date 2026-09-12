@@ -43,13 +43,15 @@ public class RouletteServiceImpl implements RouletteService {
     @Override
     @Transactional
     public RouletteSpinResponse spinRoulette(MemberInfo memberInfo, RouletteType rouletteType) {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime participatedAt = LocalDateTime.now();
+        LocalDate participationDate = participatedAt.toLocalDate();
+        LocalDateTime todayStart = participationDate.atStartOfDay();
         LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
         // 오늘 참여한 결과 더이상 불가능
         boolean isParticipatedToday = rouletteHistoryRepository
-                .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-                        memberInfo.memberId(), rouletteType, todayStart, tomorrowStart);
+                .existsByMemberIdAndRouletteTypeAndParticipationDate(
+                        memberInfo.memberId(), rouletteType, participationDate);
         if (isParticipatedToday) {
             throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
         }
@@ -77,6 +79,7 @@ public class RouletteServiceImpl implements RouletteService {
                     .reward(rouletteReward)
                     .rouletteType(rouletteType)
                     .rewardGranted(rewardGranted)
+                    .participatedAt(participatedAt)
                     .build());
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(ItemErrorCode.ALREADY_PARTICIPATED_ROULETTE);
@@ -88,18 +91,19 @@ public class RouletteServiceImpl implements RouletteService {
     @Override
     public RoulettePageResponse roulettePage(MemberInfo memberInfo) {
         // 오늘 날짜
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDate participationDate = LocalDate.now();
+        LocalDateTime todayStart = participationDate.atStartOfDay();
         LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
         // 오늘 무료 룰렛 참여 여부
         boolean isFreeParticipated = rouletteHistoryRepository
-                .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-                        memberInfo.memberId(), RouletteType.FREE, todayStart, tomorrowStart);
+                .existsByMemberIdAndRouletteTypeAndParticipationDate(
+                        memberInfo.memberId(), RouletteType.FREE, participationDate);
 
         // 오늘 유료 룰렛 참여 여부
         boolean isSpecialParticipated = rouletteHistoryRepository
-                .existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
-                        memberInfo.memberId(), RouletteType.SPECIAL, todayStart, tomorrowStart);
+                .existsByMemberIdAndRouletteTypeAndParticipationDate(
+                        memberInfo.memberId(), RouletteType.SPECIAL, participationDate);
 
         // 오늘 결제액
         long totalPay = orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(

@@ -10,6 +10,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -65,9 +66,9 @@ class RouletteServiceImplTest {
 	@DisplayName("오늘 무료 룰렛에 참여하지 않았으면 미참여 상태를 반환한다")
 	void shouldReturnFreeRouletteAsNotParticipated() {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 
 		RoulettePageResponse response = rouletteService.roulettePage(MEMBER);
@@ -81,9 +82,9 @@ class RouletteServiceImplTest {
 	@DisplayName("오늘 무료 룰렛에 이미 참여했으면 참여 상태를 반환한다")
 	void shouldReturnFreeRouletteAsParticipated() {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(true);
 
 		RoulettePageResponse response = rouletteService.roulettePage(MEMBER);
@@ -92,9 +93,9 @@ class RouletteServiceImplTest {
 		assertThat(response.isSpecialParticipated()).isFalse();
 		assertThat(response.totalPay()).isZero();
 		then(rouletteHistoryRepository).should()
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class));
+				any(LocalDate.class));
 	}
 
 	@Test
@@ -104,14 +105,14 @@ class RouletteServiceImplTest {
 			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
 			.willReturn(3500L);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 
 		RoulettePageResponse response = rouletteService.roulettePage(MEMBER);
@@ -128,14 +129,14 @@ class RouletteServiceImplTest {
 			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
 			.willReturn(10000L);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(true);
 
 		RoulettePageResponse response = rouletteService.roulettePage(MEMBER);
@@ -152,14 +153,14 @@ class RouletteServiceImplTest {
 			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
 			.willReturn(3499L);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
-				any(LocalDateTime.class), any(LocalDateTime.class)))
+				any(LocalDate.class)))
 			.willReturn(false);
 
 		RoulettePageResponse response = rouletteService.roulettePage(MEMBER);
@@ -260,9 +261,9 @@ class RouletteServiceImplTest {
 	@DisplayName("이미 무료 룰렛에 참여한 회원은 예외가 발생하고 보상을 처리하지 않는다")
 	void shouldRejectDuplicatedFreeRouletteParticipation() {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.FREE),
-				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(true);
+				any(LocalDate.class))).willReturn(true);
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.FREE))
 			.isInstanceOf(BusinessException.class)
@@ -279,9 +280,9 @@ class RouletteServiceImplTest {
 	@DisplayName("이미 스페셜 룰렛에 참여한 회원은 예외가 발생하고 결제액과 보상을 조회하지 않는다")
 	void shouldRejectDuplicatedSpecialRouletteParticipation() {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
-				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(true);
+				any(LocalDate.class))).willReturn(true);
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL))
 			.isInstanceOf(BusinessException.class)
@@ -299,9 +300,9 @@ class RouletteServiceImplTest {
 	@DisplayName("오늘 누적 결제액이 3500원 미만이면 예외가 발생하고 추첨하지 않는다")
 	void shouldRejectSpecialRouletteWhenPaymentIsBelowMinimum() {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(RouletteType.SPECIAL),
-				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
+				any(LocalDate.class))).willReturn(false);
 		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
 			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
 			.willReturn(3499L);
@@ -411,9 +412,9 @@ class RouletteServiceImplTest {
 
 	private void givenReward(RouletteType rouletteType, RouletteReward reward) {
 		given(rouletteHistoryRepository
-			.existsByMemberIdAndRouletteTypeAndParticipatedAtGreaterThanEqualAndParticipatedAtLessThan(
+			.existsByMemberIdAndRouletteTypeAndParticipationDate(
 				eq(MEMBER.memberId()), eq(rouletteType),
-				any(LocalDateTime.class), any(LocalDateTime.class))).willReturn(false);
+				any(LocalDate.class))).willReturn(false);
 		if (rouletteType == RouletteType.SPECIAL) {
 			given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
 				eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))

@@ -90,18 +90,17 @@ class AdminRouletteServiceImplTest {
     }
 
     @Test
-    @DisplayName("당첨 회원 정보가 응답에서 누락되면 대상 사용자 없음 예외가 발생한다")
-    void shouldThrowWhenWinnerProfileIsMissing() {
+    @DisplayName("당첨 회원 정보가 응답에서 누락되면 해당 당첨 이력을 제외한다")
+    void shouldSkipWinnerWhenProfileIsMissing() {
         RouletteHistory history = history(101L, 1L, "1만원권 상품권", false);
         given(rouletteHistoryRepository
             .findAllByReward_RewardTypeAndRewardGrantedFalseOrderByParticipatedAtDesc(RewardType.GIFT_CARD))
             .willReturn(List.of(history));
         given(userAdminClient.getUsersByIds(List.of(1L))).willReturn(List.of());
 
-        assertThatThrownBy(adminRouletteService::getUnpaidGiftCardWinners)
-            .isInstanceOf(BusinessException.class)
-            .satisfies(exception -> assertThat(((BusinessException)exception).getErrorCode())
-                .isEqualTo(ItemErrorCode.TARGET_USER_NOT_FOUND));
+        List<AdminGiftCardWinnerResponse> responses = adminRouletteService.getUnpaidGiftCardWinners();
+
+        assertThat(responses).isEmpty();
     }
 
     @Test

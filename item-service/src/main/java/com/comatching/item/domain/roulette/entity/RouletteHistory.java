@@ -50,7 +50,7 @@ public class RouletteHistory {
     private RouletteType rouletteType;
 
     @Column(name = "participated_at",nullable = false)
-    private final LocalDateTime participatedAt = LocalDateTime.now();
+    private LocalDateTime participatedAt;
 
     @Column(name = "participation_date", nullable = false)
     private LocalDate participationDate;
@@ -65,12 +65,14 @@ public class RouletteHistory {
             Long memberId,
             RouletteReward reward,
             RouletteType rouletteType,
-            boolean rewardGranted
+            boolean rewardGranted,
+            LocalDateTime participatedAt
     ) {
         this.memberId = memberId;
         this.reward = reward;
         this.rouletteType = rouletteType;
-        this.participationDate = participatedAt.toLocalDate();
+        this.participatedAt = participatedAt != null ? participatedAt : LocalDateTime.now();
+        this.participationDate = this.participatedAt.toLocalDate();
         this.rewardGranted = rewardGranted;
     }
 
