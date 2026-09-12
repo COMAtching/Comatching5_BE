@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.comatching.chat.domain.service.chatroom.ChatRoomService;
+import com.comatching.common.dto.chat.ChatRoomEnsureRequest;
 import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -22,5 +23,10 @@ public class InternalChatRoomController {
 	@PostMapping("/references")
 	public List<ChatRoomReferenceResponse> getChatRoomReferences(@RequestBody List<Long> matchingIds) {
 		return chatRoomService.getChatRoomReferencesByMatchingIds(matchingIds);
+	}
+
+	@PostMapping("/ensure")
+	public List<ChatRoomReferenceResponse> ensureChatRooms(@RequestBody List<ChatRoomEnsureRequest> requests) {
+		return chatRoomService.ensureChatRooms(requests);
 	}
 }

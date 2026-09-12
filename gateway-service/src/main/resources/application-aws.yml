@@ -137,12 +137,18 @@ logging:
     org.springframework.cloud.gateway: INFO
 
 management:
+  server:
+    # 8080 은 nginx 가 TLS 를 종단해 넘겨주는 포트라, 라우트에 걸리지 않는
+    # /actuator/** 를 게이트웨이 자신이 응답하면 그대로 외부에 공개된다.
+    # 관리 엔드포인트를 8081 로 옮기고 호스트에 매핑하지 않는다 - 컴포즈
+    # 네트워크 안(Prometheus 스크레이프, 헬스체크)에서만 닿는다.
+    port: 8081
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
   endpoint:
     health:
-      # 게이트웨이의 8080 은 외부에 열려 있다. always 로 두면 인증 없이
-      # DB/Redis 구성요소 상태와 접속 정보 일부가 그대로 드러난다.
+      # 8081 이라도 상세는 숨긴다. DB/Redis 구성요소 상태와 접속 정보
+      # 일부가 드러나는 것은 내부라도 이득이 없다.
       show-details: never

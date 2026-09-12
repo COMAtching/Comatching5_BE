@@ -81,6 +81,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 		@Param("now") LocalDateTime now
 	);
 
+	@Query("""
+		SELECT COALESCE(SUM(o.expectedPrice), 0)
+		FROM Order o
+		WHERE o.memberId = :memberId
+		AND o.status = com.comatching.item.domain.order.enums.OrderStatus.APPROVED
+		AND o.decidedAt >= :startAt
+		AND o.decidedAt < :endAt
+		""")
+	long sumApprovedPriceByMemberIdAndDecidedAtBetween(
+		@Param("memberId") Long memberId,
+		@Param("startAt") LocalDateTime startAt,
+		@Param("endAt") LocalDateTime endAt
+	);
+
 	List<Order> findAllByStatusOrderByRequestedAtDesc(OrderStatus status);
 
 	Page<Order> findAllByStatusAndExpiresAtAfter(OrderStatus status, LocalDateTime now, Pageable pageable);

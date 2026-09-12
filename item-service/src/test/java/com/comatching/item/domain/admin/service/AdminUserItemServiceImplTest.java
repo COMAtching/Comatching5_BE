@@ -1,5 +1,9 @@
 package com.comatching.item.domain.admin.service;
 
+/*
+ * Temporarily disabled with the item-service admin user API.
+ *
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -196,3 +200,4 @@ class AdminUserItemServiceImplTest {
 		};
 	}
 }
+*/

@@ -115,4 +115,27 @@ class ChatRoomRepositoryImplTest {
 		assertThat(update.get("$set", Document.class)).containsEntry("status", ChatRoomStatus.ACTIVE);
 		assertThat(update.get("$max", Document.class)).containsEntry("updatedAt", sentAt);
 	}
+
+	@Test
+	@DisplayName("activateRoom은 WAITING인 방만 ACTIVE로 바꾼다")
+	void activateRoom_flipsOnlyWaitingRoom() {
+		// given
+		given(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(ChatRoom.class)))
+			.willReturn(UpdateResult.acknowledged(1, 1L, null));
+
+		// when
+		boolean result = repository.activateRoom(ROOM_ID);
+
+		// then
+		assertThat(result).isTrue();
+		ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+		ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+		then(mongoTemplate).should().updateFirst(queryCaptor.capture(), updateCaptor.capture(), eq(ChatRoom.class));
+
+		Document query = queryCaptor.getValue().getQueryObject();
+		Document update = updateCaptor.getValue().getUpdateObject();
+		assertThat(query).containsEntry("_id", ROOM_ID);
+		assertThat(query).containsEntry("status", ChatRoomStatus.WAITING);
+		assertThat(update.get("$set", Document.class)).containsEntry("status", ChatRoomStatus.ACTIVE);
+	}
 }

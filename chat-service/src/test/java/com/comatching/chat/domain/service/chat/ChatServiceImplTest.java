@@ -153,6 +153,28 @@ class ChatServiceImplTest {
 	}
 
 	@Test
+	@DisplayName("차단된 상대에게 보낸 첫 메시지도 방은 활성화한다 - 차단 해제 후 방이 보여야 한다")
+	void processMessage_activatesRoomEvenWhenSenderIsBlockedByReceiver() {
+		// given - 요약 갱신(updateLastMessageIfLatest)이 활성화를 겸하는데 차단 시
+		// 그 경로가 통째로 스킵되어 방이 영구 WAITING 으로 남는 구멍이 있었다
+		LocalDateTime createdAt = LocalDateTime.of(2026, 5, 16, 10, 6);
+		ChatRoom room = chatRoom(ROOM_ID, INITIATOR_ID, TARGET_ID);
+		ChatMessage savedMessage = savedMessage("message-3", INITIATOR_ID, "blocked", MessageType.TALK, createdAt);
+
+		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(true);
+		given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(savedMessage);
+
+		// when
+		chatService.processMessage(talkRequest(INITIATOR_ID, "sender", "blocked"));
+
+		// then - 활성화만 하고 요약과 알림은 여전히 스킵한다
+		then(chatRoomRepository).should().activateRoom(ROOM_ID);
+		then(chatRoomRepository).should(never()).updateLastMessageIfLatest(anyString(), anyString(), any());
+		then(chatEventProducer).shouldHaveNoInteractions();
+	}
+
+	@Test
 	@DisplayName("READ 메시지는 메시지를 저장하지 않고 발신자의 readAt만 atomic update 한다")
 	void processMessage_readOnlyTouchesLastReadAt() {
 		// given

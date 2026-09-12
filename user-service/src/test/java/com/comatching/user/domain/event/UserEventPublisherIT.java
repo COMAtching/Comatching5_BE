@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -43,6 +44,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
  */
 @EmbeddedKafka(partitions = 3, topics = {"member-withdraw", "profile-updates"})
 @DisplayName("UserEventPublisher 메시지 키 검증")
+@Tag("integration")
 class UserEventPublisherIT {
 
 	private static final Long MEMBER_A = 101L;

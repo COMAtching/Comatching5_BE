@@ -8,6 +8,10 @@ user-service:
   url: http://localhost:9000
 
 spring:
+  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
+  config:
+    import: classpath:feign-resilience.yml
+
   application:
     name: item-service
 

@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.comatching.common.dto.chat.ChatRoomEnsureRequest;
 import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.matching.MatchingHistoryReferenceResponse;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -104,7 +105,7 @@ class MatchingHistoryServiceImplTest {
 		given(historyRepository.searchHistory(memberId, null, null, pageable))
 			.willReturn(new PageImpl<>(List.of(history), pageable, 1));
 		given(memberClient.getProfiles(List.of(partnerId))).willReturn(List.of(partnerProfile));
-		given(chatRoomClient.getChatRoomReferences(List.of(historyId)))
+		given(chatRoomClient.ensureChatRooms(List.of(new ChatRoomEnsureRequest(historyId, memberId, partnerId))))
 			.willReturn(List.of(new ChatRoomReferenceResponse(historyId, "room-100")));
 
 		// when
@@ -112,7 +113,7 @@ class MatchingHistoryServiceImplTest {
 			memberId, null, null, pageable, false
 		);
 
-		// then
+		// then - 조회가 곧 보장이다: 방이 없던 매칭도 이 호출로 만들어진 방 ID 를 받는다
 		assertThat(response.content()).hasSize(1);
 		assertThat(response.content().get(0).historyId()).isEqualTo(historyId);
 		assertThat(response.content().get(0).chatRoomId()).isEqualTo("room-100");

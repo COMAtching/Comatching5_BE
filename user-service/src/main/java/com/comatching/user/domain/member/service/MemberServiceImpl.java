@@ -1,5 +1,6 @@
 package com.comatching.user.domain.member.service;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -13,6 +14,7 @@ import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
+import com.comatching.user.global.config.CacheConfig;
 import com.comatching.user.global.config.ProfileImageProperties;
 import com.comatching.user.global.exception.UserErrorCode;
 
@@ -86,6 +88,7 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	@Override
+	@Cacheable(CacheConfig.PARTICIPANT_COUNT)
 	public long getActiveUserCount() {
 		return memberRepository.countByRoleAndStatus(MemberRole.ROLE_USER, MemberStatus.ACTIVE);
 	}

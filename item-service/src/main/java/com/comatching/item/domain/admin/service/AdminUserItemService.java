@@ -1,5 +1,9 @@
 package com.comatching.item.domain.admin.service;
 
+/*
+ * Temporarily disabled with the item-service admin user API.
+ *
+
 import org.springframework.data.domain.Pageable;
 
 import com.comatching.common.dto.response.PagingResponse;
@@ -15,3 +19,4 @@ public interface AdminUserItemService {
 
 	void updateUserInventory(Long adminId, Long memberId, AdminInventoryUpdateRequest request);
 }
+*/

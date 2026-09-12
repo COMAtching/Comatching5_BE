@@ -1,0 +1,15 @@
+# 운영 전용 프로비저닝. 로컬(provisioning/)과 분리한 이유:
+#   - influxdb 데이터소스는 JMeter 전용이라 운영에 없다.
+#   - mysql 데이터소스는 host.docker.internal:3307 을 봐서 운영에서 깨진다.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus                  # 대시보드 JSON 이 이 uid 로 참조한다
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s              # prometheus.prod.yml 의 scrape_interval 과 일치

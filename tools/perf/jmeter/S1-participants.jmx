@@ -64,7 +64,7 @@
         </elementProp>
         <stringProp name="HTTPSampler.domain">${__P(host,localhost)}</stringProp>
         <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
-        <stringProp name="HTTPSampler.protocol">http</stringProp>
+        <stringProp name="HTTPSampler.protocol">${__P(scheme,http)}</stringProp>
         <stringProp name="HTTPSampler.connect_timeout">3000</stringProp>
         <!-- 10초. 이걸 넘으면 실패로 집계된다. 무한정 기다리면 knee 가 지연이 아니라
              스레드 고갈로 나타나서 원인이 흐려진다 -->

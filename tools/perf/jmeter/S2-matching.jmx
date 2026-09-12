@@ -1,0 +1,389 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  S2 — matching (쓰기 경로 첫 시나리오)
+
+  대상 : POST /api/matching  (게이트웨이 → matching-service)
+  경로 : Redisson 락(memberId 단위) → Feign 프로필 조회(user-service)
+         → Feign 매칭권 차감(item-service) → 표본 5,000 후보 SQL
+         → Feign 상대 프로필 조회 → history INSERT
+         → Kafka matching-success-topic 발행
+         → (비동기) chat-service 가 소비해 Mongo 채팅방 생성
+  즉 요청 하나가 동기 Feign 3회 + RDS 쓰기 + Kafka 발행을 태우고,
+  비동기로 컨슈머 체인까지 이어진다. S1(무인증 읽기 단건)과 정반대 극단이다.
+
+  == 계단을 10/25/50/100 으로 낮게 잡은 이유 ==
+  회차 6에서 S1(경량 읽기)의 상한이 331 RPS 였다. 매칭 요청은 그보다
+  요청당 비용이 몇 배 크다(Feign 3회 + 표본 SQL 19ms + INSERT + Kafka).
+  100 RPS 계단이 이미 knee 너머일 가능성이 높고, 그걸 확인하는 게 목적이다.
+
+  == 스레드 수 = RPS × 1.0 (S1 은 × 0.5 였다) ==
+  Little 의 법칙. S1 은 응답 500ms 예산으로 절반을 잡았지만, 쓰기 경로는
+  건강한 상태에서도 수백 ms 가 나올 수 있어 예산을 1초로 잡는다.
+  응답이 1초를 넘으면 스레드가 상한이 되어 목표 RPS 를 못 채운다 — 그 자체가
+  knee 신호다(원인 판별은 클라-서버 gap 과 호스트 CPU 로).
+
+  == 계정 로테이션 (tokens.csv) ==
+  @DistributedLock 이 memberId 단위라 한 계정은 동시에 매칭 1건만 가능하다.
+  VU 계정 500개를 CSV 로 순환시키면 100 RPS 에서도 같은 계정의 재등장
+  간격이 약 5초라 락 충돌 없이 돈다. 토큰은 tools/perf/tokens/generate_tokens.py
+  가 만든 것을 쓴다 (만료 확인 필수 — 아래 실행 전 체크리스트).
+
+  == 요청 본문 — 옵션권을 쓰지 않는 조합 ==
+  MatchingItemPolicy: 매칭권 1장은 항상, 옵션권은 sameMajorOption /
+  importantOption / 나이 제한(minAgeOffset·maxAgeOffset) 에만 붙는다.
+  점수 조건 4개(ageOption·mbtiOption·hobbyOption·contactFrequency)는
+  공짜이므로 넷 다 걸어 점수식 전체를 태우되 소모는 매칭권 1장으로 고정한다.
+  회차 2·3의 matching_bench("네 조건 모두 설정")와 같은 조건이다.
+
+  == 시나리오가 쓰는 데이터 예산 ==
+  최대 매칭 수 = 워밍업 300 + 계단 합계 22,200 ≈ 22,500건.
+  - 매칭권: VU 500계정 × 2,000장 = 100만 장 — 여유
+  - 후보 풀: 이성 5만 명, uk_history_pair_key 는 (member, partner) 쌍 단위라
+    계정당 ~45건 매칭으로는 고갈 근처에도 못 간다
+  - matching_history 는 시나리오 동안 ~2.2만 행으로 자란다. 제외 목록 쿼리가
+    `member_id = ? OR partner_id = ?` 인데 partner_id 단독 인덱스가 없다
+    (회차 2 부수 관측). 계단이 깊어질수록 이 쿼리가 느려지면 그게 발견이다.
+
+  == 이 시나리오로 처음 보게 되는 것 ==
+  - Kafka 소비 지연: 매칭 응답은 빨라도 채팅방이 늦게 생길 수 있다.
+    측정은 부하 중이 아니라 사후에 — matching_history.matched_at 과
+    Mongo chat_room 생성 시각을 matchingId 로 조인해 지연 분포를 본다.
+    (kafka-consumer-groups.sh 는 호출마다 JVM 을 띄우므로 부하 중 반복 실행
+     금지 — 회차 7에서 헬스체크 JVM 이 코어를 태우던 것과 같은 함정이다.)
+  - 에러 분류: NOT_ENOUGH_ITEM(아이템 시드 문제), NO_MATCHING_CANDIDATE
+    (페어 충돌 2회 연속 — 정상 경로의 드문 케이스), 락 획득 실패.
+    전부 0% 여야 하고, 아니면 시나리오 결함부터 의심한다.
+
+  계단 값 변경 시 doubleProp/num_threads/testname 을 함께 고칠 것
+  (throughput 은 분당 값. 10 RPS = 600/min).
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="S2-matching" enabled="true">
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <!-- 핵심: 스레드 그룹을 동시가 아니라 순차로 돌린다 -->
+      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+        <stringProp name="HTTPSampler.domain">${__P(host,localhost)}</stringProp>
+        <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+        <stringProp name="HTTPSampler.protocol">${__P(scheme,http)}</stringProp>
+        <stringProp name="HTTPSampler.connect_timeout">3000</stringProp>
+        <!-- 10초. 이걸 넘으면 실패로 집계된다 -->
+        <stringProp name="HTTPSampler.response_timeout">10000</stringProp>
+      </ConfigTestElement>
+      <hashTree/>
+
+      <!-- VU 계정 순환. 모든 스레드가 한 파일을 공유하며 줄 단위로 돌아가며 집는다.
+           recycle=true 라 500줄을 다 쓰면 처음부터 다시 돈다. -->
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="vu-tokens" enabled="true">
+        <stringProp name="filename">${__P(tokensCsv,../tokens/tokens.csv)}</stringProp>
+        <stringProp name="fileEncoding">UTF-8</stringProp>
+        <stringProp name="variableNames">memberId,token</stringProp>
+        <boolProp name="ignoreFirstLine">false</boolProp>
+        <stringProp name="delimiter">,</stringProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="shareMode">shareMode.all</stringProp>
+      </CSVDataSet>
+      <hashTree/>
+
+      <!-- DNS 우회. 2026-08-27 도메인이 registrar clientHold 로 존에서 내려가
+           전 세계 NXDOMAIN 이 됐다 (갱신 문제 — perf-log 회차 8 참고).
+           정적 매핑이면 도메인명·SNI·인증서 검증은 그대로 두고 이름풀이만
+           IP 로 바꾼다. DNS 가 복구돼도 같은 IP 라 동작 차이가 없고,
+           이름풀이 시간이 측정에서 빠지는 부수효과는 무시할 수준이다. -->
+      <DNSCacheManager guiclass="DNSCachePanel" testclass="DNSCacheManager" testname="DNS static host" enabled="true">
+        <collectionProp name="DNSCacheManager.servers"/>
+        <collectionProp name="DNSCacheManager.hosts">
+          <elementProp name="srv.comatching.site" elementType="StaticHost">
+            <stringProp name="StaticHost.Name">srv.comatching.site</stringProp>
+            <stringProp name="StaticHost.Address">${__P(hostIp,43.200.211.135)}</stringProp>
+          </elementProp>
+        </collectionProp>
+        <boolProp name="DNSCacheManager.clearEachIteration">false</boolProp>
+        <boolProp name="DNSCacheManager.isCustomResolver">true</boolProp>
+      </DNSCacheManager>
+      <hashTree/>
+
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Headers" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <!-- 게이트웨이 AuthorizationHeaderFilter 는 Authorization 헤더가 아니라
+               accessToken "쿠키"에서 토큰을 읽는다 (extractToken 참고).
+               스모크로 실측 확인 — Bearer 헤더는 401 TOKEN_MISSING 이 났다. -->
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Cookie</stringProp>
+            <stringProp name="Header.value">accessToken=${token}</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+
+      <BackendListener guiclass="BackendListenerGui" testclass="BackendListener" testname="InfluxDB Backend Listener" enabled="true">
+        <elementProp name="arguments" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments">
+            <elementProp name="influxdbMetricsSender" elementType="Argument">
+              <stringProp name="Argument.name">influxdbMetricsSender</stringProp>
+              <stringProp name="Argument.value">org.apache.jmeter.visualizers.backend.influxdb.HttpMetricsSender</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="influxdbUrl" elementType="Argument">
+              <stringProp name="Argument.name">influxdbUrl</stringProp>
+              <stringProp name="Argument.value">http://${__P(influxHost,localhost)}:8086/write?db=jmeter</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="application" elementType="Argument">
+              <stringProp name="Argument.name">application</stringProp>
+              <stringProp name="Argument.value">comatching</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="measurement" elementType="Argument">
+              <stringProp name="Argument.name">measurement</stringProp>
+              <stringProp name="Argument.value">jmeter</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="summaryOnly" elementType="Argument">
+              <stringProp name="Argument.name">summaryOnly</stringProp>
+              <stringProp name="Argument.value">false</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="samplersRegex" elementType="Argument">
+              <stringProp name="Argument.name">samplersRegex</stringProp>
+              <stringProp name="Argument.value">.*</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="percentiles" elementType="Argument">
+              <stringProp name="Argument.name">percentiles</stringProp>
+              <stringProp name="Argument.value">50;90;95;99</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="testTitle" elementType="Argument">
+              <stringProp name="Argument.name">testTitle</stringProp>
+              <stringProp name="Argument.value">${__P(testTitle,S2-matching)}</stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+            <elementProp name="eventTags" elementType="Argument">
+              <stringProp name="Argument.name">eventTags</stringProp>
+              <stringProp name="Argument.value"></stringProp>
+              <stringProp name="Argument.metadata">=</stringProp>
+            </elementProp>
+          </collectionProp>
+        </elementProp>
+        <stringProp name="classname">org.apache.jmeter.visualizers.backend.influxdb.InfluxdbBackendListenerClient</stringProp>
+      </BackendListener>
+      <hashTree/>
+
+      <!-- ================= 워밍업 (집계 제외) — 5 RPS × 60초 ================= -->
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="warmup-60s" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">5</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">60</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="WARMUP" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"ageOption":"EQUAL","mbtiOption":"ENFP","hobbyOption":"GAME","contactFrequency":"NORMAL","sameMajorOption":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/matching</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="5 rps" enabled="true">
+          <!-- calcMode 4 = 현재 스레드 그룹의 활성 스레드 전체 기준(공유). 분당 값이다 -->
+          <intProp name="calcMode">4</intProp>
+          <doubleProp><name>throughput</name><value>300.0</value><savedValue>0.0</savedValue></doubleProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+
+      <!-- ================= 계단 1 — 10 RPS ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="step1" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">10</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">120</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="s2-010rps" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"ageOption":"EQUAL","mbtiOption":"ENFP","hobbyOption":"GAME","contactFrequency":"NORMAL","sameMajorOption":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/matching</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="10 rps" enabled="true">
+          <intProp name="calcMode">4</intProp>
+          <doubleProp><name>throughput</name><value>600.0</value><savedValue>0.0</savedValue></doubleProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+
+      <!-- ================= 계단 2 — 25 RPS ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="step2" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">25</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">120</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="s2-025rps" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"ageOption":"EQUAL","mbtiOption":"ENFP","hobbyOption":"GAME","contactFrequency":"NORMAL","sameMajorOption":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/matching</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="25 rps" enabled="true">
+          <intProp name="calcMode">4</intProp>
+          <doubleProp><name>throughput</name><value>1500.0</value><savedValue>0.0</savedValue></doubleProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+
+      <!-- ================= 계단 3 — 50 RPS ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="step3" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">50</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">120</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="s2-050rps" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"ageOption":"EQUAL","mbtiOption":"ENFP","hobbyOption":"GAME","contactFrequency":"NORMAL","sameMajorOption":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/matching</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="50 rps" enabled="true">
+          <intProp name="calcMode">4</intProp>
+          <doubleProp><name>throughput</name><value>3000.0</value><savedValue>0.0</savedValue></doubleProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+
+      <!-- ================= 계단 4 — 100 RPS ================= -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="step4" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">100</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">120</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="s2-100rps" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"ageOption":"EQUAL","mbtiOption":"ENFP","hobbyOption":"GAME","contactFrequency":"NORMAL","sameMajorOption":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/api/matching</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="100 rps" enabled="true">
+          <intProp name="calcMode">4</intProp>
+          <doubleProp><name>throughput</name><value>6000.0</value><savedValue>0.0</savedValue></doubleProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+      </hashTree>
+
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

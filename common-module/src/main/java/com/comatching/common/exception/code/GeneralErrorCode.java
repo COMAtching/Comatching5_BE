@@ -30,6 +30,9 @@ public enum GeneralErrorCode implements ErrorCode {
 	UNAUTHORIZED("GEN-010", HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다."),
 	FORBIDDEN("GEN-011", HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
 
+	// 503 Service Unavailable
+	INTERNAL_SERVICE_UNAVAILABLE("GEN-105", HttpStatus.SERVICE_UNAVAILABLE, "내부 서비스가 일시적으로 응답할 수 없습니다. 잠시 후 다시 시도해주세요."),
+
 	// 500 Internal Server Error
 	INTERNAL_SERVER_ERROR("GEN-099", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다."),
 	DATABASE_ERROR("GEN-100", HttpStatus.INTERNAL_SERVER_ERROR, "데이터베이스 오류가 발생했습니다."),

@@ -1,4 +1,4 @@
-plugins {
+ plugins {
     id 'java'
     id 'org.springframework.boot'
     id 'io.spring.dependency-management'
@@ -27,12 +27,5 @@ dependencies {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
-    }
-}
-
-test {
-    testLogging {
-        showStandardStreams = true
-        events "passed", "skipped", "failed"
     }
 }

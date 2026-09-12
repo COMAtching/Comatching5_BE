@@ -1,0 +1,24 @@
+# ============================================================
+# 이 파일을 alertmanager.yml 로 복사해서 웹훅 URL 을 채운다.
+#   cp alertmanager.example.yml alertmanager.yml
+# alertmanager.yml 은 .gitignore 에 있다 - 웹훅 URL 자체가 비밀값이다
+# (URL 만 알면 누구나 그 채널에 글을 쓸 수 있다).
+#
+# 웹훅은 DLT_ALERT_WEBHOOK_URL 과 다른 채널로 판다. DLT 알림은 잦고 안
+# 급하며, 인프라 알림은 드물고 급하다. 한 채널에 섞으면 잦은 쪽이 드문
+# 쪽을 묻어버려 결국 둘 다 안 읽는다.
+# ============================================================
+route:
+  receiver: discord
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  # 해결 안 된 알림의 재전송 간격. 너무 짧으면 같은 알림이 도배되어
+  # "잦은 쪽이 드문 쪽을 묻는" 문제를 스스로 만든다.
+  repeat_interval: 4h
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url: 'https://discord.com/api/webhooks/CHANGE/ME'
+        send_resolved: true

@@ -43,7 +43,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        # 컨테이너 밖(호스트 포트 매핑·게이트웨이 라우트)으로 나가는 길이
+        # 없는 포트라 그대로 연다. Prometheus 가 컴포즈 네트워크 안에서 긁는다.
+        include: health,prometheus
   endpoint:
     health:
       # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
@@ -57,3 +59,8 @@ comatching:
     dlt-topics: member-signup,member-withdraw,chat-notification
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
+
+# /api/internal/** 를 지키는 InternalApiAuthenticationFilter 의 검사 토큰.
+# 비우면 내부 API 전체가 401 로 닫힌다(fail-closed).
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN:}

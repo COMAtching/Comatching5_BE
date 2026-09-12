@@ -5,9 +5,23 @@
 # 사라진 게 아니라 시점이 앞당겨진 것이다 - main 에 머지된 뒤 배포를
 # 붙잡고 있는 대신, PR 을 보고 있는 동안 백그라운드로 돌아간다.
 #
+# 잡이 둘로 나뉜 이유:
+#   단위 테스트  IO 가 붙지 않는다. 도커도 브로커도 필요 없어서 빠르다.
+#                고쳐야 할 게 있으면 여기서 가장 먼저 알게 된다.
+#   통합 테스트  EmbeddedKafka 로 브로커를, Testcontainers 로 MySQL 을
+#                실제로 띄운다. 느린 대신 목으로는 볼 수 없는 것을 본다
+#                (재시도 소진 후 DLT 이동, 네이티브 MySQL 쿼리의 실제 결과).
+#
+# 둘 사이에 needs 를 걸지 않았다. 동시에 돌아야 전체 대기 시간이 느린
+# 쪽 하나로 수렴한다. 순서를 세우면 두 시간이 더해진다.
+#
+# 어느 쪽을 나누는지는 @Tag("integration") 이 정한다. 태스크 정의는
+# 루트 build.gradle 에 있다.
+#
 # 이 검증이 실제로 게이트가 되려면 브랜치 보호가 필요하다:
 #   Settings > Branches > main > Require status checks to pass
-#   에서 "테스트" 체크를 필수로 지정한다. 없으면 빨간 PR 도 머지된다.
+#   에서 "단위 테스트"와 "통합 테스트"를 둘 다 필수로 지정한다.
+#   없으면 빨간 PR 도 머지된다.
 # ============================================================
 name: test
 
@@ -22,8 +36,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: 테스트
+  unit:
+    name: 단위 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: chmod +x gradlew
+
+      # --no-daemon 을 쓰지 않는다. 데몬을 끄면 setup-gradle 이 이어주는
+      # 빌드 캐시와 설정 캐시를 제대로 못 쓴다(Gradle 공식 권고사항이기도 하다).
+      - name: 단위 테스트
+        run: ./gradlew test
+
+      # 실패했을 때만이 아니라 항상 올린다. 통과했지만 오래 걸린 테스트를
+      # 찾아볼 때도 리포트가 필요하다.
+      - name: 테스트 리포트 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-unit
+          path: '*/build/reports/tests/test/**'
+          retention-days: 7
+
+  integration:
+    name: 통합 테스트
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,16 +82,15 @@ jobs:
       - run: chmod +x gradlew
 
       # matching-service 는 Testcontainers(MySQL)를, 카프카 IT 는
-      # EmbeddedKafka 를 쓴다. 둘 다 ubuntu-latest 러너에서 돈다.
-      - name: 테스트
-        run: ./gradlew test --no-daemon
+      # EmbeddedKafka 를 쓴다. 둘 다 ubuntu-latest 러너에 이미 있는
+      # 도커/JVM 으로 돈다 - 별도 서비스 컨테이너 선언이 필요 없다.
+      - name: 통합 테스트
+        run: ./gradlew integrationTest
 
-      # 실패했을 때만이 아니라 항상 올린다. 통과했지만 오래 걸린 테스트를
-      # 찾아볼 때도 리포트가 필요하다.
       - name: 테스트 리포트 보관
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: '*/build/reports/tests/**'
+          name: test-reports-integration
+          path: '*/build/reports/tests/integrationTest/**'
           retention-days: 7

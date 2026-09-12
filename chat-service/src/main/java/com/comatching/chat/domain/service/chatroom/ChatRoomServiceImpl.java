@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import com.comatching.chat.domain.repository.UnreadCountCondition;
 import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.chat.infra.client.MemberClient;
+import com.comatching.common.dto.chat.ChatRoomEnsureRequest;
 import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -134,6 +136,57 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		return chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
 			.map(room -> new ChatRoomReferenceResponse(room.getMatchingId(), room.getId()))
 			.toList();
+	}
+
+	/**
+	 * 매칭에 대응하는 방이 없으면 그 자리에서 만든다.
+	 *
+	 * 방 생성은 원래 매칭 성공 Kafka 이벤트로만 일어났는데, 발행이 유실되면
+	 * 그 매칭은 영구히 방이 없었다. 매칭 이력 조회가 이 경로를 타므로
+	 * 유실분은 사용자가 이력을 여는 순간 자동으로 복구된다.
+	 *
+	 * Kafka 컨슈머와 동시에 만들 수 있으나 matchingId 의 unique 인덱스가 중복을
+	 * 막아 주고, 충돌하면 먼저 만들어진 방을 다시 읽어 돌려준다.
+	 */
+	@Override
+	public List<ChatRoomReferenceResponse> ensureChatRooms(List<ChatRoomEnsureRequest> requests) {
+		if (requests == null || requests.isEmpty()) {
+			return List.of();
+		}
+
+		List<Long> matchingIds = requests.stream()
+			.map(ChatRoomEnsureRequest::matchingId)
+			.toList();
+
+		Map<Long, ChatRoom> roomsByMatchingId = chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
+			.collect(Collectors.toMap(ChatRoom::getMatchingId, Function.identity(), (left, right) -> left));
+
+		return requests.stream()
+			.map(request -> {
+				ChatRoom room = roomsByMatchingId.get(request.matchingId());
+				if (room == null) {
+					room = createMissingRoom(request);
+				}
+				return new ChatRoomReferenceResponse(request.matchingId(), room.getId());
+			})
+			.toList();
+	}
+
+	private ChatRoom createMissingRoom(ChatRoomEnsureRequest request) {
+		ChatRoom newRoom = ChatRoom.builder()
+			.matchingId(request.matchingId())
+			.initiatorUserId(request.initiatorUserId())
+			.targetUserId(request.targetUserId())
+			.build();
+
+		try {
+			ChatRoom saved = chatRoomRepository.save(newRoom);
+			log.info("Lazily created chat room. matchingId={}, roomId={}", request.matchingId(), saved.getId());
+			return saved;
+		} catch (DuplicateKeyException e) {
+			return chatRoomRepository.findByMatchingId(request.matchingId())
+				.orElseThrow(() -> e);
+		}
 	}
 
 	private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {

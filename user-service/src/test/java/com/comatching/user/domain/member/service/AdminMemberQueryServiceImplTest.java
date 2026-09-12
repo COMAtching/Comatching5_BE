@@ -2,6 +2,7 @@ package com.comatching.user.domain.member.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
+import com.comatching.common.dto.member.AdminGiftCardUserProfileDto;
 import com.comatching.common.dto.member.AdminUserProfileDto;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.user.domain.member.entity.Member;
@@ -90,6 +92,60 @@ class AdminMemberQueryServiceImplTest {
 		assertThat(result.email()).isEqualTo("detail@test.com");
 		assertThat(result.realName()).isEqualTo("김상세");
 		assertThat(result.nickname()).isEqualTo("상세유저");
+	}
+
+	@Test
+	@DisplayName("회원 ID 목록으로 활성 일반 회원 정보를 한 번에 조회한다")
+	void shouldReturnUsersByIds() {
+		List<Long> memberIds = List.of(3L, 1L);
+		Member third = createMemberWithProfile(
+			3L,
+			"third@test.com",
+			"세번째",
+			"셋",
+			Gender.MALE,
+			"https://third"
+		);
+		Member first = createMemberWithProfile(
+			1L,
+			"first@test.com",
+			"첫번째",
+			"하나",
+			Gender.FEMALE,
+			"https://first"
+		);
+		given(memberRepository.findAdminMembersByIds(
+			memberIds,
+			MemberStatus.ACTIVE,
+			MemberRole.ROLE_USER
+		)).willReturn(List.of(third, first));
+
+		List<AdminGiftCardUserProfileDto> results = adminMemberQueryService.getUsersByIds(memberIds);
+
+		then(memberRepository).should().findAdminMembersByIds(
+			memberIds,
+			MemberStatus.ACTIVE,
+			MemberRole.ROLE_USER
+		);
+		assertThat(results).containsExactly(
+			new AdminGiftCardUserProfileDto(3L, "third@test.com", "세번째", "셋"),
+			new AdminGiftCardUserProfileDto(1L, "first@test.com", "첫번째", "하나")
+		);
+	}
+
+	@Test
+	@DisplayName("조회된 회원이 없으면 빈 사용자 목록을 반환한다")
+	void shouldReturnEmptyUsersByIds() {
+		List<Long> memberIds = List.of(404L);
+		given(memberRepository.findAdminMembersByIds(
+			memberIds,
+			MemberStatus.ACTIVE,
+			MemberRole.ROLE_USER
+		)).willReturn(List.of());
+
+		List<AdminGiftCardUserProfileDto> results = adminMemberQueryService.getUsersByIds(memberIds);
+
+		assertThat(results).isEmpty();
 	}
 
 	private static Member createMemberWithProfile(

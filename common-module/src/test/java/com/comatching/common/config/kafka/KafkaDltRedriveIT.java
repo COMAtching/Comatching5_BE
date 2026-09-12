@@ -18,6 +18,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -63,6 +64,7 @@ import com.comatching.common.exception.BusinessException;
 	"comatching.kafka.dlt-topics=" + KafkaDltRedriveIT.REDRIVE_TOPIC
 })
 @DisplayName("Kafka DLT 재적재")
+@Tag("integration")
 class KafkaDltRedriveIT {
 
 	static final String REDRIVE_TOPIC = "redrive-it-topic";
