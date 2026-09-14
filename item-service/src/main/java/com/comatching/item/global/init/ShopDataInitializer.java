@@ -44,12 +44,25 @@ public class ShopDataInitializer implements CommandLineRunner {
 		addReward(firstPurchaseBundle, ItemType.MATCHING_TICKET, 3);
 		addReward(firstPurchaseBundle, ItemType.OPTION_TICKET, 6);
 
+//		2026/9/14 pm 요구에 따른 추가
+		Product discountMatchingTicket = product(
+			"(할인) 뽑기권 1개",
+			"DISCOUNT_MATCHING_TICKET_1",
+			"",
+			800,
+			2,
+			true,
+			3,
+			false
+		);
+		addReward(discountMatchingTicket, ItemType.MATCHING_TICKET, 1);
+
 		Product miniBundle = product(
 			"미니 번들",
 			"MINI_BUNDLE",
 			"",
 			500,
-			2,
+			3,
 			true,
 			2,
 			false
@@ -61,7 +74,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"VALUE_BUNDLE",
 			"",
 			5500,
-			3,
+			4,
 			true,
 			2,
 			false
@@ -74,7 +87,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"FULL_OPTION_BUNDLE",
 			"",
 			7000,
-			4,
+			5,
 			true,
 			1,
 			false
@@ -87,7 +100,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"SUPER_BUNDLE",
 			"",
 			9500,
-			5,
+			6,
 			true,
 			1,
 			false
@@ -100,7 +113,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"HYPER_BUNDLE",
 			"",
 			18000,
-			6,
+			7,
 			true,
 			2,
 			false
@@ -113,7 +126,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"MATCHING_TICKET_1",
 			"",
 			1000,
-			7,
+			8,
 			false,
 			null,
 			false
@@ -125,7 +138,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			"OPTION_TICKET_1",
 			"",
 			200,
-			8,
+			9,
 			false,
 			null,
 			false
@@ -134,6 +147,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 
 		List<Product> products = List.of(
 			firstPurchaseBundle,
+			discountMatchingTicket,
 			miniBundle,
 			valueBundle,
 			fullOptionBundle,

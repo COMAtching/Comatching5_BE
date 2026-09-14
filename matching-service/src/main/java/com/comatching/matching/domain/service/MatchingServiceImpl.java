@@ -66,6 +66,10 @@ public class MatchingServiceImpl implements MatchingService {
 		for (int attempt = 1; attempt <= MAX_MATCHING_ATTEMPTS; attempt++) {
 			MatchingCandidate matchedCandidate = matchingProcessor.process(memberId, myProfile, request);
 			ProfileResponse partnerProfile = memberClient.getProfile(matchedCandidate.getMemberId());
+			// 후보 삭제 이벤트가 늦어져도 탈퇴 시 비활성화된 실제 프로필은 매칭하지 않는다.
+			if (!partnerProfile.isMatchable()) {
+				throw new BusinessException(MatchingErrorCode.NO_MATCHING_CANDIDATE);
+			}
 
 			try {
 				saveHistoryAndPublishEvent(memberId, matchedCandidate, request);

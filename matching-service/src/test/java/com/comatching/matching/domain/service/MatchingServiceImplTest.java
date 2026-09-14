@@ -68,6 +68,7 @@ class MatchingServiceImplTest {
 			.mbti("ISTJ")
 			.major("컴퓨터공학과")
 			.birthDate(LocalDate.of(2000, 1, 1))
+			.isMatchable(true)
 			.build();
 	}
 
@@ -78,6 +79,7 @@ class MatchingServiceImplTest {
 			.mbti("ISTJ")
 			.major("컴퓨터공학과")
 			.birthDate(LocalDate.of(2000, 1, 1))
+			.isMatchable(true)
 			.tags(List.of(
 				new ProfileTagDto("계란형 얼굴"),
 				new ProfileTagDto("밝은 분위기")
@@ -208,6 +210,38 @@ class MatchingServiceImplTest {
 			assertThatThrownBy(() -> matchingService.match(memberId, request))
 				.isInstanceOf(BusinessException.class);
 
+			verify(itemClient).addItem(eq(memberId), any());
+			verify(historyRepository, never()).save(any());
+			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+		}
+
+		@Test
+		@DisplayName("탈퇴 회원의 매칭 가능한 후보가 남아도 결과를 저장하지 않고 아이템을 환불한다")
+		void shouldRejectWithdrawnPartnerWithStaleCandidate() {
+			Long memberId = 1L;
+			Long partnerId = 2L;
+			MatchingRequest request = new MatchingRequest(null, null, null, null, false, null);
+			ProfileResponse myProfile = createProfile(memberId, Gender.MALE);
+			MatchingCandidate staleCandidate = createCandidate(partnerId);
+			// 탈퇴 시 실제 프로필은 비활성화되지만 후보 삭제 이벤트는 아직 반영되지 않은 상태.
+			ProfileResponse withdrawnProfile = ProfileResponse.builder()
+				.memberId(partnerId)
+				.isMatchable(false)
+				.build();
+
+			given(memberClient.getProfile(memberId)).willReturn(myProfile);
+			given(memberClient.getProfile(partnerId)).willReturn(withdrawnProfile);
+			given(matchingItemPolicy.determine(request))
+				.willReturn(List.of(new ItemConsumption(ItemType.MATCHING_TICKET, 1)));
+			given(matchingProcessor.process(memberId, myProfile, request)).willReturn(staleCandidate);
+
+			assertThat(staleCandidate.isMatchable()).isTrue();
+			assertThatThrownBy(() -> matchingService.match(memberId, request))
+				.isInstanceOf(BusinessException.class)
+				.satisfies(e -> assertThat(((BusinessException)e).getErrorCode())
+					.isEqualTo(MatchingErrorCode.NO_MATCHING_CANDIDATE));
+
+			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
 			verify(itemClient).addItem(eq(memberId), any());
 			verify(historyRepository, never()).save(any());
 			verify(matchingEventProducer, never()).sendMatchingSuccess(any());

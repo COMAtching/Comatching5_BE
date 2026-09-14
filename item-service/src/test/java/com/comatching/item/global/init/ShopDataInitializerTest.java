@@ -44,9 +44,10 @@ class ShopDataInitializerTest {
 		then(productRepository).should().saveAll(productsCaptor.capture());
 
 		List<Product> products = toList(productsCaptor.getValue());
-		assertThat(products).hasSize(8);
+		assertThat(products).hasSize(9);
 		assertThat(products).extracting(Product::getCode).containsExactly(
 			"FIRST_PURCHASE_SPECIAL_BUNDLE",
+			"DISCOUNT_MATCHING_TICKET_1",
 			"MINI_BUNDLE",
 			"VALUE_BUNDLE",
 			"FULL_OPTION_BUNDLE",
@@ -55,6 +56,14 @@ class ShopDataInitializerTest {
 			"MATCHING_TICKET_1",
 			"OPTION_TICKET_1"
 		);
+		assertThat(products).extracting(Product::getDisplayOrder).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9);
+
+		Product discountMatchingTicket = product(products, "DISCOUNT_MATCHING_TICKET_1");
+		assertThat(discountMatchingTicket.getName()).isEqualTo("(할인) 뽑기권 1개");
+		assertThat(discountMatchingTicket.isActive()).isTrue();
+		assertThat(discountMatchingTicket.getDisplayOrder()).isEqualTo(2);
+		assertThat(discountMatchingTicket.getRewards()).hasSize(1);
+		assertBundle(discountMatchingTicket, 800, 3, 1, 0);
 
 		Product firstPurchaseBundle = product(products, "FIRST_PURCHASE_SPECIAL_BUNDLE");
 		assertThat(firstPurchaseBundle.getName()).isEqualTo("첫 구매 특가 번들");
