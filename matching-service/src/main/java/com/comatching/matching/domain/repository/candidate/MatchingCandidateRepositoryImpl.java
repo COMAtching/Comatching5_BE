@@ -158,6 +158,11 @@ public class MatchingCandidateRepositoryImpl implements MatchingCandidateReposit
 
         conditions.add("mc.is_matchable = 1");
 
+        // 탈퇴 tombstone 이 남아 있는 회원은 후보 테이블에 stale row 가 있어도
+        // 표본 단계에서부터 매칭 대상에서 제외한다.
+        conditions.add("NOT EXISTS (SELECT 1 FROM withdrawn_member wm"
+                + " WHERE wm.member_id = mc.member_id)");
+
         conditions.add("mc.random_key >= :randomStart");
         params.put("randomStart", condition.randomStart());
 
