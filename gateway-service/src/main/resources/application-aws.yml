@@ -118,7 +118,7 @@ spring:
             - id: item-service
               uri: http://item-service:9006
               predicates:
-                - Path=/api/items/**, /api/v1/**
+                - Path=/api/items/**
               filters:
                 - AuthorizationHeaderFilter
 
@@ -126,6 +126,13 @@ spring:
               uri: http://notification:9005
               predicates:
                 - Path=/api/fcm/**
+              filters:
+                - AuthorizationHeaderFilter
+
+            - id: admin-payment-product-items
+              uri: http://item-service:9006
+              predicates:
+                - Path=/api/v1/admin/shop/**, /api/v1/admin/payment/**, /api/v1/admin/roulette/**
               filters:
                 - AuthorizationHeaderFilter
 
