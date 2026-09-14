@@ -297,7 +297,7 @@ class RouletteServiceImplTest {
 	}
 
 	@Test
-	@DisplayName("오늘 누적 결제액이 3500원 미만이면 예외가 발생하고 추첨하지 않는다")
+	@DisplayName("오늘 누적 결제액이 3000원 미만이면 예외가 발생하고 추첨하지 않는다")
 	void shouldRejectSpecialRouletteWhenPaymentIsBelowMinimum() {
 		given(rouletteHistoryRepository
 			.existsByMemberIdAndRouletteTypeAndParticipationDate(
@@ -305,7 +305,7 @@ class RouletteServiceImplTest {
 				any(LocalDate.class))).willReturn(false);
 		given(orderRepository.sumApprovedPriceByMemberIdAndDecidedAtBetween(
 			eq(MEMBER.memberId()), any(LocalDateTime.class), any(LocalDateTime.class)))
-			.willReturn(3499L);
+			.willReturn(2999L);
 
 		assertThatThrownBy(() -> rouletteService.spinRoulette(MEMBER, RouletteType.SPECIAL))
 			.isInstanceOf(BusinessException.class)
