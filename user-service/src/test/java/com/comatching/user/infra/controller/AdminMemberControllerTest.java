@@ -1,6 +1,7 @@
 package com.comatching.user.infra.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -57,8 +58,10 @@ class AdminMemberControllerTest {
 
 	@BeforeEach
 	void setUp() {
+		PageableHandlerMethodArgumentResolver pageableResolver = new PageableHandlerMethodArgumentResolver();
+		pageableResolver.setMaxPageSize(10_000);
 		mockMvc = MockMvcBuilders.standaloneSetup(adminMemberController)
-			.setCustomArgumentResolvers(new MemberInfoArgumentResolver(), new PageableHandlerMethodArgumentResolver())
+			.setCustomArgumentResolvers(new MemberInfoArgumentResolver(), pageableResolver)
 			.setControllerAdvice(new GlobalExceptionHandler(new ObjectMapper()))
 			.build();
 	}
@@ -89,6 +92,39 @@ class AdminMemberControllerTest {
 			.andExpect(jsonPath("$.data.totalElements").value(1));
 
 		then(adminMemberService).should().getUsers(eq(null), any(Pageable.class));
+	}
+
+	@Test
+	@DisplayName("GET /api/v1/admin/users?size=10000 - 통계 요청의 페이지 크기와 정렬을 그대로 전달한다")
+	void getUsers_statsRequestWithMaxPageSize() throws Exception {
+		// given
+		PagingResponse<AdminUserSummaryResponse> response =
+			new PagingResponse<>(List.of(), 0, 10_000, 250, 1, false, false);
+		given(adminMemberService.getUsers(eq(null), any(Pageable.class))).willReturn(response);
+
+		// when & then
+		mockMvc.perform(get("/api/v1/admin/users")
+				.param("page", "0")
+				.param("size", "10000")
+				.param("sort", "id,desc")
+				.header("X-Member-Id", ADMIN_ID)
+				.header("X-Member-Role", "ROLE_ADMIN"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.code").value(SUCCESS_CODE))
+			.andExpect(jsonPath("$.data.content.length()").value(0))
+			.andExpect(jsonPath("$.data.currentPage").value(0))
+			.andExpect(jsonPath("$.data.size").value(10_000))
+			.andExpect(jsonPath("$.data.totalElements").value(250))
+			.andExpect(jsonPath("$.data.totalPages").value(1))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
+			.andExpect(jsonPath("$.data.hasPrevious").value(false));
+
+		then(adminMemberService).should().getUsers(eq(null), argThat(pageable ->
+			pageable.getPageNumber() == 0
+				&& pageable.getPageSize() == 10_000
+				&& pageable.getSort().getOrderFor("id") != null
+				&& pageable.getSort().getOrderFor("id").isDescending()
+		));
 	}
 
 	@Test

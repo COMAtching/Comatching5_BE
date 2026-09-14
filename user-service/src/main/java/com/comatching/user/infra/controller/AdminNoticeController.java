@@ -71,7 +71,7 @@ public class AdminNoticeController {
 
     @RequireRole({MemberRole.ROLE_USER, MemberRole.ROLE_ADMIN})
     @Operation(summary = "활성 공지사항 조회", description = "현재 시각 기준으로 노출 기간에 포함된 공지사항 목록을 조회합니다.")
-    @GetMapping("/notices/active")
+    @GetMapping("/v1/notices/active")
     public ResponseEntity<ApiResponse<List<ActiveNoticeResponse>>> getActiveNotices(
             @CurrentMember MemberInfo memberInfo
     ) {

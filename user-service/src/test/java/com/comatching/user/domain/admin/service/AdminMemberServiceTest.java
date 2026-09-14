@@ -7,10 +7,13 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.times;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.LongStream;
 
 import com.comatching.user.domain.admin.user.service.AdminMemberServiceImpl;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +60,46 @@ class AdminMemberServiceTest {
 
 	@Mock
 	private ItemAdminClient itemAdminClient;
+
+	@Test
+	@DisplayName("조회된 사용자가 0명이면 item-service를 호출하지 않는다")
+	void shouldNotCallItemServiceWhenNoUsersFound() {
+		// given
+		PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+		given(memberRepository.searchMembersForAdmin(MemberStatus.ACTIVE, MemberRole.ROLE_USER, null, pageable))
+			.willReturn(new PageImpl<>(List.of(), pageable, 0));
+
+		// when
+		PagingResponse<AdminUserSummaryResponse> result = adminMemberService.getUsers(null, pageable);
+
+		// then
+		assertThat(result.content()).isEmpty();
+		then(itemAdminClient).shouldHaveNoInteractions();
+	}
+
+	@Test
+	@DisplayName("조회된 사용자가 20명이면 item-service를 정확히 한 번 호출한다")
+	void shouldCallItemServiceOnceFor20Users() {
+		assertInventoryBatching(20, 1, List.of(20));
+	}
+
+	@Test
+	@DisplayName("조회된 사용자가 100명이면 item-service를 정확히 한 번 호출한다")
+	void shouldCallItemServiceOnceFor100Users() {
+		assertInventoryBatching(100, 1, List.of(100));
+	}
+
+	@Test
+	@DisplayName("조회된 사용자가 101명이면 100명과 1명으로 나눠 호출하고 결과를 병합한다")
+	void shouldCallItemServiceTwiceFor101Users() {
+		assertInventoryBatching(101, 2, List.of(100, 1));
+	}
+
+	@Test
+	@DisplayName("조회된 사용자가 250명이면 100명, 100명, 50명으로 나눠 호출하고 결과를 병합한다")
+	void shouldCallItemServiceThreeTimesFor250Users() {
+		assertInventoryBatching(250, 3, List.of(100, 100, 50));
+	}
 
 	@Test
 	@DisplayName("사용자 목록과 인벤토리 수량을 함께 조회한다")
@@ -108,6 +151,27 @@ class AdminMemberServiceTest {
 		assertThat(result.content()).hasSize(1);
 		assertThat(result.content().get(0).matchingTicketCount()).isZero();
 		assertThat(result.content().get(0).optionTicketCount()).isZero();
+	}
+
+	@Test
+	@DisplayName("사용자 상세 조회는 기존처럼 단일 사용자 ID로 item-service를 한 번 호출한다")
+	void shouldGetUserDetailWithSingleInventoryCall() {
+		// given
+		Long memberId = 7L;
+		Member member = createMemberWithProfile(memberId, "user7@test.com", "상세사용자", "닉네임7", Gender.FEMALE, "https://img7");
+		given(memberRepository.findAdminMemberById(memberId, MemberStatus.ACTIVE, MemberRole.ROLE_USER))
+			.willReturn(Optional.of(member));
+		given(itemAdminClient.getInventoryCounts(List.of(memberId)))
+			.willReturn(Map.of(memberId, new AdminInventoryCounts(4L, 2L)));
+
+		// when
+		var result = adminMemberService.getUserDetail(memberId);
+
+		// then
+		assertThat(result.id()).isEqualTo(memberId);
+		assertThat(result.matchingTicketCount()).isEqualTo(4L);
+		assertThat(result.optionTicketCount()).isEqualTo(2L);
+		then(itemAdminClient).should(times(1)).getInventoryCounts(List.of(memberId));
 	}
 
 	@Test
@@ -293,6 +357,44 @@ class AdminMemberServiceTest {
 		return Request.create(
 			Request.HttpMethod.PATCH, "/api/internal/admin/items/1", Map.of(), Request.Body.empty(), null
 		);
+	}
+
+	private void assertInventoryBatching(int userCount, int expectedCalls, List<Integer> expectedBatchSizes) {
+		PageRequest pageable = PageRequest.of(0, userCount, Sort.by(Sort.Direction.DESC, "id"));
+		List<Member> members = LongStream.rangeClosed(1, userCount)
+			.mapToObj(id -> createMemberWithProfile(
+				id,
+				"user" + id + "@test.com",
+				"사용자" + id,
+				"닉네임" + id,
+				Gender.MALE,
+				"https://img" + id
+			))
+			.toList();
+		List<List<Long>> receivedBatches = new ArrayList<>();
+
+		given(memberRepository.searchMembersForAdmin(MemberStatus.ACTIVE, MemberRole.ROLE_USER, null, pageable))
+			.willReturn(new PageImpl<>(members, pageable, userCount));
+		given(itemAdminClient.getInventoryCounts(anyList())).willAnswer(invocation -> {
+			List<Long> memberIds = List.copyOf(invocation.getArgument(0));
+			receivedBatches.add(memberIds);
+			return memberIds.stream().collect(java.util.stream.Collectors.toMap(
+				id -> id,
+				id -> new AdminInventoryCounts(id, id + 1)
+			));
+		});
+
+		PagingResponse<AdminUserSummaryResponse> result = adminMemberService.getUsers(null, pageable);
+
+		then(itemAdminClient).should(times(expectedCalls)).getInventoryCounts(anyList());
+		assertThat(receivedBatches).extracting(List::size).containsExactlyElementsOf(expectedBatchSizes);
+		assertThat(receivedBatches).allSatisfy(batch -> assertThat(batch).hasSizeLessThanOrEqualTo(100));
+		assertThat(receivedBatches).flatExtracting(batch -> batch)
+			.containsExactlyElementsOf(LongStream.rangeClosed(1, userCount).boxed().toList());
+		assertThat(result.content()).hasSize(userCount).allSatisfy(summary -> {
+			assertThat(summary.matchingTicketCount()).isEqualTo(summary.id());
+			assertThat(summary.optionTicketCount()).isEqualTo(summary.id() + 1);
+		});
 	}
 
 	private static Member createMemberWithProfile(

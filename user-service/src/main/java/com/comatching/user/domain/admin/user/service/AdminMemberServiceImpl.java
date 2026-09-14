@@ -1,5 +1,6 @@
 package com.comatching.user.domain.admin.user.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminMemberServiceImpl implements AdminMemberService {
+	private static final int INVENTORY_BATCH_SIZE = 100;
 
 	private final MemberRepository memberRepository;
 	private final ItemAdminClient itemAdminClient;
@@ -51,14 +53,24 @@ public class AdminMemberServiceImpl implements AdminMemberService {
 			.map(this::toAdminUserProfileDto);
 
 		List<AdminUserProfileDto> users = userPage.getContent();
-		Map<Long, AdminInventoryCounts> inventoryCountsByMemberId =
-				users.isEmpty()
-						? Map.of()
-						: itemAdminClient.getInventoryCounts(
-						users.stream()
-								.map(AdminUserProfileDto::id)
-								.toList()
-				);
+		Map<Long, AdminInventoryCounts> inventoryCountsByMemberId;
+		if (users.isEmpty()) {
+			inventoryCountsByMemberId = Map.of();
+		} else {
+			List<Long> memberIds = users.stream()
+				.map(AdminUserProfileDto::id)
+				.toList();
+
+			if (memberIds.size() <= INVENTORY_BATCH_SIZE) {
+				inventoryCountsByMemberId = itemAdminClient.getInventoryCounts(memberIds);
+			} else {
+				inventoryCountsByMemberId = new HashMap<>();
+				for (int start = 0; start < memberIds.size(); start += INVENTORY_BATCH_SIZE) {
+					int end = Math.min(start + INVENTORY_BATCH_SIZE, memberIds.size());
+					inventoryCountsByMemberId.putAll(itemAdminClient.getInventoryCounts(memberIds.subList(start, end)));
+				}
+			}
+		}
 
 		List<AdminUserSummaryResponse> summaries = users.stream()
 				.map(user -> AdminUserSummaryResponse.from(
