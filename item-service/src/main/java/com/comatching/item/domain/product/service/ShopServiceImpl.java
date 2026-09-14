@@ -37,6 +37,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class ShopServiceImpl implements ShopService {
 
+	private static final String DISCOUNT_MATCHING_TICKET_CODE = "DISCOUNT_MATCHING_TICKET_1";
+
 	private static final Map<ItemType, Integer> PURCHASE_LIMITS = Map.of(
 		ItemType.MATCHING_TICKET, 30,
 		ItemType.OPTION_TICKET, 90
@@ -61,7 +63,8 @@ public class ShopServiceImpl implements ShopService {
 		LocalDateTime now = LocalDateTime.now();
 		return products.stream()
 			.map(product -> toMemberProductResponse(memberId, product, now))
-			.filter(product -> Boolean.TRUE.equals(product.purchaseCountPurchasable()))
+			.filter(product -> Boolean.TRUE.equals(product.purchaseCountPurchasable())
+				|| DISCOUNT_MATCHING_TICKET_CODE.equals(product.code()))
 			.toList();
 	}
 
@@ -73,6 +76,10 @@ public class ShopServiceImpl implements ShopService {
 
 		if (!product.isActive()) {
 			throw new BusinessException(ItemErrorCode.PRODUCT_NOT_AVAILABLE);
+		}
+
+		if (DISCOUNT_MATCHING_TICKET_CODE.equals(resolveProductCode(product)) && quantity != 1) {
+			throw new BusinessException(PaymentErrorCode.INVALID_ORDER_QUANTITY);
 		}
 
 		LocalDateTime now = LocalDateTime.now();

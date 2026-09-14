@@ -3,6 +3,7 @@ package com.comatching.matching.domain.repository.candidate;
 import static org.assertj.core.api.Assertions.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,7 @@ import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.matching.domain.entity.MatchingCandidate;
+import com.comatching.matching.domain.entity.WithdrawnMember;
 import com.comatching.matching.domain.enums.AgeOption;
 import com.comatching.matching.support.MySqlContainerSupport;
 
@@ -53,6 +55,9 @@ class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 
 	@Autowired
 	private MatchingCandidateRepository repository;
+
+	@Autowired
+	private WithdrawnMemberRepository withdrawnMemberRepository;
 
 	@Autowired
 	private EntityManager em;
@@ -153,6 +158,15 @@ class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 		@DisplayName("매칭을 끈 후보는 제외한다")
 		void excludesNotMatchable() {
 			save(1L, Gender.FEMALE, "XXXX", 99, ContactFrequency.RARE, null, false, List.of());
+
+			assertThat(findBest(base().build())).isEmpty();
+		}
+
+		@Test
+		@DisplayName("탈퇴 tombstone 이 있는 후보는 제외한다")
+		void excludesWithdrawnMember() {
+			save(1L, Gender.FEMALE, "XXXX", 99, ContactFrequency.RARE, null, true, List.of());
+			withdrawnMemberRepository.save(WithdrawnMember.of(1L, LocalDateTime.now()));
 
 			assertThat(findBest(base().build())).isEmpty();
 		}
@@ -446,7 +460,7 @@ class MatchingCandidateRepositoryIT extends MySqlContainerSupport {
 
 	@SpringBootConfiguration
 	@EnableAutoConfiguration
-	@EntityScan(basePackageClasses = MatchingCandidate.class)
+	@EntityScan(basePackageClasses = {MatchingCandidate.class, WithdrawnMember.class})
 	@EnableJpaRepositories(basePackageClasses = MatchingCandidateRepository.class)
 	static class Config {
 	}

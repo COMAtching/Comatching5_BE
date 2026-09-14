@@ -15,6 +15,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -68,6 +71,136 @@ class ShopServiceImplTest {
 	private PaymentOrderProperties paymentOrderProperties;
 
 	private static final int DEFAULT_QUANTITY = 1;
+
+	@ParameterizedTest
+	@ValueSource(longs = {0, 1, 2})
+	@DisplayName("할인 뽑기권은 승인 3회 미만이면 800원에 1개 주문을 생성한다")
+	void shouldAllowDiscountTicketBeforeThreeApprovedPurchases(long approvedCount) {
+		Product product = discountMatchingTicket();
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode()))
+			.willReturn(approvedCount);
+		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
+
+		shopService.requestPurchase(100L, 3L, 1);
+
+		ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+		then(orderRepository).should().save(captor.capture());
+		Order order = captor.getValue();
+		assertThat(order.getProductCode()).isEqualTo("DISCOUNT_MATCHING_TICKET_1");
+		assertThat(order.getExpectedPrice()).isEqualTo(800);
+		assertThat(order.getRequestedPrice()).isEqualTo(800);
+		assertThat(order.getOrderItems()).singleElement().satisfies(item -> {
+			assertThat(item.getItemType()).isEqualTo(ItemType.MATCHING_TICKET);
+			assertThat(item.getQuantity()).isEqualTo(1);
+		});
+		then(orderOutboxService).should().enqueueOrderCreated(order);
+	}
+
+	@Test
+	@DisplayName("할인 뽑기권 승인 3회 이후에는 추가 주문을 거부한다")
+	void shouldRejectDiscountTicketAfterThreeApprovedPurchases() {
+		Product product = discountMatchingTicket();
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode())).willReturn(3L);
+
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, 1))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(PaymentErrorCode.PRODUCT_PURCHASE_LIMIT_EXCEEDED);
+		then(orderRepository).should(never()).save(any());
+		then(orderOutboxService).shouldHaveNoInteractions();
+	}
+
+	@ParameterizedTest
+	@CsvSource({"0, 0, 3", "1, 0, 2", "2, 0, 1", "3, 0, 0", "2, 1, 0"})
+	@DisplayName("할인 뽑기권은 승인과 유효 대기 주문을 합산하고 소진 후에도 구매 완료 표시용으로 반환한다")
+	void shouldReturnDiscountTicketRemainingCount(long approvedCount, long pendingCount, long remainingCount) {
+		Product product = discountMatchingTicket();
+		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(product));
+		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode()))
+			.willReturn(approvedCount);
+		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+			.willReturn(pendingCount);
+
+		assertThat(shopService.getActiveProducts(100L, true)).singleElement().satisfies(response -> {
+			assertThat(response.remainingPurchaseCount()).isEqualTo(remainingCount);
+			assertThat(response.purchaseCountPurchasable()).isEqualTo(remainingCount > 0);
+			assertThat(response.purchaseBlockReason()).isEqualTo(remainingCount > 0
+				? PurchaseBlockReason.NONE : PurchaseBlockReason.PRODUCT_LIMIT_EXCEEDED);
+		});
+	}
+
+	@Test
+	@DisplayName("할인 뽑기권 승인 2회와 유효 대기 1회가 있으면 잔여 0회이며 추가 요청도 거부한다")
+	void shouldRejectDiscountTicketWithTwoApprovedAndOnePendingPurchase() {
+		Product product = discountMatchingTicket();
+		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(product));
+		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode())).willReturn(2L);
+		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+			.willReturn(1L);
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(true);
+
+		assertThat(shopService.getActiveProducts(100L, true)).singleElement().satisfies(response -> {
+			assertThat(response.remainingPurchaseCount()).isZero();
+			assertThat(response.purchaseCountPurchasable()).isFalse();
+		});
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, 1))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(PaymentErrorCode.PENDING_REQUEST_ALREADY_EXISTS);
+		then(orderRepository).should(never()).save(any());
+		then(orderOutboxService).shouldHaveNoInteractions();
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {2, 3})
+	@DisplayName("할인 뽑기권 quantity 2 또는 3 직접 요청은 서버에서 거부한다")
+	void shouldRejectMultipleDiscountTicketsInOneRequest(int quantity) {
+		given(productRepository.findById(3L)).willReturn(Optional.of(discountMatchingTicket()));
+
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, quantity))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(PaymentErrorCode.INVALID_ORDER_QUANTITY);
+		then(orderRepository).shouldHaveNoInteractions();
+		then(userOrderClient).shouldHaveNoInteractions();
+		then(orderOutboxService).shouldHaveNoInteractions();
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {1, 2, 3})
+	@DisplayName("일반 뽑기권은 기존처럼 수량 1~3개에 맞춰 가격과 지급량을 계산한다")
+	void shouldKeepNormalMatchingTicketQuantityPurchases(int quantity) {
+		Product product = product("뽑기권 1장", 1000, true);
+		ReflectionTestUtils.setField(product, "id", 3L);
+		ReflectionTestUtils.setField(product, "code", "MATCHING_TICKET_1");
+		product.addReward(ProductReward.builder().itemType(ItemType.MATCHING_TICKET).quantity(1).build());
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
+
+		shopService.requestPurchase(100L, 3L, quantity);
+
+		ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+		then(orderRepository).should().save(captor.capture());
+		assertThat(captor.getValue().getExpectedPrice()).isEqualTo(1000 * quantity);
+		assertThat(captor.getValue().getOrderItems()).singleElement().satisfies(item -> {
+			assertThat(item.getItemType()).isEqualTo(ItemType.MATCHING_TICKET);
+			assertThat(item.getQuantity()).isEqualTo(quantity);
+		});
+	}
+
+	private Product discountMatchingTicket() {
+		Product product = product("(할인) 뽑기권 1개", 800, true, true);
+		ReflectionTestUtils.setField(product, "id", 3L);
+		ReflectionTestUtils.setField(product, "code", "DISCOUNT_MATCHING_TICKET_1");
+		ReflectionTestUtils.setField(product, "purchaseLimitPerMember", 3);
+		product.addReward(ProductReward.builder().itemType(ItemType.MATCHING_TICKET).quantity(1).build());
+		return product;
+	}
 
 	@Test
 	@DisplayName("상품 ID 기반 요청이면 상품 가격/구성품으로 주문을 생성한다")

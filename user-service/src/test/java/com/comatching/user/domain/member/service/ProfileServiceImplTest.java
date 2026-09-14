@@ -94,7 +94,6 @@ class ProfileServiceImplTest {
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
@@ -135,7 +134,6 @@ class ProfileServiceImplTest {
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
@@ -203,7 +201,6 @@ class ProfileServiceImplTest {
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
@@ -241,7 +238,6 @@ class ProfileServiceImplTest {
 			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
@@ -276,7 +272,6 @@ class ProfileServiceImplTest {
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
@@ -311,7 +306,6 @@ class ProfileServiceImplTest {
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
-			willDoNothing().given(eventPublisher).sendSignupEvent(any());
 
 			// when
 			ProfileResponse response = profileService.createProfile(memberId, request);
