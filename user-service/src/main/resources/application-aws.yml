@@ -13,6 +13,9 @@ server:
 client:
   url: ${CLIENT_URL:https://comatching.site}
 
+item-service:
+  url: http://item-service:9006
+
 auth:
   cookie:
     secure: ${AUTH_COOKIE_SECURE:true}
