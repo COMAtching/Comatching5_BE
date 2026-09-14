@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 public class RouletteServiceImpl implements RouletteService {
 
-    private static final long SPECIAL_ROULETTE_MINIMUM_PAYMENT = 3500L;
+    private static final long SPECIAL_ROULETTE_MINIMUM_PAYMENT = 3000L;
 
     private final RouletteHistoryRepository rouletteHistoryRepository;
     private final RouletteRewardRepository rouletteRewardRepository;
