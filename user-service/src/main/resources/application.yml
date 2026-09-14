@@ -58,6 +58,9 @@ spring:
     redis:
       host: localhost
       port: 6380
+    web:
+      pageable:
+        max-page-size: 10000
 
   kafka:
     bootstrap-servers: localhost:9092
