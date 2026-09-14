@@ -67,6 +67,8 @@ class ShopServiceImplTest {
 	@Mock
 	private PaymentOrderProperties paymentOrderProperties;
 
+	private static final int DEFAULT_QUANTITY = 1;
+
 	@Test
 	@DisplayName("상품 ID 기반 요청이면 상품 가격/구성품으로 주문을 생성한다")
 	void shouldCreateOrderFromProductSnapshot() {
@@ -84,7 +86,7 @@ class ShopServiceImplTest {
 
 		// when
 		LocalDateTime before = LocalDateTime.now();
-		shopService.requestPurchase(100L, 3L);
+		shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY);
 		LocalDateTime after = LocalDateTime.now();
 
 		// then
@@ -156,7 +158,7 @@ class ShopServiceImplTest {
 		given(productRepository.findById(999L)).willReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 999L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 999L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(ItemErrorCode.PRODUCT_NOT_FOUND);
@@ -170,7 +172,7 @@ class ShopServiceImplTest {
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(ItemErrorCode.PRODUCT_NOT_AVAILABLE);
@@ -185,7 +187,7 @@ class ShopServiceImplTest {
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(true);
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.PENDING_REQUEST_ALREADY_EXISTS);
@@ -206,7 +208,7 @@ class ShopServiceImplTest {
 			.willReturn(0L);
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.PURCHASE_LIMIT_EXCEEDED);
@@ -228,7 +230,7 @@ class ShopServiceImplTest {
 			.willReturn(0L);
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.PRODUCT_PURCHASE_LIMIT_EXCEEDED);
@@ -248,7 +250,7 @@ class ShopServiceImplTest {
 		given(orderRepository.existsApprovedOrActivePendingOrder(eq(100L), any())).willReturn(true);
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.FIRST_PURCHASE_ONLY);
@@ -274,7 +276,7 @@ class ShopServiceImplTest {
 		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
 
 		// when
-		shopService.requestPurchase(100L, 3L);
+		shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY);
 
 		// then
 		then(orderRepository).should().save(any(Order.class));
@@ -350,7 +352,7 @@ class ShopServiceImplTest {
 		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, null, "길동이"));
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.REAL_NAME_REQUIRED);
@@ -366,7 +368,7 @@ class ShopServiceImplTest {
 		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", null));
 
 		// when & then
-		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L))
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, DEFAULT_QUANTITY))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(PaymentErrorCode.USERNAME_REQUIRED);
@@ -444,5 +446,106 @@ class ShopServiceImplTest {
 			.isActive(isActive)
 			.isBundle(isBundle)
 			.build();
+	}
+
+	@Test
+	@DisplayName("여러 개 구매 시 구매 수량만큼 가격과 지급 아이템 수량을 증가시켜 주문을 생성한다")
+	void shouldCreateOrderWithMultipleQuantity() {
+		// given
+		int quantity = 3;
+
+		Product product = product("매칭권 10개 (+옵션권 5개)", 5000, true);
+		ReflectionTestUtils.setField(product, "id", 3L);
+
+		product.addReward(
+				ProductReward.builder()
+						.itemType(ItemType.MATCHING_TICKET)
+						.quantity(10)
+						.build()
+		);
+
+		product.addReward(
+				ProductReward.builder()
+						.itemType(ItemType.OPTION_TICKET)
+						.quantity(10)
+						.build()
+		);
+
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
+
+		given(userOrderClient.getOrdererInfo(100L))
+				.willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
+
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
+
+		// when
+		shopService.requestPurchase(100L, 3L, quantity);
+
+		// then
+		ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+		then(orderRepository).should().save(orderCaptor.capture());
+
+		Order savedOrder = orderCaptor.getValue();
+
+		assertThat(savedOrder.getRequestedPrice()).isEqualTo(15000);
+		assertThat(savedOrder.getExpectedPrice()).isEqualTo(15000);
+
+		assertThat(savedOrder.getOrderItems()).hasSize(2);
+
+		assertThat(savedOrder.getOrderItems()).anyMatch(
+				item ->
+						item.getItemType() == ItemType.MATCHING_TICKET
+								&& item.getQuantity() == 30
+		);
+
+		assertThat(savedOrder.getOrderItems()).anyMatch(
+				item ->
+						item.getItemType() == ItemType.OPTION_TICKET
+								&& item.getQuantity() == 30
+		);
+
+		then(orderOutboxService).should().enqueueOrderCreated(savedOrder);
+	}
+
+	@Test
+	@DisplayName("여러 개 구매 시 전체 구매 수량 기준으로 아이템 보유 한도를 검증한다")
+	void shouldThrowWhenMultipleQuantityExceedsPurchaseLimit() {
+		// given
+		int quantity = 99;
+
+		Product product = product("매칭권 패키지", 1000, true);
+
+		product.addReward(
+				ProductReward.builder()
+						.itemType(ItemType.MATCHING_TICKET)
+						.quantity(2)
+						.build()
+		);
+
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
+
+		given(itemRepository.sumUsableQuantityByMemberIdAndItemType(
+				100L,
+				ItemType.MATCHING_TICKET
+		)).willReturn(25L);
+
+		given(orderRepository.sumActivePendingQuantityByMemberIdAndItemType(
+				eq(100L),
+				eq(ItemType.MATCHING_TICKET),
+				any()
+		)).willReturn(0L);
+
+		// when & then
+		assertThatThrownBy(() ->
+				shopService.requestPurchase(100L, 3L, quantity)
+		)
+				.isInstanceOf(BusinessException.class)
+				.extracting(exception -> ((BusinessException)exception).getErrorCode())
+				.isEqualTo(PaymentErrorCode.PURCHASE_LIMIT_EXCEEDED);
+
+		then(userOrderClient).should(never()).getOrdererInfo(any());
+		then(orderRepository).should(never()).save(any());
 	}
 }

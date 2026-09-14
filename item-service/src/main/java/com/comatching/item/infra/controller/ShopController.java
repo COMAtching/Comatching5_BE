@@ -2,6 +2,7 @@ package com.comatching.item.infra.controller;
 
 import java.util.List;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,9 +55,10 @@ public class ShopController {
 	@PostMapping("/purchase/{productId}")
 	public ResponseEntity<ApiResponse<Void>> requestPurchase(
 		@CurrentMember MemberInfo memberInfo,
-		@PathVariable Long productId
+		@PathVariable Long productId,
+		@RequestParam(defaultValue = "1") @Min(1) int quantity
 	) {
-		shopService.requestPurchase(memberInfo.memberId(), productId);
+		shopService.requestPurchase(memberInfo.memberId(), productId, quantity);
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 

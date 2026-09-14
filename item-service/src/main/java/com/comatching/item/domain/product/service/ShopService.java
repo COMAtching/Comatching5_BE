@@ -10,7 +10,7 @@ public interface ShopService {
 
 	List<ProductResponse> getActiveProducts(Long memberId, Boolean isBundle);
 
-	void requestPurchase(Long memberId, Long productId);
+	void requestPurchase(Long memberId, Long productId, int quantity);
 
 	PurchasePendingStatusResponse getMyPurchaseRequestStatus(Long memberId);
 
