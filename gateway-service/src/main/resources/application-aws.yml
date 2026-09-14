@@ -48,7 +48,7 @@ spring:
             - id: user-service-protected
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**
+                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
               filters:
                 - AuthorizationHeaderFilter
 
