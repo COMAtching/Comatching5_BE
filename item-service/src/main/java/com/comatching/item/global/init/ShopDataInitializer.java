@@ -39,7 +39,7 @@ public class ShopDataInitializer implements CommandLineRunner {
 			1,
 			true,
 			1,
-			true
+			false
 		);
 		addReward(firstPurchaseBundle, ItemType.MATCHING_TICKET, 3);
 		addReward(firstPurchaseBundle, ItemType.OPTION_TICKET, 6);
