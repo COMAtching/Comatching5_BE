@@ -71,6 +71,38 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 		FROM Order o
 		JOIN o.orderItems oi
 		WHERE o.memberId = :memberId
+		AND o.productCode = :productCode
+		AND o.status = com.comatching.item.domain.order.enums.OrderStatus.APPROVED
+		AND oi.itemType = :itemType
+		""")
+	long sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		@Param("memberId") Long memberId,
+		@Param("productCode") String productCode,
+		@Param("itemType") ItemType itemType
+	);
+
+	@Query("""
+		SELECT COALESCE(SUM(oi.quantity), 0)
+		FROM Order o
+		JOIN o.orderItems oi
+		WHERE o.memberId = :memberId
+		AND o.productCode = :productCode
+		AND o.status = com.comatching.item.domain.order.enums.OrderStatus.PENDING
+		AND o.expiresAt > :now
+		AND oi.itemType = :itemType
+		""")
+	long sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+		@Param("memberId") Long memberId,
+		@Param("productCode") String productCode,
+		@Param("itemType") ItemType itemType,
+		@Param("now") LocalDateTime now
+	);
+
+	@Query("""
+		SELECT COALESCE(SUM(oi.quantity), 0)
+		FROM Order o
+		JOIN o.orderItems oi
+		WHERE o.memberId = :memberId
 		AND o.status = com.comatching.item.domain.order.enums.OrderStatus.PENDING
 		AND o.expiresAt > :now
 		AND oi.itemType = :itemType

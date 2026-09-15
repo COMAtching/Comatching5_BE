@@ -69,7 +69,7 @@ class ShopDataInitializerTest {
 		assertThat(firstPurchaseBundle.getName()).isEqualTo("첫 구매 특가 번들");
 		assertThat(firstPurchaseBundle.getPrice()).isEqualTo(3000);
 		assertThat(firstPurchaseBundle.getPurchaseLimitPerMember()).isEqualTo(1);
-		assertThat(firstPurchaseBundle.isFirstPurchaseOnly()).isTrue();
+		assertThat(firstPurchaseBundle.isFirstPurchaseOnly()).isFalse();
 		assertThat(rewardQuantity(firstPurchaseBundle, ItemType.MATCHING_TICKET)).isEqualTo(3);
 		assertThat(rewardQuantity(firstPurchaseBundle, ItemType.OPTION_TICKET)).isEqualTo(6);
 

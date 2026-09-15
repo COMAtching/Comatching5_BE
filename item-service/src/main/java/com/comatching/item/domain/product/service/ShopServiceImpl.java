@@ -78,10 +78,6 @@ public class ShopServiceImpl implements ShopService {
 			throw new BusinessException(ItemErrorCode.PRODUCT_NOT_AVAILABLE);
 		}
 
-		if (DISCOUNT_MATCHING_TICKET_CODE.equals(resolveProductCode(product)) && quantity != 1) {
-			throw new BusinessException(PaymentErrorCode.INVALID_ORDER_QUANTITY);
-		}
-
 		LocalDateTime now = LocalDateTime.now();
 		boolean hasPendingRequest = orderRepository.existsActivePendingOrder(memberId, now);
 		if (hasPendingRequest) {
@@ -89,7 +85,7 @@ public class ShopServiceImpl implements ShopService {
 		}
 
 		validatePurchaseLimit(memberId, product, now, quantity);
-		validatePurchaseCountLimit(memberId, product, now);
+		validatePurchaseCountLimit(memberId, product, now, quantity);
 
 		OrdererInfoDto ordererInfo = userOrderClient.getOrdererInfo(memberId);
 		String realName = normalizeRequiredText(ordererInfo.realName(), PaymentErrorCode.REAL_NAME_REQUIRED);
@@ -121,8 +117,8 @@ public class ShopServiceImpl implements ShopService {
 
 	private ProductResponse toMemberProductResponse(Long memberId, Product product, LocalDateTime now) {
 		String productCode = resolveProductCode(product);
-		long usedPurchaseCount = orderRepository.countApprovedByMemberIdAndProductCode(memberId, productCode);
-		long activePendingOrderCount = orderRepository.countActivePendingByMemberIdAndProductCode(memberId, productCode, now);
+		long usedPurchaseCount = usedPurchaseCount(memberId, productCode);
+		long activePendingOrderCount = activePendingPurchaseCount(memberId, productCode, now);
 
 		Long remainingPurchaseCount = remainingCount(product.getPurchaseLimitPerMember(), usedPurchaseCount, activePendingOrderCount);
 		PurchaseBlockReason blockReason = purchaseBlockReason(
@@ -141,18 +137,42 @@ public class ShopServiceImpl implements ShopService {
 		);
 	}
 
-	private void validatePurchaseCountLimit(Long memberId, Product product, LocalDateTime now) {
+	private void validatePurchaseCountLimit(Long memberId, Product product, LocalDateTime now, int quantity) {
 		if (product.isFirstPurchaseOnly() && orderRepository.existsApprovedOrActivePendingOrder(memberId, now)) {
 			throw new BusinessException(PaymentErrorCode.FIRST_PURCHASE_ONLY);
 		}
 
 		String productCode = resolveProductCode(product);
-		long usedPurchaseCount = orderRepository.countApprovedByMemberIdAndProductCode(memberId, productCode);
-		long activePendingOrderCount = orderRepository.countActivePendingByMemberIdAndProductCode(memberId, productCode, now);
+		long usedPurchaseCount = usedPurchaseCount(memberId, productCode);
+		long activePendingOrderCount = activePendingPurchaseCount(memberId, productCode, now);
 		Long remainingPurchaseCount = remainingCount(product.getPurchaseLimitPerMember(), usedPurchaseCount, activePendingOrderCount);
-		if (remainingPurchaseCount != null && remainingPurchaseCount <= 0) {
+		int requestedPurchaseCount = DISCOUNT_MATCHING_TICKET_CODE.equals(productCode) ? quantity : 1;
+		if (remainingPurchaseCount != null && remainingPurchaseCount < requestedPurchaseCount) {
 			throw new BusinessException(PaymentErrorCode.PRODUCT_PURCHASE_LIMIT_EXCEEDED);
 		}
+	}
+
+	private long usedPurchaseCount(Long memberId, String productCode) {
+		if (DISCOUNT_MATCHING_TICKET_CODE.equals(productCode)) {
+			return orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+				memberId,
+				productCode,
+				ItemType.MATCHING_TICKET
+			);
+		}
+		return orderRepository.countApprovedByMemberIdAndProductCode(memberId, productCode);
+	}
+
+	private long activePendingPurchaseCount(Long memberId, String productCode, LocalDateTime now) {
+		if (DISCOUNT_MATCHING_TICKET_CODE.equals(productCode)) {
+			return orderRepository.sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+				memberId,
+				productCode,
+				ItemType.MATCHING_TICKET,
+				now
+			);
+		}
+		return orderRepository.countActivePendingByMemberIdAndProductCode(memberId, productCode, now);
 	}
 
 	private PurchaseBlockReason purchaseBlockReason(

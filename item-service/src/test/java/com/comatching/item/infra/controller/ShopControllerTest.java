@@ -88,17 +88,20 @@ class ShopControllerTest {
 	}
 
 	@Test
-	@DisplayName("POST /api/v1/shop/purchase/{id}는 할인 상품 quantity=2를 거부한다")
-	void shouldRejectMultipleDiscountTickets() throws Exception {
-		given(productRepository.findById(3L)).willReturn(Optional.of(discountMatchingTicket()));
+	@DisplayName("POST /api/v1/shop/purchase/{id}는 할인 상품 quantity=3을 허용한다")
+	void shouldAllowThreeDiscountTickets() throws Exception {
+		Product product = discountMatchingTicket();
+		given(productRepository.findById(3L)).willReturn(Optional.of(product));
+		given(userOrderClient.getOrdererInfo(100L)).willReturn(new com.comatching.common.dto.member.OrdererInfoDto(
+			100L, "홍길동", "길동이"));
+		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
 
 		mockMvc.perform(post("/api/v1/shop/purchase/3")
-				.param("quantity", "2")
+				.param("quantity", "3")
 				.header("X-Member-Id", "100"))
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("PAY-007"));
+			.andExpect(status().isOk());
 
-		then(orderRepository).shouldHaveNoInteractions();
+		then(orderRepository).should().save(any());
 	}
 
 	@Test
@@ -107,7 +110,8 @@ class ShopControllerTest {
 		Product product = discountMatchingTicket();
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
-		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode())).willReturn(3L);
+		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(3L);
 
 		mockMvc.perform(post("/api/v1/shop/purchase/3")
 				.param("quantity", "1")
@@ -115,8 +119,8 @@ class ShopControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("PAY-012"));
 
-		then(orderRepository).should().countActivePendingByMemberIdAndProductCode(
-			eq(100L), eq(product.getCode()), any());
+		then(orderRepository).should().sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+			eq(100L), eq(product.getCode()), eq(ItemType.MATCHING_TICKET), any());
 		then(orderRepository).should(never()).save(any());
 	}
 
