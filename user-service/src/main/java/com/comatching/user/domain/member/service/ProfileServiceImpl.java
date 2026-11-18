@@ -94,9 +94,6 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		publishMatchingEvent(profile);
 
-		// 가입 이벤트는 구독자가 여럿이다(환영 메일, 사전가입 매칭권 지급).
-		// 특정 구독자의 동작을 멈출 때는 발행을 끄지 말고 그 구독자 쪽 설정으로 끈다.
-		// 사전가입 매칭권은 item-service 의 PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED 로 제어한다.
 		eventPublisher.sendSignupEvent(profileResponse);
 
 		return profileResponse;
