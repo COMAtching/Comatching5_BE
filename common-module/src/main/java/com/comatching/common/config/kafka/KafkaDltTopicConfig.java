@@ -30,12 +30,18 @@ public class KafkaDltTopicConfig {
 	// DeadLetterPublishingRecoverer 가 파티션을 -1 로 넘기므로 원본이 3파티션이어도
 	// 파티션 번호가 어긋날 일은 없다.
 	private static final int DLT_PARTITIONS = 1;
-	private static final short DLT_REPLICATION_FACTOR = 1;
 
 	private final List<String> sourceTopics;
 
-	public KafkaDltTopicConfig(@Value("${comatching.kafka.dlt-topics}") List<String> sourceTopics) {
+	// DLT 는 실패한 메시지의 유일한 사본이라 원본 토픽과 같은 복제 수를 쓴다.
+	// 운영 3노드는 3, 로컬 단일 브로커는 1.
+	private final short replicationFactor;
+
+	public KafkaDltTopicConfig(
+		@Value("${comatching.kafka.dlt-topics}") List<String> sourceTopics,
+		@Value("${comatching.kafka.replication-factor:1}") short replicationFactor) {
 		this.sourceTopics = sourceTopics;
+		this.replicationFactor = replicationFactor;
 	}
 
 	@Bean
@@ -45,7 +51,7 @@ public class KafkaDltTopicConfig {
 			.filter(name -> !name.isEmpty())
 			.map(name -> TopicBuilder.name(name + KafkaConsumerConfig.DLT_SUFFIX)
 				.partitions(DLT_PARTITIONS)
-				.replicas(DLT_REPLICATION_FACTOR)
+				.replicas(replicationFactor)
 				.build())
 			.toArray(NewTopic[]::new);
 

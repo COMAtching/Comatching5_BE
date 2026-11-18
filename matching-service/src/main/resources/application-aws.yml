@@ -48,7 +48,9 @@ spring:
         enabled: ${REDIS_SSL_ENABLED:true}
 
   kafka:
-    bootstrap-servers: kafka:29092
+    # 3노드 클러스터. 하나만 적어도 나머지를 찾아가지만, 그 하나가 죽어 있으면
+    # 기동 시 접속 자체를 못 하므로 셋 다 적는다.
+    bootstrap-servers: kafka-1:29092,kafka-2:29092,kafka-3:29092
     admin:
       # KafkaAdmin 은 기동 시 선언된 토픽을 만든다. 기본값(false)이면 브로커에
       # 못 붙어도 경고만 남기고 앱이 정상 기동해서, 토픽이 없는 채로 "성공한"
@@ -98,6 +100,9 @@ management:
 # 이 서비스가 소비하는 토픽만 적는다.
 comatching:
   kafka:
+    # 코드가 선언하는 토픽(NewTopic)의 복제 수. 운영은 3노드라 3.
+    # 로컬(브로커 1대)은 기본값 1을 쓴다.
+    replication-factor: 3
     dlt-topics: member-withdraw,profile-updates
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
