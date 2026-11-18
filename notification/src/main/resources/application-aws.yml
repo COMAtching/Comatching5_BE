@@ -61,7 +61,7 @@ comatching:
     # 코드가 선언하는 토픽(NewTopic)의 복제 수. 운영은 3노드라 3.
     # 로컬(브로커 1대)은 기본값 1을 쓴다.
     replication-factor: 3
-    dlt-topics: member-signup,member-withdraw,chat-notification
+    dlt-topics: member-signup,member-withdraw,chat-message-sent
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
 

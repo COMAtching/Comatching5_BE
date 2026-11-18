@@ -423,5 +423,5 @@ user-service · matching-service 전체 테스트 회귀 통과 (failures 0, err
    거부할 수단이 없다.
 4. **복제 계수 1** — 브로커가 1대라서다. 브로커 증설 시
    `KafkaTopicConfig.REPLICATION_FACTOR` 만 올리면 된다.
-5. `chat-notification` 은 `roomId` 키가 자연스럽다 — chat 쪽 발행부를 만질 때
+5. `chat-message-sent` 는 `roomId` 키가 자연스럽다 — chat 쪽 발행부를 만질 때
    같은 방식으로.
