@@ -17,7 +17,7 @@ public class ChatEventConsumer {
 	private final FCMService fcmService;
 
 	@KafkaListener(
-		topics = "chat-notification",
+		topics = "chat-message-sent",
 		groupId = "notification-group",
 		containerFactory = "jsonKafkaListenerContainerFactory"
 	)
