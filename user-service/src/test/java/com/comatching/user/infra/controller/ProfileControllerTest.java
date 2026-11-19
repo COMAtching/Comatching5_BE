@@ -3,7 +3,6 @@ package com.comatching.user.infra.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,8 +59,8 @@ class ProfileControllerTest {
 	}
 
 	@Test
-	@DisplayName("POST /api/internal/users/profile은 프로필을 생성해도 member-signup 이벤트를 발행하지 않는다")
-	void shouldCreateProfileWithoutPreSignupEvent() throws Exception {
+	@DisplayName("POST /api/internal/users/profile은 프로필을 생성하면 member-signup 이벤트를 발행한다")
+	void shouldCreateProfileAndPublishSignupEvent() throws Exception {
 		Member member = Member.builder()
 			.email("member@example.com")
 			.password("password")
@@ -97,6 +96,6 @@ class ProfileControllerTest {
 			.andExpect(jsonPath("$.isMatchable").value(true));
 
 		then(eventPublisher).should().sendProfileUpdatedMatchingEvent(any());
-		then(eventPublisher).should(never()).sendSignupEvent(any());
+		then(eventPublisher).should().sendSignupEvent(any());
 	}
 }

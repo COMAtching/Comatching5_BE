@@ -94,8 +94,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		publishMatchingEvent(profile);
 
-//		사전가입 이벤트 중지에 따른 매칭권 지급 중지
-//		eventPublisher.sendSignupEvent(profileResponse);
+		eventPublisher.sendSignupEvent(profileResponse);
 
 		return profileResponse;
 	}

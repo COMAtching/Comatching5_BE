@@ -20,11 +20,10 @@ public class UserEventPublisher {
 
     private static final String TOPIC_SIGNUP = "member-signup";
     private static final String TOPIC_WITHDRAW = "member-withdraw";
-    private static final String TOPIC_MATCHING_PROFILE_UPDATE = "profile-updates"; // 매칭 서비스용 토픽
+    private static final String TOPIC_PROFILE_UPDATED = "profile-updates";
 
     /**
      * 회원가입 이벤트 발행
-     * - 구독: Notification Service (환영 이메일 전송)
      */
     public void sendSignupEvent(ProfileResponse profile) {
         MemberAuthEvent event = MemberAuthEvent.builder()
@@ -38,12 +37,11 @@ public class UserEventPublisher {
     }
 
     public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
-        sendToKafka(TOPIC_MATCHING_PROFILE_UPDATE, memberKey(event.memberId()), event);
+        sendToKafka(TOPIC_PROFILE_UPDATED, memberKey(event.memberId()), event);
     }
 
     /**
      * 회원 탈퇴 이벤트 발행
-     * - 구독: Chat (참여중인 방 퇴장), Payment (결제내역 보존처리)
      */
     public void sendWithdrawEvent(Long memberId, String email) {
         MemberWithdrawnEvent event = new MemberWithdrawnEvent(

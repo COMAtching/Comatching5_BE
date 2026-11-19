@@ -34,12 +34,68 @@ x-app: &app
   networks: [comatching]
   logging: *logging
 
+x-kafka-env: &kafka-env
+  KAFKA_PROCESS_ROLES: broker,controller
+  # 클러스터 ID 는 세 노드가 같아야 한다. 바꾸면 기존 데이터와 맞지 않아 기동이 실패한다.
+  CLUSTER_ID: 18019MMhQI2GaLWcBs301g
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_LISTENERS: INTERNAL://:29092,CONTROLLER://:9093
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  # 토픽은 kafka-topic-init 이 스펙대로 만든다. auto-create 를 켜두면
+  # 오타 난 토픽 이름이 조용히 생겨 원인을 찾기 어렵다.
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  # 복제 규칙. 토픽 기본 복제 3, 쓰기 성공에 필요한 최소 동기 복제본 2.
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  # 컨슈머 오프셋·트랜잭션 상태를 담는 내부 토픽도 같은 규칙을 따른다.
+  # 여기가 1이면 그 토픽을 가진 노드 하나만 죽어도 모든 컨슈머 그룹이 멈춘다.
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  # 동기화가 끊긴 복제본을 리더로 올리지 않는다(기본값이지만 의도를 남긴다).
+  # 올리면 가용성은 오르지만 확인받은 메시지가 사라질 수 있다.
+  KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
+  # /tmp 가 아니라 볼륨 위에 둔다. DLT 에 세워둔 메시지와 컨슈머 오프셋이
+  # 컨테이너 재생성에 살아남아야 재적재가 의미를 갖는다.
+  KAFKA_LOG_DIRS: /var/lib/kafka/data
+  KAFKA_HEAP_OPTS: "-Xmx256m -Xms256m"
+
+x-kafka-broker: &kafka-broker
+  image: apache/kafka:3.9.0
+  restart: unless-stopped
+  networks: [comatching]
+  depends_on:
+    kafka-data-init:
+      condition: service_completed_successfully
+  mem_limit: 448m
+  # 힙 밖 페이지캐시가 잠깐 넘칠 때를 위한 여유. 무제한 스왑은 막는다.
+  memswap_limit: 512m
+  logging: *logging
+
+# 예전엔 kafka-broker-api-versions.sh 였는데, 이 스크립트는 호출마다 JVM 을
+# 새로 띄워 3~6초를 태운다(2026-08-26 실측). 브로커는 기동 마지막에 리스너를
+# 열므로 포트가 열렸다 = 요청을 받는다. 이 헬스체크의 소비자는 compose 기동
+# 순서(kafka-topic-init)뿐이다.
+x-kafka-healthcheck: &kafka-healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 10
+  start_period: 60s
+  start_interval: 2s
+
 networks:
   comatching:
     driver: bridge
 
 volumes:
-  kafka-data:
+  # 단일 노드 시절의 kafka-data 볼륨은 더 쓰지 않는다(클러스터 ID 가 다르다).
+  # 이전 데이터가 필요 없음을 확인한 뒤 수동으로 지운다.
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
   mongo-data:
   redis-data:
   prometheus-data:
@@ -55,67 +111,65 @@ services:
   kafka-data-init:
     image: busybox:1.36
     container_name: comatching-kafka-data-init
-    command: sh -c "mkdir -p /data && chown -R 1000:1000 /data && chmod -R u+rwX,g+rwX /data"
+    command: sh -c "for d in /data1 /data2 /data3; do mkdir -p $$d && chown -R 1000:1000 $$d && chmod -R u+rwX,g+rwX $$d; done"
     volumes:
-      - kafka-data:/data
+      - kafka-1-data:/data1
+      - kafka-2-data:/data2
+      - kafka-3-data:/data3
     restart: "no"
     logging: *logging
 
-  kafka:
-    image: apache/kafka:3.9.0
-    container_name: comatching-kafka
-    restart: unless-stopped
-    networks: [comatching]
-    depends_on:
-      kafka-data-init:
-        condition: service_completed_successfully
+  # ---------- Kafka: 3노드 KRaft 클러스터 ----------
+  # 노드 3개가 각각 broker 와 controller 를 겸한다(combined mode).
+  #   - 컨트롤러 쿼럼 3 = 과반(2)이 살아 있으면 클러스터가 동작한다. 홀수인 이유.
+  #   - 복제 3 + min.insync.replicas 2 + 프로듀서 acks=all
+  #     = 노드 1개가 죽어도 쓰기가 계속되고, 확인받은 메시지는 잃지 않는다.
+  #
+  # 주의: 지금은 세 노드가 같은 EC2 에 있다. 노드 프로세스 하나가 죽거나 재시작되는
+  # 경우는 견디지만, 호스트가 죽으면 셋이 같이 죽는다. 진짜 고가용성은 노드를
+  # 다른 서버(또는 MSK)로 옮겨야 한다. 그때 바뀌는 건 호스트 이름과 리스너뿐이다.
+  #
+  # 메모리: 단일 노드 시절 1280m 하나를 448m 셋(=1344m)으로 나눴다. 이 서비스의
+  # 이벤트량에서는 힙 256m 이면 충분하고, 전체 예산 증가는 +64m 다.
+
+  kafka-1:
+    <<: *kafka-broker
+    container_name: comatching-kafka-1
     environment:
-      # KRaft 단독 모드. broker 와 controller 를 한 프로세스가 겸하고 쿼럼은
-      # 자기 자신이다. Zookeeper 는 필요 없다(3.5 deprecated, 4.0 제거).
+      <<: *kafka-env
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      # 로컬 컴포즈는 localhost:9092 를 광고한다. 그대로 쓰면 클라이언트가
-      # 부트스트랩 직후 localhost 로 리다이렉트되어 전부 실패한다.
-      # 앱들의 aws 프로파일이 kafka:29092 를 보므로 그대로 광고한다.
-      KAFKA_LISTENERS: INTERNAL://:29092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      # 토픽은 kafka-topic-init 이 스펙대로 만든다. auto-create 를 켜두면
-      # 오타 난 토픽 이름이 파티션 1개짜리로 조용히 생겨 원인을 찾기 어렵다.
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 3000
-      # /tmp 가 아니라 볼륨 위에 둔다. DLT 에 세워둔 메시지와 컨슈머 오프셋이
-      # 컨테이너 재생성에 살아남아야 재적재가 의미를 갖는다.
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      KAFKA_HEAP_OPTS: "-Xmx1g -Xms512m"
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092
     volumes:
-      - kafka-data:/var/lib/kafka/data
-    mem_limit: 1280m
-    # 힙(-Xmx1g) 밖 페이지캐시가 잠깐 넘칠 때를 위한 여유 256m. JVM 앱들과
-    # 달리 약간의 스왑은 허용하되 무제한(기본값: mem_limit 의 2배)은 막는다.
-    memswap_limit: 1536m
+      - kafka-1-data:/var/lib/kafka/data
     healthcheck:
-      # 예전엔 kafka-broker-api-versions.sh 였는데, 이 스크립트는 호출마다
-      # JVM 을 새로 띄워 한 번에 3~6초를 태운다. interval 10s 와 만나면
-      # 브로커 컨테이너가 유휴 상태에서도 시간의 30~40%를 헬스체크에 쓴다
-      # (2026-08-26 실측 — 2 vCPU 호스트 유휴 CPU 버스트의 주범).
-      # TCP 접속 확인으로 바꾼다. 브로커는 기동 마지막에 리스너를 열므로
-      # 포트가 열렸다 = 요청을 받는다이고, 이 헬스체크의 소비자는
-      # compose 기동 순서(kafka-topic-init·앱들의 depends_on)뿐이다.
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka/29092"]
-      interval: 30s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-      # 기동 중에만 2초 간격으로 촘촘히 본다(engine 25+). 안정 상태는 30s.
-      start_interval: 2s
-    logging: *logging
+      <<: *kafka-healthcheck
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka-1/29092"]
+
+  kafka-2:
+    <<: *kafka-broker
+    container_name: comatching-kafka-2
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    healthcheck:
+      <<: *kafka-healthcheck
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka-2/29092"]
+
+  kafka-3:
+    <<: *kafka-broker
+    container_name: comatching-kafka-3
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29092
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    healthcheck:
+      <<: *kafka-healthcheck
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka-3/29092"]
 
   # auto-create 를 껐으므로 토픽을 누가 만들지 정해야 한다.
   # 코드가 선언하는 토픽은 member-withdraw / profile-updates(matching-service)와
@@ -126,7 +180,11 @@ services:
     image: apache/kafka:3.9.0
     container_name: comatching-kafka-topic-init
     depends_on:
-      kafka:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
     networks: [comatching]
     restart: "no"
@@ -135,26 +193,35 @@ services:
       - |
         set -euo pipefail
         T=/opt/kafka/bin/kafka-topics.sh
-        BS=kafka:29092
+        BS=kafka-1:29092,kafka-2:29092,kafka-3:29092
+        RF=3
         RETENTION_1D=86400000
+
+        # 포트가 열렸다고 세 노드가 클러스터에 합류했다는 뜻은 아니다.
+        # 복제 3 토픽은 브로커 3개가 모두 등록돼야 만들 수 있으므로 기다린다.
+        for i in $$(seq 1 60); do
+          n=$$(/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server $$BS 2>/dev/null | grep -c '(id:' || true)
+          [ "$$n" -ge 3 ] && break
+          echo "브로커 대기 중 ($$n/3)"; sleep 2
+        done
 
         # 파티션 수는 코드의 선언과 일치시킨다. KafkaTopicConfig 가 기동 시
         # 파티션이 모자라면 늘리지만, 미리 맞춰두면 그 경로를 탈 일이 없다.
-        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic member-signup
-        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic matching-success-topic
-        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic chat-notification
-        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 3 --topic member-withdraw --config retention.ms=$$RETENTION_1D
-        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 3 --topic profile-updates --config retention.ms=$$RETENTION_1D
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic member-signup
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic matching-success-topic
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic chat-notification
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic member-withdraw --config retention.ms=$$RETENTION_1D
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic profile-updates --config retention.ms=$$RETENTION_1D
 
         # DLT 는 사람이 열어 보는 저용량 토픽이라 파티션 1개.
         # retention 은 브로커 기본(7일)을 쓴다 - 원본(1일)보다 길어야 고치고
-        # 되돌릴 시간이 남는다.
+        # 되돌릴 시간이 남는다. 복제는 원본과 같다 - DLT 는 유일한 사본이다.
         for t in member-signup member-withdraw profile-updates matching-success-topic chat-notification; do
-          $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor 1 --partitions 1 --topic $$t.DLT
+          $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic $$t.DLT
         done
 
         echo "=== 토픽 준비 완료 ==="
-        $$T --bootstrap-server $$BS --list
+        $$T --bootstrap-server $$BS --describe | grep -E '^Topic:' || true
     logging: *logging
 
   mongodb:

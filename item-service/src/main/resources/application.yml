@@ -58,7 +58,11 @@ comatching:
     expire-minutes: ${ORDER_EXPIRE_MINUTES:43200}
   pre-signup:
     matching-ticket-grant:
-      enabled: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED:true}
+      # 사전가입 이벤트는 종료됐다. 기본값을 꺼 두고, 다시 열 때만 env 로 켠다.
+      # 가입 이벤트(member-signup) 자체는 환영 메일도 쓰므로 발행 쪽은 건드리지 않는다.
+      # 끈 상태에서도 리스너는 메시지를 읽고 넘긴다(오프셋 진행) - 나중에 켜도
+      # 꺼져 있던 동안의 가입자에게 소급 지급하지 않는다.
+      enabled: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED:false}
       quantity: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_QUANTITY:1}
       campaign-code: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_CAMPAIGN_CODE:PRE_SIGNUP_2026}
   kafka:
