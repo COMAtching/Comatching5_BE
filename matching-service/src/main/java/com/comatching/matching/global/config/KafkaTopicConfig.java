@@ -4,6 +4,7 @@ import java.time.Duration;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
@@ -43,7 +44,9 @@ public class KafkaTopicConfig {
 	public static final String CANDIDATE_LISTENER_CONCURRENCY =
 		"${matching.kafka.candidate-listener-concurrency:3}";
 
-	private static final short REPLICATION_FACTOR = 1;
+	// 운영 3노드는 3, 로컬 단일 브로커는 1. 브로커 수보다 크면 토픽 생성이 실패한다.
+	@Value("${comatching.kafka.replication-factor:1}")
+	private short replicationFactor;
 
 	/**
 	 * retention 1일. 축제 단발성 서비스라 브로커 기본 7일은 과하다.
@@ -75,7 +78,7 @@ public class KafkaTopicConfig {
 	public NewTopic memberWithdrawTopic() {
 		return TopicBuilder.name("member-withdraw")
 			.partitions(CANDIDATE_TOPIC_PARTITIONS)
-			.replicas(REPLICATION_FACTOR)
+			.replicas(replicationFactor)
 			.config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(RETENTION_MS))
 			.build();
 	}
@@ -84,7 +87,7 @@ public class KafkaTopicConfig {
 	public NewTopic profileUpdatesTopic() {
 		return TopicBuilder.name("profile-updates")
 			.partitions(CANDIDATE_TOPIC_PARTITIONS)
-			.replicas(REPLICATION_FACTOR)
+			.replicas(replicationFactor)
 			.config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(RETENTION_MS))
 			.build();
 	}
