@@ -53,7 +53,7 @@ class ServiceProfileConfigTest {
 
 		if (!service.equals("gateway-service")) {
 			assertThat(env.getProperty("spring.kafka.bootstrap-servers"))
-				.isEqualTo(local ? "localhost:9092" : "kafka:29092");
+				.isEqualTo(local ? "localhost:9092" : "kafka-1:29092,kafka-2:29092,kafka-3:29092");
 			if (!local) {
 				assertThat(env.getProperty("spring.kafka.admin.fail-fast")).isEqualTo("true");
 			}
