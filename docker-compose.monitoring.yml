@@ -59,9 +59,10 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_USERS_DEFAULT_THEME: dark
-      # provisioning/datasources/mysql.yml 이 $MYSQL_ROOT_PASSWORD 로 참조한다.
-      # 평문을 프로비저닝 파일에 박지 않으려고 .env 에서 넘긴다.
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # 호스트 MySQL 접속 설정. run-local.sh가 .env.local에서 로드한다.
+      LOCAL_MYSQL_PORT: ${LOCAL_MYSQL_PORT:-3306}
+      LOCAL_MYSQL_USERNAME: ${LOCAL_MYSQL_USERNAME:-root}
+      LOCAL_MYSQL_PASSWORD: ${LOCAL_MYSQL_PASSWORD:-}
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro

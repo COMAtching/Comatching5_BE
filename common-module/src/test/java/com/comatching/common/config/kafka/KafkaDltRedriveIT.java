@@ -21,6 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -47,10 +49,10 @@ import com.comatching.common.exception.BusinessException;
  *  4) 소비를 선언하지 않은 토픽은 재적재를 거부한다 (오타 가드)
  */
 @SpringBootTest(classes = {
-	KafkaProducerConfig.class,
 	KafkaConsumerConfig.class,
 	KafkaDltRedriveIT.TestListeners.class
 })
+@ImportAutoConfiguration(KafkaAutoConfiguration.class)
 @EmbeddedKafka(
 	partitions = 1,
 	topics = {
@@ -60,7 +62,14 @@ import com.comatching.common.exception.BusinessException;
 )
 @TestPropertySource(properties = {
 	"spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
+	"spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
+	"spring.kafka.producer.value-serializer=com.comatching.common.config.kafka.EventValueSerializer",
+	"spring.kafka.producer.acks=all",
+	"spring.kafka.producer.properties[enable.idempotence]=true",
 	"spring.kafka.consumer.group-id=kafka-dlt-redrive-it",
+	"spring.kafka.consumer.auto-offset-reset=earliest",
+	"spring.kafka.consumer.enable-auto-commit=false",
+	"spring.kafka.listener.ack-mode=record",
 	"comatching.kafka.dlt-topics=" + KafkaDltRedriveIT.REDRIVE_TOPIC
 })
 @DisplayName("Kafka DLT 재적재")
@@ -75,7 +84,7 @@ class KafkaDltRedriveIT {
 	private static final String PAYLOAD_ON_WIRE = "\"redrive-me\"";
 
 	@Autowired
-	private KafkaTemplate<String, String> kafkaTemplate;
+	private KafkaTemplate<String, Object> kafkaTemplate;
 
 	@Autowired
 	private KafkaDltRedriveService redriveService;

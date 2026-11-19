@@ -23,8 +23,8 @@ class ChatEventProducerTest {
 	private final ChatEventProducer chatEventProducer = new ChatEventProducer(kafkaTemplate);
 
 	@Test
-	@DisplayName("채팅 알림 Kafka 발행 성공 로그를 남긴다")
-	void send_logsKafkaSuccess(CapturedOutput output) {
+	@DisplayName("채팅방 ID를 key로 발행하고 Kafka 발행 성공 로그를 남긴다")
+	void send_usesRoomIdKeyAndLogsKafkaSuccess(CapturedOutput output) {
 		// given
 		ChatMessageEvent event = event();
 		SendResult<String, Object> sendResult = mock(SendResult.class);
@@ -33,7 +33,7 @@ class ChatEventProducerTest {
 		given(metadata.topic()).willReturn("chat-notification");
 		given(metadata.partition()).willReturn(1);
 		given(metadata.offset()).willReturn(10L);
-		given(kafkaTemplate.send("chat-notification", event))
+		given(kafkaTemplate.send("chat-notification", event.roomId(), event))
 			.willReturn(CompletableFuture.completedFuture(sendResult));
 
 		// when
@@ -41,15 +41,15 @@ class ChatEventProducerTest {
 
 		// then
 		assertThat(output).contains("chat.notification.kafka.send.success roomId=room-1 targetUserId=2");
-		then(kafkaTemplate).should().send("chat-notification", event);
+		then(kafkaTemplate).should().send("chat-notification", event.roomId(), event);
 	}
 
 	@Test
-	@DisplayName("채팅 알림 Kafka 발행 실패 로그를 남긴다")
-	void send_logsKafkaFailure(CapturedOutput output) {
+	@DisplayName("채팅방 ID를 key로 발행하고 Kafka 발행 실패 로그를 남긴다")
+	void send_usesRoomIdKeyAndLogsKafkaFailure(CapturedOutput output) {
 		// given
 		ChatMessageEvent event = event();
-		given(kafkaTemplate.send("chat-notification", event))
+		given(kafkaTemplate.send("chat-notification", event.roomId(), event))
 			.willReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
 
 		// when
@@ -57,7 +57,7 @@ class ChatEventProducerTest {
 
 		// then
 		assertThat(output).contains("chat.notification.kafka.send.failure roomId=room-1 targetUserId=2");
-		then(kafkaTemplate).should().send("chat-notification", event);
+		then(kafkaTemplate).should().send("chat-notification", event.roomId(), event);
 	}
 
 	private ChatMessageEvent event() {

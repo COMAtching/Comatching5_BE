@@ -44,6 +44,7 @@ bin/
 .env
 .env.aws
 .env.prod
+.env.local
 .claudeignore
 .claude
 .mcp.json
@@ -55,6 +56,12 @@ docker-compose.yml
 # Dockerfile / .dockerignore / docker-compose.prod.yml 은 비밀값이 없는
 # 배포 자산이라 추적한다. 실제 값은 .env.prod 에만 있고 그건 위에서 무시된다.
 /database
+!/database/
+/database/*
+!/database/init/
+/database/init/*
+!/database/init/01-create-databases.sql
+!/database/init/02-create-matching-outbox.sql
 /docs/*
 !/docs/perf-log.md
 # 설계 문서(spec)는 추적한다. /docs/* 가 디렉터리째 막고 있어서 하위 파일만

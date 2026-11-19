@@ -22,15 +22,15 @@ class ChatEventConsumerTest {
 	private FCMService fcmService;
 
 	@Test
-	@DisplayName("채팅 알림 consumer는 JSON listener factory를 사용한다")
-	void shouldUseJsonKafkaListenerFactory() throws NoSuchMethodException {
+	@DisplayName("채팅 알림 consumer는 기본 listener factory를 선택한다")
+	void shouldUseDefaultKafkaListenerFactory() throws NoSuchMethodException {
 		// when
 		KafkaListener listener = ChatEventConsumer.class
 			.getMethod("handleChatEvent", ChatMessageEvent.class)
 			.getAnnotation(KafkaListener.class);
 
 		// then
-		assertThat(listener.containerFactory()).isEqualTo("jsonKafkaListenerContainerFactory");
+		assertThat(listener.containerFactory()).isEmpty();
 	}
 
 	@Test

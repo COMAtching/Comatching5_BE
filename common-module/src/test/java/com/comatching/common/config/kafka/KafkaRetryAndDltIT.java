@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,10 +49,10 @@ import org.springframework.test.context.TestPropertySource;
  *  4) DLT 이동 시에만 알림이 발화한다 (회복된 실패는 알리지 않는다)
  */
 @SpringBootTest(classes = {
-	KafkaProducerConfig.class,
 	KafkaConsumerConfig.class,
 	KafkaRetryAndDltIT.TestListeners.class
 })
+@ImportAutoConfiguration(KafkaAutoConfiguration.class)
 @EmbeddedKafka(
 	partitions = 1,
 	topics = {
@@ -62,7 +64,14 @@ import org.springframework.test.context.TestPropertySource;
 )
 @TestPropertySource(properties = {
 	"spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
-	"spring.kafka.consumer.group-id=kafka-retry-dlt-it"
+	"spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
+	"spring.kafka.producer.value-serializer=com.comatching.common.config.kafka.EventValueSerializer",
+	"spring.kafka.producer.acks=all",
+	"spring.kafka.producer.properties[enable.idempotence]=true",
+	"spring.kafka.consumer.group-id=kafka-retry-dlt-it",
+	"spring.kafka.consumer.auto-offset-reset=earliest",
+	"spring.kafka.consumer.enable-auto-commit=false",
+	"spring.kafka.listener.ack-mode=record"
 })
 @DisplayName("Kafka 재시도·DLT 정책")
 @Tag("integration")
@@ -80,7 +89,7 @@ class KafkaRetryAndDltIT {
 	private static final String PAYLOAD_AT_LISTENER = "boom";
 
 	@Autowired
-	private KafkaTemplate<String, String> kafkaTemplate;
+	private KafkaTemplate<String, Object> kafkaTemplate;
 
 	@Autowired
 	private TestListeners listeners;

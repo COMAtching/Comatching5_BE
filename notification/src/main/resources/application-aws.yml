@@ -1,15 +1,5 @@
-# AWS 환경 설정 - Docker 컨테이너 간 통신용
-server:
-  port: 9005
-
+# AWS 환경: RDS와 Docker 서비스 주소. SPRING_PROFILES_ACTIVE=aws
 spring:
-  data:
-    redis:
-      host: ${REDIS_ENDPOINT}
-      port: 6379
-      ssl:
-        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
-        enabled: ${REDIS_SSL_ENABLED:true}
   kafka:
     bootstrap-servers: kafka:29092
     admin:
@@ -18,26 +8,13 @@ spring:
       # 배포가 되고 발행·구독이 런타임에 조용히 실패한다. true 면 그 자리에서
       # 컨텍스트 로딩이 깨져 배포 시점에 드러난다.
       fail-fast: true
-    consumer:
-      group-id: notification-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: catholicalarm2@gmail.com
-    password: ${SMTP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
+        enabled: ${REDIS_SSL_ENABLED:true}
 
 management:
   endpoints:
@@ -48,26 +25,10 @@ management:
         include: health,prometheus
   endpoint:
     health:
-      # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
-      # 인증 없이 그대로 드러난다.
+      # 상태 상세 노출 여부는 실행 환경별로 지정한다.
       show-details: never
-
-# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
-# 이 서비스가 소비하는 토픽만 적는다.
-comatching:
-  kafka:
-    dlt-topics: member-signup,member-withdraw,chat-notification
-    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
-    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
-
-# /api/internal/** 를 지키는 InternalApiAuthenticationFilter 의 검사 토큰.
-# 비우면 내부 API 전체가 401 로 닫힌다(fail-closed).
-internal:
-  service-token: ${INTERNAL_SERVICE_TOKEN:}
-
 
 # FCM 서비스 계정 키. 이미지에 굽지 않고 .env.prod 의 env 로 주입받는다.
 # required: 키가 없으면 기동을 깨서 배포 시점에 드러낸다(kafka.admin.fail-fast 와 같은 철학).
 fcm:
-  service-account-b64: ${FCM_SERVICE_ACCOUNT_B64:}
   required: true

@@ -29,7 +29,7 @@ x-app: &app
   env_file:
     - .env.prod
   environment:
-    SPRING_PROFILES_ACTIVE: aws
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?Set SPRING_PROFILES_ACTIVE in .env.prod}
   restart: unless-stopped
   networks: [comatching]
   logging: *logging

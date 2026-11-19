@@ -18,8 +18,7 @@ public class MatchingConsumer {
 
 	@KafkaListener(
 		topics = "matching-success-topic",
-		groupId = "chat-service-group",
-		containerFactory = "jsonKafkaListenerContainerFactory"
+		groupId = "chat-service-group"
 	)
 	public void consumeMatchingSuccess(MatchingSuccessEvent event) {
 		try {

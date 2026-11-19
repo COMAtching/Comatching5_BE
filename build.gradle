@@ -76,7 +76,7 @@ subprojects {
             includeTags 'integration'
         }
 
-        // 통합 테스트가 없는 모듈(gateway, chat, item, notification)에서도 이 태스크는
+        // 통합 테스트가 없는 모듈(gateway, item, notification)에서도 이 태스크는
         // 돈다. 대상이 0개라고 실패하면 CI 가 빨개지므로 끈다.
         filter {
             failOnNoMatchingTests = false

@@ -35,7 +35,7 @@ import com.comatching.matching.domain.repository.history.MatchingHistoryReposito
 import com.comatching.matching.global.exception.MatchingErrorCode;
 import com.comatching.matching.infra.client.ItemClient;
 import com.comatching.matching.infra.client.MemberClient;
-import com.comatching.matching.infra.kafka.MatchingEventProducer;
+import com.comatching.matching.domain.outbox.MatchingOutboxService;
 
 @ExtendWith(MockitoExtension.class)
 class MatchingServiceImplTest {
@@ -53,7 +53,7 @@ class MatchingServiceImplTest {
 	private ItemClient itemClient;
 
 	@Mock
-	private MatchingEventProducer matchingEventProducer;
+	private MatchingOutboxService matchingOutboxService;
 
 	@Mock
 	private MatchingItemPolicy matchingItemPolicy;
@@ -137,7 +137,7 @@ class MatchingServiceImplTest {
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("계란형 얼굴", "밝은 분위기");
 			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
-			verify(matchingEventProducer).sendMatchingSuccess(any());
+			verify(matchingOutboxService).enqueue(any());
 		}
 
 		@Test
@@ -212,7 +212,7 @@ class MatchingServiceImplTest {
 
 			verify(itemClient).addItem(eq(memberId), any());
 			verify(historyRepository, never()).save(any());
-			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+			verify(matchingOutboxService, never()).enqueue(any());
 		}
 
 		@Test
@@ -244,7 +244,7 @@ class MatchingServiceImplTest {
 			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
 			verify(itemClient).addItem(eq(memberId), any());
 			verify(historyRepository, never()).save(any());
-			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+			verify(matchingOutboxService, never()).enqueue(any());
 		}
 
 		@Test
@@ -271,12 +271,12 @@ class MatchingServiceImplTest {
 				.isInstanceOf(RuntimeException.class);
 
 			verify(itemClient).addItem(eq(memberId), any());
-			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+			verify(matchingOutboxService, never()).enqueue(any());
 		}
 
 		@Test
-		@DisplayName("매칭 성공 이벤트 발행 실패시 아이템을 환불한다")
-		void shouldRefundItemsWhenEventPublishFails() {
+		@DisplayName("Outbox 저장 실패시 아이템을 환불한다")
+		void shouldRefundItemsWhenOutboxEnqueueFails() {
 			// given
 			Long memberId = 1L;
 			Long partnerId = 2L;
@@ -296,8 +296,8 @@ class MatchingServiceImplTest {
 			given(matchingItemPolicy.determine(request)).willReturn(consumptions);
 			given(matchingProcessor.process(memberId, myProfile, request)).willReturn(partner);
 			given(historyRepository.save(any(MatchingHistory.class))).willReturn(savedHistory);
-			willThrow(new RuntimeException("event publish failed"))
-				.given(matchingEventProducer).sendMatchingSuccess(any());
+			willThrow(new RuntimeException("outbox enqueue failed"))
+				.given(matchingOutboxService).enqueue(any());
 
 			// when & then
 			assertThatThrownBy(() -> matchingService.match(memberId, request))
@@ -307,8 +307,8 @@ class MatchingServiceImplTest {
 		}
 
 		@Test
-		@DisplayName("매칭 성공시 히스토리를 저장하고 이벤트를 발행한다")
-		void shouldSaveHistoryAndPublishEventOnSuccess() {
+		@DisplayName("매칭 성공시 히스토리와 Outbox 이벤트를 저장한다")
+		void shouldSaveHistoryAndEnqueueEventOnSuccess() {
 			// given
 			Long memberId = 1L;
 			Long partnerId = 2L;
@@ -340,7 +340,7 @@ class MatchingServiceImplTest {
 			ArgumentCaptor<MatchingHistory> historyCaptor = ArgumentCaptor.forClass(MatchingHistory.class);
 			verify(historyRepository).save(historyCaptor.capture());
 			assertThat(historyCaptor.getValue().getPairKey()).isEqualTo("1:2");
-			verify(matchingEventProducer).sendMatchingSuccess(any());
+			verify(matchingOutboxService).enqueue(any());
 		}
 
 		@Test
@@ -390,7 +390,7 @@ class MatchingServiceImplTest {
 			verify(matchingProcessor, times(2)).process(memberId, myProfile, request);
 			verify(historyRepository, times(2)).save(any(MatchingHistory.class));
 			ArgumentCaptor<MatchingSuccessEvent> eventCaptor = ArgumentCaptor.forClass(MatchingSuccessEvent.class);
-			verify(matchingEventProducer).sendMatchingSuccess(eventCaptor.capture());
+			verify(matchingOutboxService).enqueue(eventCaptor.capture());
 			assertThat(eventCaptor.getValue().targetUserId()).isEqualTo(retryPartnerId);
 		}
 
@@ -436,7 +436,7 @@ class MatchingServiceImplTest {
 			verify(itemClient).useItem(memberId, ItemType.MATCHING_TICKET, 1);
 			verify(itemClient).addItem(eq(memberId), any());
 			verify(matchingProcessor, times(2)).process(memberId, myProfile, request);
-			verify(matchingEventProducer, never()).sendMatchingSuccess(any());
+			verify(matchingOutboxService, never()).enqueue(any());
 		}
 
 		@Test

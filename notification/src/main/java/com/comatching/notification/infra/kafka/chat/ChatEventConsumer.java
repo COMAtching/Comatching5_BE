@@ -18,8 +18,7 @@ public class ChatEventConsumer {
 
 	@KafkaListener(
 		topics = "chat-notification",
-		groupId = "notification-group",
-		containerFactory = "jsonKafkaListenerContainerFactory"
+		groupId = "notification-group"
 	)
 	public void handleChatEvent(ChatMessageEvent event) {
 		log.info(

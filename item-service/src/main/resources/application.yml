@@ -1,24 +1,11 @@
+# 공통 설정만 정의한다. 프로파일은 env의 SPRING_PROFILES_ACTIVE로 선택한다.
 server:
   port: 9006
 
-member-service:
-  url: http://localhost:9002
-
-user-service:
-  url: http://localhost:9000
-
 spring:
-  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
-  config:
-    import: classpath:feign-resilience.yml
-
   application:
     name: item-service
-
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_item?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:comatching12!@}
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
@@ -26,23 +13,23 @@ spring:
       connection-timeout: 30000
       max-lifetime: 1800000
       validation-timeout: 5000
-
-  jpa:
-    hibernate:
-      ddl-auto: create
-    show-sql: false
-
   kafka:
-    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: com.comatching.common.config.kafka.EventValueSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
     consumer:
       group-id: item-group
       auto-offset-reset: earliest
+      enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
+    listener:
+      type: single
+      ack-mode: record
+      concurrency: 1
   cloud:
     aws:
       credentials:
@@ -52,6 +39,9 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: ${AWS_S3_BUCKET}
+  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
+  config:
+    import: classpath:feign-resilience.yml
 
 jwt:
   secret: ${JWT_SECRET}
@@ -79,13 +69,6 @@ comatching:
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      show-details: always
   metrics:
     tags:
       application: ${spring.application.name}

@@ -37,13 +37,13 @@ class MatchingConsumerTest {
 	}
 
 	@Test
-	@DisplayName("matching success consumer는 JSON listener factory를 사용한다")
-	void shouldUseJsonKafkaListenerFactory() throws NoSuchMethodException {
+	@DisplayName("matching success consumer는 기본 listener factory를 선택한다")
+	void shouldUseDefaultKafkaListenerFactory() throws NoSuchMethodException {
 		KafkaListener listener = MatchingConsumer.class
 			.getMethod("consumeMatchingSuccess", MatchingSuccessEvent.class)
 			.getAnnotation(KafkaListener.class);
 
 		org.assertj.core.api.Assertions.assertThat(listener.containerFactory())
-			.isEqualTo("jsonKafkaListenerContainerFactory");
+			.isEmpty();
 	}
 }

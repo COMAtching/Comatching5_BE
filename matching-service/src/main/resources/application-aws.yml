@@ -1,7 +1,4 @@
-# AWS 환경 설정 - Docker 컨테이너 간 통신용
-server:
-  port: 9001
-
+# AWS 환경: RDS와 Docker 서비스 주소. SPRING_PROFILES_ACTIVE=aws
 user-service:
   url: http://user-service:9000
 
@@ -12,33 +9,15 @@ chat-service:
   url: http://chat-service:9003
 
 spring:
-  application:
-    name: matching-service
-
   datasource:
     url: jdbc:mysql://${RDS_ENDPOINT}:3306/comatching_matching?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=true&requireSSL=true
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      pool-name: HikariPool-${spring.application.name}
-      maximum-pool-size: 10
-      minimum-idle: 5
-      connection-timeout: 30000
-      max-lifetime: 1800000
-      validation-timeout: 5000
-
   jpa:
     hibernate:
-      # 첫 배포는 JPA_DDL_AUTO=create 로 스키마를 만들고, 그 뒤에는 값을 빼서
-      # validate 로 돌린다. update 를 상시로 두면 엔티티를 고칠 때마다 앱이
-      # 운영 스키마를 말없이 바꾸고, 그 변경은 되돌릴 수단이 없다.
+      # 운영은 기본 validate. create/create-drop은 기존 스키마를 삭제하므로 일반 기동에 사용하지 않는다.
       ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 100
-
   data:
     redis:
       host: ${REDIS_ENDPOINT}
@@ -46,7 +25,6 @@ spring:
       ssl:
         # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
         enabled: ${REDIS_SSL_ENABLED:true}
-
   kafka:
     bootstrap-servers: kafka:29092
     admin:
@@ -55,31 +33,6 @@ spring:
       # 배포가 되고 발행·구독이 런타임에 조용히 실패한다. true 면 그 자리에서
       # 컨텍스트 로딩이 깨져 배포 시점에 드러난다.
       fail-fast: true
-    consumer:
-      group-id: matching-service-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
-  cloud:
-    aws:
-      credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
-      region:
-        static: ap-northeast-2
-      s3:
-        bucket: ${AWS_S3_BUCKET}
-
-jwt:
-  secret: ${JWT_SECRET}
-  access-token:
-    expiration: ${ACCESS_TOKEN_EXP:86400000}
-  refresh-token:
-    expiration: ${REFRESH_TOKEN_EXP:604800000}
-
-internal:
-  service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 management:
   endpoints:
@@ -90,14 +43,5 @@ management:
         include: health,prometheus
   endpoint:
     health:
-      # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
-      # 인증 없이 그대로 드러난다.
+      # 상태 상세 노출 여부는 실행 환경별로 지정한다.
       show-details: never
-
-# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
-# 이 서비스가 소비하는 토픽만 적는다.
-comatching:
-  kafka:
-    dlt-topics: member-withdraw,profile-updates
-    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
-    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
