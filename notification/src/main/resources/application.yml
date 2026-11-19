@@ -51,7 +51,7 @@ management:
 # 이 서비스가 소비하는 토픽만 적는다.
 comatching:
   kafka:
-    dlt-topics: member-signup,member-withdraw,chat-notification
+    dlt-topics: member-signup,member-withdraw,chat-message-sent
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
 

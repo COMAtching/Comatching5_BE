@@ -30,10 +30,10 @@ class ChatEventProducerTest {
 		SendResult<String, Object> sendResult = mock(SendResult.class);
 		RecordMetadata metadata = mock(RecordMetadata.class);
 		given(sendResult.getRecordMetadata()).willReturn(metadata);
-		given(metadata.topic()).willReturn("chat-notification");
+		given(metadata.topic()).willReturn("chat-message-sent");
 		given(metadata.partition()).willReturn(1);
 		given(metadata.offset()).willReturn(10L);
-		given(kafkaTemplate.send("chat-notification", event.roomId(), event))
+		given(kafkaTemplate.send("chat-message-sent", event.roomId(), event))
 			.willReturn(CompletableFuture.completedFuture(sendResult));
 
 		// when
@@ -41,7 +41,7 @@ class ChatEventProducerTest {
 
 		// then
 		assertThat(output).contains("chat.notification.kafka.send.success roomId=room-1 targetUserId=2");
-		then(kafkaTemplate).should().send("chat-notification", event.roomId(), event);
+		then(kafkaTemplate).should().send("chat-message-sent", event.roomId(), event);
 	}
 
 	@Test
@@ -49,7 +49,7 @@ class ChatEventProducerTest {
 	void send_usesRoomIdKeyAndLogsKafkaFailure(CapturedOutput output) {
 		// given
 		ChatMessageEvent event = event();
-		given(kafkaTemplate.send("chat-notification", event.roomId(), event))
+		given(kafkaTemplate.send("chat-message-sent", event.roomId(), event))
 			.willReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
 
 		// when
@@ -57,7 +57,7 @@ class ChatEventProducerTest {
 
 		// then
 		assertThat(output).contains("chat.notification.kafka.send.failure roomId=room-1 targetUserId=2");
-		then(kafkaTemplate).should().send("chat-notification", event.roomId(), event);
+		then(kafkaTemplate).should().send("chat-message-sent", event.roomId(), event);
 	}
 
 	private ChatMessageEvent event() {
