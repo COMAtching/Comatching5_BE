@@ -31,6 +31,17 @@ public class UserBlock {
 	@CreatedDate
 	private LocalDateTime createdAt;
 
+	// 기존 차단 문서에는 이 필드가 없다. null이면 현재 차단 중이다.
+	private LocalDateTime unblockedAt;
+
+	public boolean isActive() {
+		return unblockedAt == null;
+	}
+
+	public boolean hides(LocalDateTime sentAt) {
+		return isActive() || sentAt == null || !sentAt.isAfter(unblockedAt);
+	}
+
 	@Builder
 	public UserBlock(Long blockerUserId, Long blockedUserId) {
 		this.blockerUserId = blockerUserId;

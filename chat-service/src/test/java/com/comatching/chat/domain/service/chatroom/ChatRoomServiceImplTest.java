@@ -23,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.entity.UserBlock;
 import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
@@ -69,7 +70,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(firstRoom, secondRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of());
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-1", 2L, "room-2", 3L));
 		given(memberClient.getProfiles(anyList()))
@@ -108,7 +109,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(waitingRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of());
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-waiting", 0L));
 		given(memberClient.getProfiles(anyList()))
@@ -138,7 +139,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(waitingRoom, activeRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of());
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-active", 4L));
 		given(memberClient.getProfiles(anyList()))
@@ -174,7 +175,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(visibleRoom, blockedRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of(SECOND_OTHER_MEMBER_ID));
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of(SECOND_OTHER_MEMBER_ID, new UserBlock(MEMBER_ID, SECOND_OTHER_MEMBER_ID)));
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-1", 7L));
 		given(memberClient.getProfiles(anyList()))
@@ -202,7 +203,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(visibleRoom, blockedRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of(SECOND_OTHER_MEMBER_ID));
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of(SECOND_OTHER_MEMBER_ID, new UserBlock(MEMBER_ID, SECOND_OTHER_MEMBER_ID)));
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-1", 7L));
 
@@ -232,7 +233,7 @@ class ChatRoomServiceImplTest {
 
 		given(chatRoomRepository.findMyChatRooms(eq(MEMBER_ID), any(Sort.class)))
 			.willReturn(List.of(waitingRoom, activeRoom));
-		given(blockService.getBlockedUserIds(MEMBER_ID)).willReturn(Set.of());
+		given(blockService.getRelations(MEMBER_ID)).willReturn(Map.of());
 		given(chatMessageRepository.countUnreadMessagesByRoom(anyList(), eq(MEMBER_ID)))
 			.willReturn(Map.of("room-active", 5L));
 

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.comatching.common.annotation.CurrentMember;
 import com.comatching.common.annotation.RequireRole;
 import com.comatching.common.domain.enums.MemberRole;
+import com.comatching.common.dto.event.matching.MatchingProfileSnapshot;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 import com.comatching.common.dto.member.ProfileResponse;
@@ -46,6 +48,11 @@ public class ProfileController {
 	@PostMapping("/internal/users/profiles/bulk")
 	public List<ProfileResponse> getProfilesBulk(@RequestBody List<Long> memberIds) {
 		return profileManageService.getProfilesByIds(memberIds);
+	}
+
+	@GetMapping("/internal/users/{memberId}/matching-profile")
+	public MatchingProfileSnapshot getMatchingSnapshot(@PathVariable("memberId") Long memberId) {
+		return profileManageService.getMatchingSnapshot(memberId);
 	}
 
 	@GetMapping("/internal/users/profile")

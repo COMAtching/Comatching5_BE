@@ -1,79 +1,66 @@
 package com.comatching.user.domain.event;
 
-import java.time.LocalDateTime;
-
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Component;
-
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.event.member.MemberAuthEvent;
 import com.comatching.common.dto.event.member.MemberWithdrawnEvent;
 import com.comatching.common.dto.member.ProfileResponse;
+import lombok.RequiredArgsConstructor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Component;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY)
 public class UserEventPublisher {
 
-	private final KafkaTemplate<String, String> stringKafkaTemplate;
-	private final KafkaTemplate<String, Object> jsonKafkaTemplate;
-	private final ObjectMapper objectMapper;
+    private final MemberOutboxRepository outbox;
+    private final ObjectMapper objectMapper;
 
-	private static final String TOPIC_SIGNUP = "member-signup";
-	private static final String TOPIC_WITHDRAW = "member-withdraw";
-	private static final String TOPIC_PROFILE_UPDATED = "profile-updates";
+    private static final String TOPIC_SIGNUP = "member-signup";
+    private static final String TOPIC_WITHDRAW = "member-withdraw";
+    private static final String TOPIC_PROFILE_UPDATED = "profile-updates";
 
-	/**
-	 * 회원가입 이벤트 발행
-	 */
-	public void sendSignupEvent(ProfileResponse profile) {
-		MemberAuthEvent event = MemberAuthEvent.builder()
-			.memberId(profile.memberId())
-			.email(profile.email())
-			.nickname(profile.nickname())
-			.type(MemberAuthEvent.EventType.SIGNUP)
-			.build();
+    /**
+     * 회원가입 이벤트 발행
+     */
+    public void sendSignupEvent(ProfileResponse profile) {
+        MemberAuthEvent event = MemberAuthEvent.builder()
+                .memberId(profile.memberId())
+                .email(profile.email())
+                .nickname(profile.nickname())
+                .type(MemberAuthEvent.EventType.SIGNUP)
+                .build();
 
-		sendToKafka(TOPIC_SIGNUP, memberKey(profile.memberId()), event);
-	}
+        enqueue(TOPIC_SIGNUP, profile.memberId(), event);
+    }
 
-	public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
-		jsonKafkaTemplate.send(TOPIC_PROFILE_UPDATED, memberKey(event.memberId()), event);
-	}
+    public void sendProfileUpdatedMatchingEvent(ProfileUpdatedMatchingEvent event) {
+        enqueue(TOPIC_PROFILE_UPDATED, event.memberId(), event);
+    }
 
-	/**
-	 * 회원 탈퇴 이벤트 발행
-	 */
-	public void sendWithdrawEvent(Long memberId, String email) {
-		MemberWithdrawnEvent event = new MemberWithdrawnEvent(
-			memberId,
-			email,
-			LocalDateTime.now()
-		);
+    /**
+     * 회원 탈퇴 이벤트 발행
+     */
+    public void sendWithdrawEvent(Long memberId, String email) {
+        MemberWithdrawnEvent event = new MemberWithdrawnEvent(
+                memberId,
+                email,
+                LocalDateTime.now()
+        );
 
-		sendToKafka(TOPIC_WITHDRAW, memberKey(memberId), event);
-	}
+        enqueue(TOPIC_WITHDRAW, memberId, event);
+    }
 
-	// Kafka 의 순서 보장 단위는 토픽이 아니라 파티션이다. 키가 없으면 라운드로빈으로
-	// 흩어져서, 파티션을 2개 이상으로 늘리는 순간 같은 회원의 이벤트끼리 순서가 뒤집힐
-	// 수 있다. memberId 를 키로 걸어 회원 단위 순서를 파티션 수와 무관하게 고정한다.
-	private String memberKey(Long memberId) {
-		return String.valueOf(memberId);
-	}
-
-	private void sendToKafka(String topic, String key, Object event) {
-		try {
-			String message = objectMapper.writeValueAsString(event);
-			stringKafkaTemplate.send(topic, key, message);
-		} catch (JsonProcessingException e) {
-			log.error("Failed to serialize event for topic: {}", topic, e);
-		} catch (Exception e) {
-			log.error("Failed to send event to Kafka topic: {}", topic, e);
-		}
-	}
+    private void enqueue(String topic, Long memberId, Object event) {
+        try {
+            outbox.insert(topic, memberId, objectMapper.writeValueAsString(event));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("회원 이벤트 직렬화 실패: " + topic, e);
+        }
+    }
 }

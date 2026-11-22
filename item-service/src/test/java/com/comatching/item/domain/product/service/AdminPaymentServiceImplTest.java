@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 import java.util.Optional;
 
@@ -23,17 +22,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.domain.enums.ItemType;
-import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.item.domain.item.service.ItemService;
 import com.comatching.item.domain.order.entity.Order;
-import com.comatching.item.domain.order.entity.OrderGrantLedger;
 import com.comatching.item.domain.order.entity.OrderItem;
 import com.comatching.item.domain.order.enums.OrderStatus;
-import com.comatching.item.domain.order.repository.OrderGrantLedgerRepository;
 import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.order.service.OrderDecisionLogService;
 import com.comatching.item.domain.order.service.OrderOutboxService;
@@ -51,16 +45,10 @@ class AdminPaymentServiceImplTest {
 	private OrderRepository orderRepository;
 
 	@Mock
-	private OrderGrantLedgerRepository orderGrantLedgerRepository;
-
-	@Mock
 	private OrderDecisionLogService orderDecisionLogService;
 
 	@Mock
 	private OrderOutboxService orderOutboxService;
-
-	@Mock
-	private ItemService itemService;
 
 	@Test
 	@DisplayName("승인 대기 목록을 페이지 단위로 조회한다")
@@ -117,8 +105,8 @@ class AdminPaymentServiceImplTest {
 	}
 
 	@Test
-	@DisplayName("관리자 승인 시 주문 상태를 승인으로 바꾸고 구성품을 지급한다")
-	void shouldApprovePendingOrderAndGrantRewards() {
+	@DisplayName("관리자 승인 시 주문을 승인하고 지급 대기를 같은 변경으로 기록한다")
+	void shouldApprovePendingOrderAndQueueGrant() {
 		// given
 		Order order = Order.builder()
 			.memberId(11L)
@@ -136,30 +124,16 @@ class AdminPaymentServiceImplTest {
 		ReflectionTestUtils.setField(item, "id", 71L);
 
 		given(orderRepository.findByIdWithItems(7L)).willReturn(Optional.of(order));
-		given(orderRepository.updateStatusIfCurrentAndNotExpired(
-			eq(7L),
-			eq(OrderStatus.PENDING),
-			eq(OrderStatus.APPROVED),
-			any(),
-			any()
-		))
+		given(orderRepository.approveAndQueue(eq(7L), any()))
 			.willReturn(1);
-		given(orderGrantLedgerRepository.existsByOrderIdAndOrderItemId(7L, 71L)).willReturn(false);
 
 		// when
 		adminPaymentService.approvePurchase(7L, 900L);
 
 		// then
-		ArgumentCaptor<AddItemRequest> addItemRequestCaptor = ArgumentCaptor.forClass(AddItemRequest.class);
-		then(itemService).should().addItem(eq(11L), addItemRequestCaptor.capture());
-		then(orderGrantLedgerRepository).should().save(any(OrderGrantLedger.class));
+		then(orderRepository).should().approveAndQueue(eq(7L), any());
 		then(orderDecisionLogService).should().logDecision(eq(7L), eq(OrderStatus.PENDING), eq(OrderStatus.APPROVED), eq(900L), eq(null), any());
 		then(orderOutboxService).should().enqueueOrderStatusChanged(eq(7L), eq(OrderStatus.PENDING), eq(OrderStatus.APPROVED), any(), eq(900L), eq(null));
-		AddItemRequest addItemRequest = addItemRequestCaptor.getValue();
-		org.assertj.core.api.Assertions.assertThat(addItemRequest.itemType()).isEqualTo(ItemType.MATCHING_TICKET);
-		org.assertj.core.api.Assertions.assertThat(addItemRequest.quantity()).isEqualTo(2);
-		org.assertj.core.api.Assertions.assertThat(addItemRequest.route()).isEqualTo(ItemRoute.CHARGE);
-		org.assertj.core.api.Assertions.assertThat(addItemRequest.expiredAt()).isEqualTo(36500);
 	}
 
 	@Test
@@ -192,7 +166,6 @@ class AdminPaymentServiceImplTest {
 		adminPaymentService.rejectPurchase(8L, 900L);
 
 		// then
-		then(itemService).should(never()).addItem(any(), any());
 		then(orderDecisionLogService).should().logDecision(eq(8L), eq(OrderStatus.PENDING), eq(OrderStatus.REJECTED), eq(900L), eq(null), any());
 		then(orderOutboxService).should().enqueueOrderStatusChanged(eq(8L), eq(OrderStatus.PENDING), eq(OrderStatus.REJECTED), any(), eq(900L), eq(null));
 	}
@@ -216,13 +189,7 @@ class AdminPaymentServiceImplTest {
 
 		given(orderRepository.findByIdWithItems(9L)).willReturn(Optional.of(order));
 		given(orderRepository.findById(9L)).willReturn(Optional.of(order));
-		given(orderRepository.updateStatusIfCurrentAndNotExpired(
-			eq(9L),
-			eq(OrderStatus.PENDING),
-			eq(OrderStatus.APPROVED),
-			any(),
-			any()
-		)).willReturn(0);
+		given(orderRepository.approveAndQueue(eq(9L), any())).willReturn(0);
 
 		// when & then
 		assertThatThrownBy(() -> adminPaymentService.approvePurchase(9L, 900L))

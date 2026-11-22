@@ -1,20 +1,9 @@
 package com.comatching.chat.domain.service.chatroom;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.dto.ChatRoomResponse.UserSummary;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.entity.UserBlock;
 import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
@@ -27,10 +16,19 @@ import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,209 +36,196 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional
 public class ChatRoomServiceImpl implements ChatRoomService {
 
-	private final ChatRoomRepository chatRoomRepository;
-	private final ChatMessageRepository chatMessageRepository;
-	private final BlockService blockService;
-	private final MemberClient memberClient;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final BlockService blockService;
+    private final MemberClient memberClient;
 
-	@Override
-	public void createChatRoom(MatchingSuccessEvent event) {
+    @Override
+    public void createChatRoom(MatchingSuccessEvent event) {
+        if (chatRoomRepository.findByMatchingId(event.matchingId()).isPresent()) {
+            return;
+        }
 
-		if (chatRoomRepository.findByMatchingId(event.matchingId()).isPresent()) {
-			log.warn("ChatRoom already exists for matchingId: {}", event.matchingId());
-			return;
-		}
+        createMissingRoom(new ChatRoomEnsureRequest(
+                event.matchingId(),
+                event.initiatorUserId(),
+                event.targetUserId()
+        ));
+    }
 
-		ChatRoom newRoom = ChatRoom.builder()
-			.matchingId(event.matchingId())
-			.initiatorUserId(event.initiatorUserId())
-			.targetUserId(event.targetUserId())
-			.build();
+    @Transactional(readOnly = true)
+    public List<ChatRoomResponse> getMyChatRooms(Long memberId) {
 
-		chatRoomRepository.save(newRoom);
-		log.info("Created chat room. matchingId={}, roomId={}", event.matchingId(), newRoom.getId());
+        Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
+        var relations = blockService.getRelations(memberId);
+        List<ChatRoom> visibleRooms = visibleRooms(memberId, sort, relations);
+        Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId, relations);
+        Map<Long, ProfileResponse> profilesByMemberId = getProfilesByMemberId(visibleRooms, memberId);
 
-	}
+        return visibleRooms.stream()
+                .map(room -> {
+                    Long otherUserId = room.otherMemberId(memberId);
+                    UserBlock relation = relations.get(otherUserId);
+                    UserSummary otherUser = toUserSummary(otherUserId, profilesByMemberId.get(otherUserId));
+                    return ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L), otherUser, relation);
+                })
+                .toList();
+    }
 
-	@Transactional(readOnly = true)
-	public List<ChatRoomResponse> getMyChatRooms(Long memberId) {
+    private List<ChatRoom> visibleRooms(Long memberId, Sort sort, Map<Long, UserBlock> relations) {
+        return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
+                .filter(room -> isVisibleToMember(room, memberId))
+                .filter(room -> {
+                    UserBlock relation = relations.get(room.otherMemberId(memberId));
+                    return relation == null || !relation.isActive();
+                }).toList();
+    }
 
-		Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
-		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
+    @Override
+    @Transactional(readOnly = true)
+    public long getTotalUnreadCount(Long memberId) {
 
-		List<ChatRoom> visibleRooms = chatRoomRepository.findMyChatRooms(memberId, sort).stream()
-			.filter(room -> isVisibleToMember(room, memberId))
-			.filter(room -> {
-				Long otherUserId = getOtherUserId(room, memberId);
-				return !blockedUserIds.contains(otherUserId);
-			})
-			.toList();
+        var relations = blockService.getRelations(memberId);
+        var rooms = visibleRooms(memberId, Sort.unsorted(), relations);
+        return getUnreadCountsByRoom(rooms, memberId, relations).values().stream()
+                .mapToLong(Long::longValue)
+                .sum();
+    }
 
-		Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId);
-		Map<Long, ProfileResponse> profilesByMemberId = getProfilesByMemberId(visibleRooms, memberId);
+    @Override
+    @Transactional(readOnly = true)
+    public void validateRoomMember(String roomId, Long memberId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
 
-		return visibleRooms.stream()
-			.map(room -> {
-				Long otherUserId = getOtherUserId(room, memberId);
-				UserSummary otherUser = toUserSummary(otherUserId, profilesByMemberId.get(otherUserId));
-				return ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L), otherUser);
-			})
-			.toList();
-	}
+        blockService.visibleAfter(memberId, room.otherMemberId(memberId));
+    }
 
-	private Long getOtherUserId(ChatRoom room, Long memberId) {
-		return memberId.equals(room.getInitiatorUserId())
-			? room.getTargetUserId()
-			: room.getInitiatorUserId();
-	}
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatRoomReferenceResponse> getChatRoomReferencesByMatchingIds(List<Long> matchingIds) {
+        if (matchingIds == null || matchingIds.isEmpty()) {
+            return List.of();
+        }
 
-	@Override
-	@Transactional(readOnly = true)
-	public long getTotalUnreadCount(Long memberId) {
+        return chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
+                .map(room -> new ChatRoomReferenceResponse(room.getMatchingId(), room.getId()))
+                .toList();
+    }
 
-		Sort sort = Sort.unsorted();
-		List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId, sort);
-		Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
+    /**
+     * 매칭에 대응하는 방이 없으면 그 자리에서 만든다.
+     * <p>
+     * 방 생성은 원래 매칭 성공 Kafka 이벤트로만 일어났는데, 발행이 유실되면
+     * 그 매칭은 영구히 방이 없었다. 매칭 이력 조회가 이 경로를 타므로
+     * 유실분은 사용자가 이력을 여는 순간 자동으로 복구된다.
+     * <p>
+     * Kafka 컨슈머와 동시에 만들 수 있으나 matchingId 의 unique 인덱스가 중복을
+     * 막아 주고, 충돌하면 먼저 만들어진 방을 다시 읽어 돌려준다.
+     */
+    @Override
+    public List<ChatRoomReferenceResponse> ensureChatRooms(List<ChatRoomEnsureRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
 
-		List<ChatRoom> visibleRooms = myRooms.stream()
-			.filter(room -> isVisibleToMember(room, memberId))
-			.filter(room -> {
-				Long otherUserId = getOtherUserId(room, memberId);
-				return !blockedUserIds.contains(otherUserId);
-			})
-			.toList();
+        List<Long> matchingIds = requests.stream()
+                .map(ChatRoomEnsureRequest::matchingId)
+                .toList();
 
-		return getUnreadCountsByRoom(visibleRooms, memberId).values().stream()
-			.mapToLong(Long::longValue)
-			.sum();
-	}
+        Map<Long, ChatRoom> roomsByMatchingId = chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
+                .collect(Collectors.toMap(ChatRoom::getMatchingId, Function.identity(), (left, right) -> left));
 
-	@Override
-	@Transactional(readOnly = true)
-	public void validateRoomMember(String roomId, Long memberId) {
-		ChatRoom room = chatRoomRepository.findById(roomId)
-			.orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
+        Map<Long, Map<Long, UserBlock>> relationsByInitiator = new HashMap<>();
+        return requests.stream()
+                .filter(request -> {
+                    var relations = relationsByInitiator.computeIfAbsent(request.initiatorUserId(), blockService::getRelations);
+                    UserBlock relation = relations.get(request.targetUserId());
+                    return relation == null || !relation.isActive();
+                })
+                .map(request -> {
+                    ChatRoom room = roomsByMatchingId.get(request.matchingId());
+                    if (room == null) {
+                        room = createMissingRoom(request);
+                    }
+                    return new ChatRoomReferenceResponse(request.matchingId(), room.getId());
+                })
+                .toList();
+    }
 
-		if (!isRoomMember(room, memberId)) {
-			throw new BusinessException(GeneralErrorCode.FORBIDDEN);
-		}
-	}
+    private ChatRoom createMissingRoom(ChatRoomEnsureRequest request) {
+        ChatRoom newRoom = ChatRoom.builder()
+                .matchingId(request.matchingId())
+                .initiatorUserId(request.initiatorUserId())
+                .targetUserId(request.targetUserId())
+                .build();
 
-	@Override
-	@Transactional(readOnly = true)
-	public List<ChatRoomReferenceResponse> getChatRoomReferencesByMatchingIds(List<Long> matchingIds) {
-		if (matchingIds == null || matchingIds.isEmpty()) {
-			return List.of();
-		}
+        try {
+            ChatRoom saved = chatRoomRepository.save(newRoom);
+            log.info("Lazily created chat room. matchingId={}, roomId={}", request.matchingId(), saved.getId());
+            return saved;
+        } catch (DuplicateKeyException e) {
+            return chatRoomRepository.findByMatchingId(request.matchingId())
+                    .orElseThrow(() -> e);
+        }
+    }
 
-		return chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
-			.map(room -> new ChatRoomReferenceResponse(room.getMatchingId(), room.getId()))
-			.toList();
-	}
+    private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId, Map<Long, UserBlock> relations) {
+        if (rooms.isEmpty()) {
+            return Map.of();
+        }
 
-	/**
-	 * 매칭에 대응하는 방이 없으면 그 자리에서 만든다.
-	 *
-	 * 방 생성은 원래 매칭 성공 Kafka 이벤트로만 일어났는데, 발행이 유실되면
-	 * 그 매칭은 영구히 방이 없었다. 매칭 이력 조회가 이 경로를 타므로
-	 * 유실분은 사용자가 이력을 여는 순간 자동으로 복구된다.
-	 *
-	 * Kafka 컨슈머와 동시에 만들 수 있으나 matchingId 의 unique 인덱스가 중복을
-	 * 막아 주고, 충돌하면 먼저 만들어진 방을 다시 읽어 돌려준다.
-	 */
-	@Override
-	public List<ChatRoomReferenceResponse> ensureChatRooms(List<ChatRoomEnsureRequest> requests) {
-		if (requests == null || requests.isEmpty()) {
-			return List.of();
-		}
+        List<UnreadCountCondition> unreadCountConditions = rooms.stream()
+                .map(room -> {
+                    LocalDateTime since = getMyLastReadAt(room, memberId);
+                    UserBlock relation = relations.get(room.otherMemberId(memberId));
+                    if (relation != null && (since == null || relation.getUnblockedAt().isAfter(since))) {
+                        since = relation.getUnblockedAt();
+                    }
+                    return new UnreadCountCondition(room.getId(), since);
+                })
+                .toList();
 
-		List<Long> matchingIds = requests.stream()
-			.map(ChatRoomEnsureRequest::matchingId)
-			.toList();
+        return chatMessageRepository.countUnreadMessagesByRoom(unreadCountConditions, memberId);
+    }
 
-		Map<Long, ChatRoom> roomsByMatchingId = chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
-			.collect(Collectors.toMap(ChatRoom::getMatchingId, Function.identity(), (left, right) -> left));
+    private Map<Long, ProfileResponse> getProfilesByMemberId(List<ChatRoom> rooms, Long memberId) {
+        if (rooms.isEmpty()) {
+            return Map.of();
+        }
 
-		return requests.stream()
-			.map(request -> {
-				ChatRoom room = roomsByMatchingId.get(request.matchingId());
-				if (room == null) {
-					room = createMissingRoom(request);
-				}
-				return new ChatRoomReferenceResponse(request.matchingId(), room.getId());
-			})
-			.toList();
-	}
+        List<Long> otherUserIds = rooms.stream()
+                .map(room -> room.otherMemberId(memberId))
+                .distinct()
+                .toList();
 
-	private ChatRoom createMissingRoom(ChatRoomEnsureRequest request) {
-		ChatRoom newRoom = ChatRoom.builder()
-			.matchingId(request.matchingId())
-			.initiatorUserId(request.initiatorUserId())
-			.targetUserId(request.targetUserId())
-			.build();
+        List<ProfileResponse> profiles = memberClient.getProfiles(otherUserIds);
+        if (profiles == null || profiles.isEmpty()) {
+            return Map.of();
+        }
 
-		try {
-			ChatRoom saved = chatRoomRepository.save(newRoom);
-			log.info("Lazily created chat room. matchingId={}, roomId={}", request.matchingId(), saved.getId());
-			return saved;
-		} catch (DuplicateKeyException e) {
-			return chatRoomRepository.findByMatchingId(request.matchingId())
-				.orElseThrow(() -> e);
-		}
-	}
+        return profiles.stream()
+                .collect(Collectors.toMap(ProfileResponse::memberId, Function.identity(), (left, right) -> left));
+    }
 
-	private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {
-		if (rooms.isEmpty()) {
-			return Map.of();
-		}
+    private UserSummary toUserSummary(Long memberId, ProfileResponse profile) {
+        if (profile == null) {
+            return UserSummary.memberOnly(memberId);
+        }
+        return UserSummary.from(profile);
+    }
 
-		List<UnreadCountCondition> unreadCountConditions = rooms.stream()
-			.map(room -> new UnreadCountCondition(room.getId(), getMyLastReadAt(room, memberId)))
-			.toList();
+    private LocalDateTime getMyLastReadAt(ChatRoom room, Long memberId) {
+        return memberId.equals(room.getInitiatorUserId())
+                ? room.getInitiatorLastReadAt()
+                : room.getTargetLastReadAt();
+    }
 
-		return chatMessageRepository.countUnreadMessagesByRoom(unreadCountConditions, memberId);
-	}
-
-	private Map<Long, ProfileResponse> getProfilesByMemberId(List<ChatRoom> rooms, Long memberId) {
-		if (rooms.isEmpty()) {
-			return Map.of();
-		}
-
-		List<Long> otherUserIds = rooms.stream()
-			.map(room -> getOtherUserId(room, memberId))
-			.distinct()
-			.toList();
-
-		List<ProfileResponse> profiles = memberClient.getProfiles(otherUserIds);
-		if (profiles == null || profiles.isEmpty()) {
-			return Map.of();
-		}
-
-		return profiles.stream()
-			.collect(Collectors.toMap(ProfileResponse::memberId, Function.identity(), (left, right) -> left));
-	}
-
-	private UserSummary toUserSummary(Long memberId, ProfileResponse profile) {
-		if (profile == null) {
-			return UserSummary.memberOnly(memberId);
-		}
-		return UserSummary.from(profile);
-	}
-
-	private LocalDateTime getMyLastReadAt(ChatRoom room, Long memberId) {
-		return memberId.equals(room.getInitiatorUserId())
-			? room.getInitiatorLastReadAt()
-			: room.getTargetLastReadAt();
-	}
-
-	private boolean isRoomMember(ChatRoom room, Long memberId) {
-		return room.getInitiatorUserId().equals(memberId) || room.getTargetUserId().equals(memberId);
-	}
-
-	private boolean isVisibleToMember(ChatRoom room, Long memberId) {
-		if (memberId.equals(room.getInitiatorUserId())) {
-			return true;
-		}
-		return memberId.equals(room.getTargetUserId()) && room.getStatus() == ChatRoomStatus.ACTIVE;
-	}
+    private boolean isVisibleToMember(ChatRoom room, Long memberId) {
+        if (memberId.equals(room.getInitiatorUserId())) {
+            return true;
+        }
+        return memberId.equals(room.getTargetUserId()) && room.getStatus() == ChatRoomStatus.ACTIVE;
+    }
 }

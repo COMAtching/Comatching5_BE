@@ -3,7 +3,10 @@ package com.comatching.user.domain.member.repository;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,6 +15,10 @@ import com.comatching.user.domain.member.entity.Profile;
 
 @Repository
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from Profile p where p.member.id = :memberId")
+	Optional<Profile> findForUpdateByMemberId(@Param("memberId") Long memberId);
 
 	Optional<Profile> findByMemberId(Long memberId);
 	boolean existsByNickname(String nickname);

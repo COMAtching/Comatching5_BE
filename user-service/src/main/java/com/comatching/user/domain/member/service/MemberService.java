@@ -1,5 +1,7 @@
 package com.comatching.user.domain.member.service;
 
+import java.util.Optional;
+
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
@@ -12,6 +14,8 @@ public interface MemberService {
 	void createMember(String email, String encodedPassword);
 
 	Member getMemberById(Long memberId);
+
+	Optional<String> findNotificationEmail(Long memberId);
 
 	Member getMemberByEmail(String email);
 

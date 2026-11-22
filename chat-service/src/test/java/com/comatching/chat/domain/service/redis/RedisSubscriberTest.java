@@ -83,7 +83,6 @@ class RedisSubscriberTest {
 	void onMessage_autoReadsWhenReceiverIsViewingRoom() throws Exception {
 		ChatRoom room = chatRoom();
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(false);
 		given(presenceTracker.isViewing(ROOM_ID, TARGET_ID)).willReturn(true);
 
 		ChatMessageResponse readResponse = readResponse(TARGET_ID);
@@ -91,7 +90,8 @@ class RedisSubscriberTest {
 
 		redisSubscriber.onMessage(redisMessage(talkResponse(INITIATOR_ID)), null);
 
-		then(messagingTemplate).should().convertAndSend(eq("/topic/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(INITIATOR_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(TARGET_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
 		then(chatService).should().markAsRead(ROOM_ID, TARGET_ID);
 		then(redisPublisher).should().publish(any(ChannelTopic.class), eq(readResponse));
 	}
@@ -101,12 +101,12 @@ class RedisSubscriberTest {
 	void onMessage_skipsAutoReadWhenReceiverIsNotViewing() throws Exception {
 		ChatRoom room = chatRoom();
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(false);
 		given(presenceTracker.isViewing(ROOM_ID, TARGET_ID)).willReturn(false);
 
 		redisSubscriber.onMessage(redisMessage(talkResponse(INITIATOR_ID)), null);
 
-		then(messagingTemplate).should().convertAndSend(eq("/topic/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(INITIATOR_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(TARGET_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
 		then(chatService).shouldHaveNoInteractions();
 		then(redisPublisher).shouldHaveNoInteractions();
 	}
@@ -116,25 +116,26 @@ class RedisSubscriberTest {
 	void onMessage_neverAutoReadsReadMessages() throws Exception {
 		ChatRoom room = chatRoom();
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(false);
 
 		redisSubscriber.onMessage(redisMessage(readResponse(INITIATOR_ID)), null);
 
-		then(messagingTemplate).should().convertAndSend(eq("/topic/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(INITIATOR_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).should().convertAndSendToUser(eq(TARGET_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
 		then(chatService).shouldHaveNoInteractions();
 		then(redisPublisher).shouldHaveNoInteractions();
 	}
 
 	@Test
-	@DisplayName("수신자가 발신자를 차단했으면 전달도 읽음 처리도 하지 않는다")
-	void onMessage_skipsEverythingWhenBlocked() throws Exception {
+	@DisplayName("차단 중이면 발신자에게만 전달하고 수신자의 읽음을 갱신하지 않는다")
+	void onMessage_echoesOnlyToSenderWhenBlocked() throws Exception {
 		ChatRoom room = chatRoom();
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(true);
+		given(blockService.hidesMessage(anyLong(), anyLong(), any())).willAnswer(call -> TARGET_ID.equals(call.getArgument(0)));
 
 		redisSubscriber.onMessage(redisMessage(talkResponse(INITIATOR_ID)), null);
 
-		then(messagingTemplate).shouldHaveNoInteractions();
+		then(messagingTemplate).should().convertAndSendToUser(eq(INITIATOR_ID.toString()), eq("/queue/chat.room." + ROOM_ID), any(ChatMessageResponse.class));
+		then(messagingTemplate).shouldHaveNoMoreInteractions();
 		then(chatService).shouldHaveNoInteractions();
 		then(redisPublisher).shouldHaveNoInteractions();
 	}

@@ -26,7 +26,8 @@ import lombok.NoArgsConstructor;
 @Table(
 	name = "order_outbox_events",
 	indexes = {
-		@Index(name = "idx_order_outbox_status", columnList = "status, id")
+		@Index(name = "idx_order_outbox_status", columnList = "status, id"),
+		@Index(name = "idx_order_outbox_cleanup", columnList = "status, published_at, id")
 	}
 )
 public class OrderOutboxEvent extends BaseEntity {

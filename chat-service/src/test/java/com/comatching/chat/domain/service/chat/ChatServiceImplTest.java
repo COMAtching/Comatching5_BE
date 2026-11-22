@@ -24,11 +24,11 @@ import com.comatching.chat.domain.dto.ChatMessageRequest;
 import com.comatching.chat.domain.dto.ChatMessageResponse;
 import com.comatching.chat.domain.entity.ChatMessage;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.entity.UserBlock;
 import com.comatching.chat.domain.enums.MessageType;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.service.block.BlockService;
-import com.comatching.chat.infra.kafka.ChatEventProducer;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.common.service.S3Service;
@@ -49,9 +49,6 @@ class ChatServiceImplTest {
 
 	@Mock
 	private S3Service s3Service;
-
-	@Mock
-	private ChatEventProducer chatEventProducer;
 
 	@Mock
 	private BlockService blockService;
@@ -77,7 +74,6 @@ class ChatServiceImplTest {
 		then(chatRoomRepository).should(never()).updateLastMessageIfLatest(anyString(), anyString(), any());
 		then(chatRoomRepository).should(never()).touchLastReadAt(anyString(), anyLong(), any());
 		then(blockService).shouldHaveNoInteractions();
-		then(chatEventProducer).shouldHaveNoInteractions();
 	}
 
 	@Test
@@ -96,7 +92,6 @@ class ChatServiceImplTest {
 
 		then(chatMessageRepository).should(never()).save(any());
 		then(chatRoomRepository).should(never()).touchLastReadAt(anyString(), anyLong(), any());
-		then(chatEventProducer).shouldHaveNoInteractions();
 	}
 
 	@Test
@@ -108,7 +103,7 @@ class ChatServiceImplTest {
 		ChatMessage savedMessage = savedMessage("message-1", INITIATOR_ID, "hello", MessageType.TALK, createdAt);
 
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(false);
+		given(blockService.findRelation(TARGET_ID, INITIATOR_ID)).willReturn(Optional.empty());
 		given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(savedMessage);
 
 		ChatMessageRequest request = talkRequest(INITIATOR_ID, "sender", "hello");
@@ -117,26 +112,28 @@ class ChatServiceImplTest {
 		ChatMessageResponse response = chatService.processMessage(request);
 
 		// then
-			assertThat(response.id()).isEqualTo("message-1");
-			assertThat(response.createdAt()).isEqualTo(createdAt);
-			InOrder inOrder = inOrder(chatMessageRepository, chatRoomRepository, chatEventProducer);
-			inOrder.verify(chatMessageRepository).save(any(ChatMessage.class));
-			inOrder.verify(chatRoomRepository).updateLastMessageIfLatest(ROOM_ID, "hello", createdAt);
-			inOrder.verify(chatRoomRepository).touchLastReadAt(ROOM_ID, INITIATOR_ID, createdAt);
-			inOrder.verify(chatEventProducer).send(any());
-			then(chatRoomRepository).should(never()).save(any(ChatRoom.class));
-		}
+		assertThat(response.id()).isEqualTo("message-1");
+		assertThat(response.createdAt()).isEqualTo(createdAt);
+		InOrder inOrder = inOrder(chatMessageRepository, chatRoomRepository);
+		inOrder.verify(chatMessageRepository).save(argThat(message ->
+			message.getPushOutbox().targetUserId().equals(TARGET_ID)
+				&& message.getPushOutbox().senderNickname().equals("sender")
+				&& message.getPushOutbox().status().equals("PENDING")));
+		inOrder.verify(chatRoomRepository).updateLastMessageIfLatest(ROOM_ID, "hello", createdAt);
+		inOrder.verify(chatRoomRepository).touchLastReadAt(ROOM_ID, INITIATOR_ID, createdAt);
+		then(chatRoomRepository).should(never()).save(any(ChatRoom.class));
+	}
 
 	@Test
-	@DisplayName("차단된 상대에게 보내는 메시지는 저장하지만 채팅방 요약과 알림은 갱신하지 않는다")
-	void processMessage_skipsRoomSummaryWhenSenderIsBlockedByReceiver() {
+	@DisplayName("차단된 상대에게 보낸 메시지는 발신자 이력과 요약에 반영하고 푸시는 생략한다")
+	void processMessage_preservesSenderHistoryWhenBlocked() {
 		// given
 		LocalDateTime createdAt = LocalDateTime.of(2026, 5, 16, 10, 5);
 		ChatRoom room = chatRoom(ROOM_ID, INITIATOR_ID, TARGET_ID);
 		ChatMessage savedMessage = savedMessage("message-2", INITIATOR_ID, "blocked", MessageType.TALK, createdAt);
 
 		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(true);
+		given(blockService.findRelation(TARGET_ID, INITIATOR_ID)).willReturn(Optional.of(new UserBlock(TARGET_ID, INITIATOR_ID)));
 		given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(savedMessage);
 
 		ChatMessageRequest request = talkRequest(INITIATOR_ID, "sender", "blocked");
@@ -146,32 +143,9 @@ class ChatServiceImplTest {
 
 		// then
 		assertThat(response.id()).isEqualTo("message-2");
-		then(chatMessageRepository).should().save(any(ChatMessage.class));
-		then(chatRoomRepository).should(never()).updateLastMessageIfLatest(anyString(), anyString(), any());
-		then(chatRoomRepository).should(never()).touchLastReadAt(anyString(), anyLong(), any());
-		then(chatEventProducer).shouldHaveNoInteractions();
-	}
-
-	@Test
-	@DisplayName("차단된 상대에게 보낸 첫 메시지도 방은 활성화한다 - 차단 해제 후 방이 보여야 한다")
-	void processMessage_activatesRoomEvenWhenSenderIsBlockedByReceiver() {
-		// given - 요약 갱신(updateLastMessageIfLatest)이 활성화를 겸하는데 차단 시
-		// 그 경로가 통째로 스킵되어 방이 영구 WAITING 으로 남는 구멍이 있었다
-		LocalDateTime createdAt = LocalDateTime.of(2026, 5, 16, 10, 6);
-		ChatRoom room = chatRoom(ROOM_ID, INITIATOR_ID, TARGET_ID);
-		ChatMessage savedMessage = savedMessage("message-3", INITIATOR_ID, "blocked", MessageType.TALK, createdAt);
-
-		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
-		given(blockService.isBlocked(TARGET_ID, INITIATOR_ID)).willReturn(true);
-		given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(savedMessage);
-
-		// when
-		chatService.processMessage(talkRequest(INITIATOR_ID, "sender", "blocked"));
-
-		// then - 활성화만 하고 요약과 알림은 여전히 스킵한다
-		then(chatRoomRepository).should().activateRoom(ROOM_ID);
-		then(chatRoomRepository).should(never()).updateLastMessageIfLatest(anyString(), anyString(), any());
-		then(chatEventProducer).shouldHaveNoInteractions();
+		then(chatMessageRepository).should().save(argThat(message -> message.getPushOutbox() == null));
+		then(chatRoomRepository).should().updateLastMessageIfLatest(ROOM_ID, "blocked", createdAt);
+		then(chatRoomRepository).should().touchLastReadAt(ROOM_ID, INITIATOR_ID, createdAt);
 	}
 
 	@Test
@@ -193,7 +167,7 @@ class ChatServiceImplTest {
 		then(chatRoomRepository).should().touchLastReadAt(eq(ROOM_ID), eq(TARGET_ID), any(LocalDateTime.class));
 		then(chatRoomRepository).should(never()).save(any(ChatRoom.class));
 		then(chatMessageRepository).should(never()).save(any());
-		then(blockService).shouldHaveNoInteractions();
+		then(blockService).should().visibleAfter(TARGET_ID, INITIATOR_ID);
 	}
 
 	@Test

@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.annotation.KafkaListener;
 
 import com.comatching.common.dto.event.member.MemberAuthEvent;
+import com.comatching.common.config.kafka.KafkaEventRoute;
 import com.comatching.item.domain.grant.service.PreSignupMatchingTicketGrantService;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +24,17 @@ class PreSignupMemberSignupConsumerTest {
 
 	@Mock
 	private PreSignupMatchingTicketGrantService grantService;
+
+	@Test
+	void replayUsesEarliestAndDelegatesToSameGrantService() throws NoSuchMethodException {
+		var listener = PreSignupMemberSignupConsumer.class.getMethod("replaySignup", MemberAuthEvent.class)
+			.getAnnotation(KafkaListener.class);
+		assertThat(listener.topics()).containsExactly(KafkaEventRoute.PRE_SIGNUP_ITEM.replayTopic());
+		assertThat(listener.groupId()).isEqualTo(KafkaEventRoute.PRE_SIGNUP_ITEM.groupId());
+		assertThat(listener.properties()).containsExactly("auto.offset.reset=earliest");
+		consumer.replaySignup(MemberAuthEvent.builder().memberId(22L).type(MemberAuthEvent.EventType.SIGNUP).build());
+		then(grantService).should().grantMatchingTicket(22L);
+	}
 
 	@Test
 	@DisplayName("SIGNUP 이벤트면 매칭권 지급을 위임한다")

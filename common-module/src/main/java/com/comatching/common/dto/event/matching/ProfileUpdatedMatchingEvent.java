@@ -13,6 +13,7 @@ import lombok.Builder;
 public record ProfileUpdatedMatchingEvent(
 	Long memberId,
 	Long profileId,
+	Long profileVersion,
 	Gender gender,
 	String mbti,
 	String major,

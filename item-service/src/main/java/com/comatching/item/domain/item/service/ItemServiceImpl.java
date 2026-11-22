@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.comatching.common.annotation.DistributedLock;
@@ -72,6 +73,12 @@ public class ItemServiceImpl implements ItemService {
 	@Override
 	@DistributedLock(key = "item:inventory", identifier = "#memberId + ':' + #request.itemType()", leaseTime = 10L)
 	public void addItem(Long memberId, AddItemRequest request) {
+		addUnderInventoryLock(memberId, request);
+	}
+
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void addUnderInventoryLock(Long memberId, AddItemRequest request) {
 		if (request.quantity() <= 0) {
 			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "지급 수량은 1 이상이어야 합니다.");
 		}

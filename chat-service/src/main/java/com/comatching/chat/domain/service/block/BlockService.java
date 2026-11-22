@@ -1,7 +1,11 @@
 package com.comatching.chat.domain.service.block;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.Map;
+
+import com.comatching.chat.domain.entity.UserBlock;
 
 import com.comatching.chat.domain.dto.BlockedUserResponse;
 
@@ -15,5 +19,11 @@ public interface BlockService {
 
 	List<BlockedUserResponse> getBlockedUsers(Long blockerUserId);
 
-	Set<Long> getBlockedUserIds(Long blockerUserId);
+	Optional<UserBlock> findRelation(Long memberId, Long otherMemberId);
+
+	Map<Long, UserBlock> getRelations(Long memberId);
+
+	LocalDateTime visibleAfter(Long memberId, Long otherMemberId);
+
+	boolean hidesMessage(Long memberId, Long otherMemberId, LocalDateTime sentAt);
 }

@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(
 	exclude = {
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.ComponentScan;
 )
 @ComponentScan(basePackages = {"com.comatching.chat", "com.comatching.common"})
 @EnableFeignClients(basePackages = "com.comatching.chat")
+@EnableScheduling
 public class ChatServiceApplication {
 
 	public static void main(String[] args) {

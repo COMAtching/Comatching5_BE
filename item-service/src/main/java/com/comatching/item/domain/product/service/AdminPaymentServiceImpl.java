@@ -8,15 +8,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.comatching.common.domain.enums.ItemRoute;
-import com.comatching.common.dto.item.AddItemRequest;
 import com.comatching.common.dto.response.PagingResponse;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.item.domain.item.service.ItemService;
+import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.item.domain.order.dto.FailedGrantResponse;
+import com.comatching.item.domain.order.dto.OrderGrantResponse;
+import com.comatching.item.domain.order.dto.OrderRefundResponse;
 import com.comatching.item.domain.order.entity.Order;
-import com.comatching.item.domain.order.entity.OrderItem;
-import com.comatching.item.domain.order.entity.OrderGrantLedger;
+import com.comatching.item.domain.order.enums.GrantStatus;
 import com.comatching.item.domain.order.enums.OrderStatus;
+import com.comatching.item.domain.order.enums.RefundStatus;
+import com.comatching.item.domain.order.outbox.OrderGrantOutboxRepository;
 import com.comatching.item.domain.order.repository.OrderGrantLedgerRepository;
 import com.comatching.item.domain.order.repository.OrderRepository;
 import com.comatching.item.domain.order.service.OrderDecisionLogService;
@@ -32,17 +34,83 @@ import lombok.RequiredArgsConstructor;
 public class AdminPaymentServiceImpl implements AdminPaymentService {
 
 	private static final String EXPIRE_REASON = "AUTO_EXPIRED_BEFORE_ADMIN_DECISION";
-	private static final int MAX_PENDING_REQUEST_PAGE_SIZE = 100;
+	private static final int MAX_PAGE_SIZE = 100;
 	private static final Sort DEFAULT_PENDING_REQUEST_SORT = Sort.by(Sort.Direction.DESC, "requestedAt");
 
 	private final OrderRepository orderRepository;
-	private final OrderGrantLedgerRepository orderGrantLedgerRepository;
 	private final OrderDecisionLogService orderDecisionLogService;
 	private final OrderOutboxService orderOutboxService;
-	private final ItemService itemService;
+	private final OrderGrantLedgerRepository grantLedger;
+	private final OrderGrantOutboxRepository grantOutbox;
 
-	// 상수: 구매 아이템의 유효기간 (약 100년)
-	private static final int PURCHASED_ITEM_EXPIRE_DAYS = 36500;
+	@Override
+	@Transactional(readOnly = true)
+	public OrderGrantResponse getGrant(Long orderId) {
+		var order = orderRepository.findById(orderId).orElseThrow(() -> new BusinessException(PaymentErrorCode.REQUEST_NOT_FOUND));
+		return new OrderGrantResponse(orderId, order.getStatus(), order.getGrantStatus(), order.getGrantAttempt(),
+				order.getRefundStatus());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public PagingResponse<FailedGrantResponse> getFailedGrants(int page, int size) {
+		return PagingResponse.from(orderRepository.findFailedGrants(adminPage(page, size)));
+	}
+
+	private Pageable adminPage(int page, int size) {
+		int pageSize = Math.min(size, MAX_PAGE_SIZE);
+		if (page < 0 || size < 1 || (long) page * pageSize > Integer.MAX_VALUE) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "조회 가능한 페이지 범위를 확인해주세요.");
+		}
+		return PageRequest.of(page, pageSize);
+	}
+
+	@Override
+	public OrderRefundResponse startRefund(Long orderId, Long adminId) {
+		Order order = lockOrder(orderId);
+		order.startRefund(adminId, LocalDateTime.now());
+		verifyNoGrantEvidence(orderId);
+		return OrderRefundResponse.from(order);
+	}
+
+	@Override
+	public OrderRefundResponse completeRefund(Long orderId, Long adminId) {
+		Order order = lockOrder(orderId);
+		if (order.getRefundStatus() != RefundStatus.COMPLETED) {
+			order.completeRefund(adminId, LocalDateTime.now());
+			verifyNoGrantEvidence(orderId);
+			grantOutbox.enqueueRefund(order);
+		}
+		return OrderRefundResponse.from(order);
+	}
+
+	private Order lockOrder(Long orderId) {
+		return orderRepository.findByIdForUpdate(orderId)
+				.orElseThrow(() -> new BusinessException(PaymentErrorCode.REQUEST_NOT_FOUND));
+	}
+
+	private void verifyNoGrantEvidence(Long orderId) {
+		if (grantLedger.existsByOrderId(orderId) || grantOutbox.hasGrantEvent(orderId)) {
+			throw new BusinessException(PaymentErrorCode.GRANT_REVIEW_REQUIRED);
+		}
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public PagingResponse<OrderRefundResponse> getRefunds(RefundStatus status, int page, int size) {
+		if (status == RefundStatus.NONE) {
+			throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "진행 중이거나 완료된 환불만 조회할 수 있습니다.");
+		}
+		return PagingResponse.from(orderRepository.findByRefundStatusOrderByIdDesc(status, adminPage(page, size))
+				.map(OrderRefundResponse::from));
+	}
+
+	@Override
+	public void retryGrant(Long orderId) {
+		if (orderRepository.retryFailedGrant(orderId) != 1) {
+			throw new BusinessException(PaymentErrorCode.GRANT_NOT_RETRYABLE);
+		}
+	}
 
 	@Override
 	public PagingResponse<PurchaseRequestDto> getPendingRequests(Pageable pageable) {
@@ -58,10 +126,10 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 
 	private Pageable toBoundedPageable(Pageable pageable) {
 		if (pageable == null || pageable.isUnpaged()) {
-			return PageRequest.of(0, MAX_PENDING_REQUEST_PAGE_SIZE, DEFAULT_PENDING_REQUEST_SORT);
+			return PageRequest.of(0, MAX_PAGE_SIZE, DEFAULT_PENDING_REQUEST_SORT);
 		}
 
-		int pageSize = Math.min(pageable.getPageSize(), MAX_PENDING_REQUEST_PAGE_SIZE);
+		int pageSize = Math.min(pageable.getPageSize(), MAX_PAGE_SIZE);
 		Sort sort = pageable.getSort().isSorted() ? pageable.getSort() : DEFAULT_PENDING_REQUEST_SORT;
 		return PageRequest.of(pageable.getPageNumber(), pageSize, sort);
 	}
@@ -75,40 +143,9 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 			throw new BusinessException(PaymentErrorCode.REQUEST_EXPIRED);
 		}
 
-		int updatedCount = orderRepository.updateStatusIfCurrentAndNotExpired(
-			requestId,
-			OrderStatus.PENDING,
-			OrderStatus.APPROVED,
-			now,
-			now
-		);
+		int updatedCount = orderRepository.approveAndQueue(requestId, now);
 		if (updatedCount == 0) {
 			throw resolveNotProcessableRequest(requestId);
-		}
-
-		for (OrderItem reward : order.getOrderItems()) {
-			if (orderGrantLedgerRepository.existsByOrderIdAndOrderItemId(order.getId(), reward.getId())) {
-				continue;
-			}
-
-			OrderGrantLedger ledger = OrderGrantLedger.builder()
-				.orderId(order.getId())
-				.orderItemId(reward.getId())
-				.memberId(order.getMemberId())
-				.itemType(reward.getItemType())
-				.quantity(reward.getQuantity())
-				.grantedAt(now)
-				.build();
-			orderGrantLedgerRepository.save(ledger);
-
-			AddItemRequest addItemRequest = new AddItemRequest(
-				reward.getItemType(),
-				reward.getQuantity(),
-				ItemRoute.CHARGE,
-				PURCHASED_ITEM_EXPIRE_DAYS
-			);
-
-			itemService.addItem(order.getMemberId(), addItemRequest);
 		}
 
 		orderDecisionLogService.logDecision(
@@ -171,6 +208,9 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 		LocalDateTime now = LocalDateTime.now();
 		return orderRepository.findById(requestId)
 			.map(order -> {
+				if (order.getGrantStatus() == GrantStatus.REVIEW_REQUIRED) {
+					return new BusinessException(PaymentErrorCode.GRANT_REVIEW_REQUIRED);
+				}
 				boolean expired = order.getStatus() == OrderStatus.EXPIRED
 					|| (order.getStatus() == OrderStatus.PENDING && !order.getExpiresAt().isAfter(now));
 				if (expired) {

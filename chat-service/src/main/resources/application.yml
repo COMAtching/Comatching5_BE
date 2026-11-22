@@ -1,38 +1,30 @@
+# 공통 설정만 정의한다. 프로파일은 env의 SPRING_PROFILES_ACTIVE로 선택한다.
 server:
   port: 9003
 
-user-service:
-  url: http://localhost:9000
-
-matching-service:
-  url: http://localhost:9001
-
 spring:
-  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
-  config:
-    import: classpath:feign-resilience.yml
-
   application:
     name: chat-service
-
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: comatching_chat
       auto-index-creation: true
-
   kafka:
-    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: com.comatching.common.config.kafka.EventValueSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
     consumer:
       group-id: chat-service-group
       auto-offset-reset: earliest
+      enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
+    listener:
+      type: single
+      ack-mode: record
+      concurrency: 1
   cloud:
     aws:
       credentials:
@@ -42,6 +34,9 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: ${AWS_S3_BUCKET}
+  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
+  config:
+    import: classpath:feign-resilience.yml
 
 jwt:
   secret: ${JWT_SECRET}
@@ -54,13 +49,6 @@ internal:
   service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      show-details: always
   metrics:
     tags:
       application: ${spring.application.name}
@@ -73,10 +61,10 @@ management:
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
 
-# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
-# 이 서비스가 소비하는 토픽만 적는다.
+# 그룹별 DLT와 전용 replay 토픽을 기동 시 만든다.
+# KafkaEventRoute에 등록된 이 서비스의 처리 경로만 적는다.
 comatching:
   kafka:
-    dlt-topics: matching-success-topic
+    dlt-routes: CHAT_ROOM_CREATE
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}

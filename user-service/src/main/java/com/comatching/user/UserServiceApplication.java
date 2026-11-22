@@ -1,6 +1,7 @@
 package com.comatching.user;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,6 +15,7 @@ import com.comatching.user.global.config.ProfileImageProperties;
 @ComponentScan(basePackages = {"com.comatching.user", "com.comatching.common"})
 @EnableConfigurationProperties(ProfileImageProperties.class)
 @EnableFeignClients(basePackages = "com.comatching.user")
+@EnableScheduling
 @EnableJpaAuditing
 public class UserServiceApplication {
 

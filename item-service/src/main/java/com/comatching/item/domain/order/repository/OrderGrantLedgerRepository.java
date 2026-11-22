@@ -7,4 +7,6 @@ import com.comatching.item.domain.order.entity.OrderGrantLedger;
 public interface OrderGrantLedgerRepository extends JpaRepository<OrderGrantLedger, Long> {
 
 	boolean existsByOrderIdAndOrderItemId(Long orderId, Long orderItemId);
+
+	boolean existsByOrderId(Long orderId);
 }

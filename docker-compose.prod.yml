@@ -29,7 +29,7 @@ x-app: &app
   env_file:
     - .env.prod
   environment:
-    SPRING_PROFILES_ACTIVE: aws
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?Set SPRING_PROFILES_ACTIVE in .env.prod}
   restart: unless-stopped
   networks: [comatching]
   logging: *logging
@@ -171,11 +171,7 @@ services:
       <<: *kafka-healthcheck
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/kafka-3/29092"]
 
-  # auto-create 를 껐으므로 토픽을 누가 만들지 정해야 한다.
-  # 코드가 선언하는 토픽은 member-withdraw / profile-updates(matching-service)와
-  # *.DLT 뿐이고, member-signup · matching-success-topic · chat-message-sent 은
-  # 아무도 선언하지 않는다. 게다가 토픽을 선언하는 서비스보다 발행하는 서비스가
-  # 먼저 뜨면 발행이 실패한다. 여기서 전부 미리 만들어 순서 문제를 없앤다.
+  # 토픽 자동 생성이 꺼져 있어 서비스 기동 전에 원본 토픽과 그룹별 DLT·replay 토픽을 준비한다.
   kafka-topic-init:
     image: apache/kafka:3.9.0
     container_name: comatching-kafka-topic-init
@@ -210,14 +206,29 @@ services:
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic member-signup
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic matching-success-topic
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic chat-message-sent
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic items-granted
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic refund-completed
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic member-withdraw --config retention.ms=$$RETENTION_1D
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic profile-updates --config retention.ms=$$RETENTION_1D
 
-        # DLT 는 사람이 열어 보는 저용량 토픽이라 파티션 1개.
-        # retention 은 브로커 기본(7일)을 쓴다 - 원본(1일)보다 길어야 고치고
-        # 되돌릴 시간이 남는다. 복제는 원본과 같다 - DLT 는 유일한 사본이다.
-        for t in member-signup member-withdraw profile-updates matching-success-topic chat-message-sent; do
-          $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic $$t.DLT
+        # KafkaEventRoute의 원본 토픽·소비 그룹 조합마다 DLT와 replay를 한 쌍씩 만든다.
+        routes=(
+          member-withdraw.matching-candidate-sync-group
+          profile-updates.matching-candidate-sync-group
+          member-withdraw.notification-withdraw-group
+          member-signup.notification-signup-group
+          chat-message-sent.notification-group
+          matching-success-topic.chat-service-group
+          member-signup.item-pre-signup-matching-ticket-grant-group
+          # 지급 완료 메일·푸시 리스너 연결 전에 두 그룹의 복구 토픽을 준비한다.
+          items-granted.notification-items-granted-mail-group
+          items-granted.notification-items-granted-push-group
+          refund-completed.notification-refund-mail-group
+        )
+        for route in "$${routes[@]}"; do
+          for suffix in DLT replay; do
+            $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic "$$route.$$suffix"
+          done
         done
 
         echo "=== 토픽 준비 완료 ==="
