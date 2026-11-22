@@ -24,7 +24,7 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 @Component
 public class ChatRoomPresenceTracker {
 
-	private static final String CHAT_ROOM_TOPIC_PREFIX = "/topic/chat.room.";
+	public static final String CHAT_ROOM_DESTINATION = "/user/queue/chat.room.";
 
 	private record RoomSubscription(String roomId, Long memberId) {
 	}
@@ -38,7 +38,7 @@ public class ChatRoomPresenceTracker {
 		StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
 
 		String destination = accessor.getDestination();
-		if (destination == null || !destination.startsWith(CHAT_ROOM_TOPIC_PREFIX)) {
+		if (destination == null || !destination.startsWith(CHAT_ROOM_DESTINATION)) {
 			return;
 		}
 
@@ -50,7 +50,7 @@ public class ChatRoomPresenceTracker {
 			return;
 		}
 
-		String roomId = destination.substring(CHAT_ROOM_TOPIC_PREFIX.length());
+		String roomId = destination.substring(CHAT_ROOM_DESTINATION.length());
 		subscriptionsBySession
 			.computeIfAbsent(sessionId, key -> new ConcurrentHashMap<>())
 			.put(subscriptionId, new RoomSubscription(roomId, (Long)memberId));

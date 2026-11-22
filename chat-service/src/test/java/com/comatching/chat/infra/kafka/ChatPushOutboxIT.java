@@ -24,6 +24,12 @@ import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UserBlockRepository;
 import com.comatching.chat.domain.service.block.BlockService;
+import com.comatching.chat.domain.service.block.BlockServiceImpl;
+import com.comatching.chat.domain.service.chatroom.ChatRoomServiceImpl;
+import com.comatching.chat.infra.client.MemberClient;
+import com.comatching.chat.global.exception.ChatErrorCode;
+import com.comatching.common.exception.BusinessException;
+import org.springframework.data.domain.PageRequest;
 import com.comatching.chat.domain.service.chat.ChatServiceImpl;
 import com.comatching.chat.global.config.MongoConfig;
 import com.comatching.chat.infra.controller.InternalChatPushController;
@@ -79,7 +85,7 @@ class ChatPushOutboxIT {
     @EntityScan(basePackageClasses = ChatMessage.class)
     @EnableMongoRepositories(basePackageClasses = ChatMessageRepository.class)
     @Import({MongoConfig.class, ChatServiceImpl.class, ChatPushOutboxDispatcher.class,
-            ChatEventProducer.class, InternalChatPushController.class})
+            ChatEventProducer.class, InternalChatPushController.class, BlockServiceImpl.class, ChatRoomServiceImpl.class})
     static class Config {}
 
     @Container static final GenericContainer<?> mongo = new GenericContainer<>("mongo:7").withExposedPorts(27017);
@@ -100,7 +106,9 @@ class ChatPushOutboxIT {
     @Autowired EmbeddedKafkaBroker broker;
     @Autowired KafkaTemplate<String, Object> kafka;
     @MockitoSpyBean ChatEventProducer producer;
-    @MockitoBean BlockService blockService;
+    @Autowired BlockService blockService;
+    @Autowired ChatRoomServiceImpl roomService;
+    @MockitoBean MemberClient members;
     @MockitoBean S3Service s3;
     private String roomId;
 
@@ -208,7 +216,7 @@ class ChatPushOutboxIT {
     @Test
     void oldMessagesSystemMessagesAndBlockedMessagesNeverBecomeDue() {
         String system = send(MessageType.SYSTEM, "system");
-        when(blockService.isBlocked(20L, 10L)).thenReturn(true);
+        blockService.blockUser(20L, 10L);
         String blocked = send(MessageType.TALK, "blocked");
         var historical = messages.save(ChatMessage.builder().roomId(roomId).senderId(10L)
                 .content("before outbox").type(MessageType.TALK).build());
@@ -220,6 +228,55 @@ class ChatPushOutboxIT {
         verify(producer, never()).send(any());
         assertThat(db.indexOps(ChatMessage.class).getIndexInfo()).anyMatch(index ->
                 "chat_push_due_idx".equals(index.getName()));
+    }
+
+    @Test
+    void blockerGetsAFreshViewWhileSenderKeepsTheSameRoomAndAllMessages() {
+        String before = send(MessageType.TALK, "before");
+        var page = PageRequest.of(0, 20);
+        blockService.blockUser(20L, 10L);
+        String during = send(MessageType.TALK, "during");
+        assertThat(outbox(during)).isNull();
+        assertThat(roomService.getMyChatRooms(20L)).isEmpty();
+        assertThat(roomService.getTotalUnreadCount(20L)).isZero();
+        assertThatThrownBy(() -> chat.getChatHistory(roomId, 20L, page))
+                .isInstanceOf(BusinessException.class).extracting("errorCode").isEqualTo(ChatErrorCode.NOT_EXIST_CHATROOM);
+        assertThatThrownBy(() -> chat.markAsRead(roomId, 20L)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> roomService.validateRoomMember(roomId, 20L)).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> chat.processMessage(new ChatMessageRequest(roomId, 20L, "A", "hidden", MessageType.TALK)))
+                .isInstanceOf(BusinessException.class);
+        assertThat(roomService.getMyChatRooms(10L)).singleElement().satisfies(room ->
+                assertThat(room.lastMessage()).isEqualTo("during"));
+        assertThat(chat.getChatHistory(roomId, 10L, page)).extracting("id").containsExactly(before, during);
+
+        blockService.unblockUser(20L, 10L);
+        assertThat(blockService.getBlockedUsers(20L)).isEmpty();
+        assertThat(push.eligible(before, 20L)).isFalse();
+        assertThat(chat.getChatHistory(roomId, 20L, page)).isEmpty();
+        assertThat(roomService.getMyChatRooms(20L)).singleElement().satisfies(room -> {
+            assertThat(room.id()).isEqualTo(roomId);
+            assertThat(room.lastMessage()).isNull();
+            assertThat(room.lastMessageTime()).isNull();
+            assertThat(room.unreadCount()).isZero();
+        });
+        assertThat(roomService.getTotalUnreadCount(20L)).isZero();
+
+        String after = send(MessageType.TALK, "after");
+        assertThat(outbox(after)).isNotNull();
+        assertThat(push.eligible(after, 20L)).isTrue();
+        assertThat(chat.getChatHistory(roomId, 20L, page)).extracting("id").containsExactly(after);
+        assertThat(chat.getChatHistory(roomId, 20L, PageRequest.of(1, 1))).isEmpty();
+        assertThat(chat.getChatHistory(roomId, 10L, page)).extracting("id").containsExactly(before, during, after);
+        assertThat(roomService.getMyChatRooms(20L)).singleElement().satisfies(room -> {
+            assertThat(room.lastMessage()).isEqualTo("after");
+            assertThat(room.unreadCount()).isEqualTo(1);
+        });
+
+        blockService.blockUser(20L, 10L);
+        assertThat(blocks.count()).isOne();
+        blockService.unblockUser(20L, 10L);
+        assertThat(chat.getChatHistory(roomId, 20L, page)).isEmpty();
+        assertThat(chat.getChatHistory(roomId, 10L, page)).hasSize(3);
     }
 
     private String send(MessageType type, String content) {

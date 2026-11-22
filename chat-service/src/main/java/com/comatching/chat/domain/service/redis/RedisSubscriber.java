@@ -47,16 +47,15 @@ public class RedisSubscriber implements MessageListener {
 			}
 
 			Long senderId = roomMessage.senderId();
-			Long receiverId = getReceiverId(room, senderId);
-
-			if (blockService.isBlocked(receiverId, senderId)) {
-				log.debug("수신자가 발신자를 차단함 - receiverId: {}, senderId: {}", receiverId, senderId);
-				return;
+			Long receiverId = room.otherMemberId(senderId);
+			String queue = "/queue/chat.room." + roomMessage.roomId();
+			if (!blockService.hidesMessage(senderId, receiverId, roomMessage.createdAt())) {
+				messagingTemplate.convertAndSendToUser(senderId.toString(), queue, roomMessage);
 			}
-
-			messagingTemplate.convertAndSend("/topic/chat.room." + roomMessage.roomId(), roomMessage);
-
-			autoReadIfReceiverIsViewing(roomMessage, receiverId);
+			if (!blockService.hidesMessage(receiverId, senderId, roomMessage.createdAt())) {
+				messagingTemplate.convertAndSendToUser(receiverId.toString(), queue, roomMessage);
+				autoReadIfReceiverIsViewing(roomMessage, receiverId);
+			}
 
 		} catch (Exception e) {
 			log.error("Redis 메시지 전달 오류: {}", e.getMessage());
@@ -90,9 +89,4 @@ public class RedisSubscriber implements MessageListener {
 		}
 	}
 
-	private Long getReceiverId(ChatRoom chatRoom, Long senderId) {
-		return senderId.equals(chatRoom.getTargetUserId())
-			? chatRoom.getInitiatorUserId()
-			: chatRoom.getTargetUserId();
-	}
 }

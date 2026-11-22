@@ -31,7 +31,7 @@ class ChatRoomPresenceTrackerTest {
 	@Test
 	@DisplayName("채팅방 토픽을 구독하면 그 방을 보고 있는 것으로 기록한다")
 	void subscribe_marksMemberAsViewing() {
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/topic/chat.room." + ROOM_ID, MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/user/queue/chat.room." + ROOM_ID, MEMBER_ID));
 
 		assertThat(tracker.isViewing(ROOM_ID, MEMBER_ID)).isTrue();
 	}
@@ -53,7 +53,7 @@ class ChatRoomPresenceTrackerTest {
 	@Test
 	@DisplayName("구독을 해지하면 더 이상 보고 있지 않다")
 	void unsubscribe_removesViewing() {
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/topic/chat.room." + ROOM_ID, MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/user/queue/chat.room." + ROOM_ID, MEMBER_ID));
 
 		tracker.onUnsubscribe(unsubscribeEvent("session-1", "sub-1"));
 
@@ -63,8 +63,8 @@ class ChatRoomPresenceTrackerTest {
 	@Test
 	@DisplayName("연결이 끊기면 그 세션의 모든 구독이 사라진다")
 	void disconnect_removesAllSubscriptionsOfSession() {
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/topic/chat.room." + ROOM_ID, MEMBER_ID));
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-2", "/topic/chat.room.room-2", MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/user/queue/chat.room." + ROOM_ID, MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-2", "/user/queue/chat.room.room-2", MEMBER_ID));
 
 		tracker.onDisconnect(disconnectEvent("session-1"));
 
@@ -75,8 +75,8 @@ class ChatRoomPresenceTrackerTest {
 	@Test
 	@DisplayName("같은 방을 두 세션으로 보다가 한 세션만 끊기면 여전히 보고 있다")
 	void disconnect_keepsViewingWhileAnotherSessionRemains() {
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/topic/chat.room." + ROOM_ID, MEMBER_ID));
-		tracker.onSubscribe(subscribeEvent("session-2", "sub-1", "/topic/chat.room." + ROOM_ID, MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/user/queue/chat.room." + ROOM_ID, MEMBER_ID));
+		tracker.onSubscribe(subscribeEvent("session-2", "sub-1", "/user/queue/chat.room." + ROOM_ID, MEMBER_ID));
 
 		tracker.onDisconnect(disconnectEvent("session-1"));
 
@@ -86,7 +86,7 @@ class ChatRoomPresenceTrackerTest {
 	@Test
 	@DisplayName("memberId 없는 구독은 기록하지 않는다")
 	void subscribe_ignoresSessionWithoutMemberId() {
-		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/topic/chat.room." + ROOM_ID, null));
+		tracker.onSubscribe(subscribeEvent("session-1", "sub-1", "/user/queue/chat.room." + ROOM_ID, null));
 
 		assertThat(tracker.isViewing(ROOM_ID, MEMBER_ID)).isFalse();
 	}

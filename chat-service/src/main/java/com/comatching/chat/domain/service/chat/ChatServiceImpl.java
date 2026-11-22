@@ -10,7 +10,6 @@ import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.service.block.BlockService;
 import com.comatching.chat.global.exception.ChatErrorCode;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
 import com.comatching.common.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,7 +40,7 @@ public class ChatServiceImpl implements ChatService {
     public ChatMessageResponse markAsRead(String roomId, Long memberId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
-        validateRoomMember(room, memberId);
+        blockService.visibleAfter(memberId, room.otherMemberId(memberId));
 
         LocalDateTime readAt = LocalDateTime.now();
         chatRoomRepository.touchLastReadAt(roomId, memberId, readAt);
@@ -63,14 +63,19 @@ public class ChatServiceImpl implements ChatService {
             return markAsRead(request.roomId(), request.senderId());
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime sentAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
 
         ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
-        validateRoomMember(chatRoom, request.senderId());
-
-        Long receiverId = getReceiverId(chatRoom, request.senderId());
-        boolean isBlockedByReceiver = blockService.isBlocked(receiverId, request.senderId());
+        Long receiverId = chatRoom.otherMemberId(request.senderId());
+        LocalDateTime senderCutoff = blockService.visibleAfter(request.senderId(), receiverId);
+        var receiverRelation = blockService.findRelation(receiverId, request.senderId()).orElse(null);
+        boolean isBlockedByReceiver = receiverRelation != null && receiverRelation.isActive();
+        if (!isBlockedByReceiver) {
+            // MongoDB 날짜는 밀리초 단위다. 이미 해제된 상태에서 접수한 첫 메시지도 보이게 한다.
+            sentAt = afterCutoff(sentAt, senderCutoff);
+            if (receiverRelation != null) sentAt = afterCutoff(sentAt, receiverRelation.getUnblockedAt());
+        }
 
         String finalContent = resolveContent(request);
 
@@ -81,9 +86,9 @@ public class ChatServiceImpl implements ChatService {
                 ? ChatMessage.PushOutbox.pending(receiverId, request.senderNickname())
                 : null;
 
-        ChatMessage savedMessage = saveChatMessage(request, finalContent, pushOutbox);
+        ChatMessage savedMessage = saveChatMessage(request, finalContent, pushOutbox, sentAt);
 
-        LocalDateTime sentAt = savedMessage.getCreatedAt() != null ? savedMessage.getCreatedAt() : now;
+        sentAt = savedMessage.getCreatedAt();
         log.info(
                 "chat.message.saved roomId={} messageId={} senderId={} type={} createdAt={}",
                 savedMessage.getRoomId(),
@@ -93,28 +98,9 @@ public class ChatServiceImpl implements ChatService {
                 sentAt
         );
 
-        if (!isBlockedByReceiver) {
-            updateChatRoomInfo(chatRoom, request, savedMessage.getId(), sentAt);
-        } else {
-            // 요약·알림은 차단 수신자에게 새 메시지 힌트를 주지 않으려 스킵하지만,
-            // 활성화까지 스킵하면 방이 영구 WAITING 으로 남아 차단을 풀어도
-            // target 목록에 방이 나타나지 않는다.
-            chatRoomRepository.activateRoom(chatRoom.getId());
-        }
+        updateChatRoomInfo(chatRoom, request, savedMessage.getId(), sentAt);
 
         return ChatMessageResponse.from(savedMessage, 1);
-    }
-
-    private void validateRoomMember(ChatRoom chatRoom, Long memberId) {
-        if (!chatRoom.getInitiatorUserId().equals(memberId) && !chatRoom.getTargetUserId().equals(memberId)) {
-            throw new BusinessException(GeneralErrorCode.FORBIDDEN);
-        }
-    }
-
-    private Long getReceiverId(ChatRoom chatRoom, Long senderId) {
-        return senderId.equals(chatRoom.getTargetUserId())
-                ? chatRoom.getInitiatorUserId()
-                : chatRoom.getTargetUserId();
     }
 
     @Transactional(readOnly = true)
@@ -130,13 +116,12 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
 
+        LocalDateTime visibleAfter = blockService.visibleAfter(memberId, room.otherMemberId(memberId));
         LocalDateTime otherUserLastReadAt = room.getOtherUserLastReadAt(memberId);
-        if (!room.getInitiatorUserId().equals(memberId) && !room.getTargetUserId().equals(memberId)) {
-            throw new BusinessException(GeneralErrorCode.FORBIDDEN);
-        }
-
         Pageable latestFirstPageable = toLatestFirstPageable(pageable);
-        List<ChatMessage> messages = new ArrayList<>(chatMessageRepository.findByRoomId(roomId, latestFirstPageable));
+        List<ChatMessage> messages = new ArrayList<>(visibleAfter == null
+                ? chatMessageRepository.findByRoomId(roomId, latestFirstPageable)
+                : chatMessageRepository.findByRoomIdAndCreatedAtAfter(roomId, visibleAfter, latestFirstPageable));
         Collections.reverse(messages);
 
         List<ChatMessageResponse> responses = messages.stream()
@@ -210,13 +195,19 @@ public class ChatServiceImpl implements ChatService {
         return request.content();
     }
 
-    private ChatMessage saveChatMessage(ChatMessageRequest request, String content, ChatMessage.PushOutbox pushOutbox) {
+    private LocalDateTime afterCutoff(LocalDateTime sentAt, LocalDateTime cutoff) {
+        return cutoff != null && !sentAt.isAfter(cutoff) ? cutoff.plus(1, ChronoUnit.MILLIS) : sentAt;
+    }
+
+    private ChatMessage saveChatMessage(ChatMessageRequest request, String content, ChatMessage.PushOutbox pushOutbox,
+                                        LocalDateTime sentAt) {
         ChatMessage message = ChatMessage.builder()
                 .roomId(request.roomId())
                 .senderId(request.senderId())
                 .content(content)
                 .type(request.type())
                 .pushOutbox(pushOutbox)
+                .createdAt(sentAt)
                 .build();
         return chatMessageRepository.save(message);
     }

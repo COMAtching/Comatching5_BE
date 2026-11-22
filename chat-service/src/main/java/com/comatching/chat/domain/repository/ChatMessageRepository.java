@@ -15,6 +15,8 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
 
 	List<ChatMessage> findByRoomId(String roomId, Pageable pageable);
 
+	List<ChatMessage> findByRoomIdAndCreatedAtAfter(String roomId, LocalDateTime visibleAfter, Pageable pageable);
+
 	@Query(value = "{ 'roomId': ?0, 'createdAt': { $gt: ?1 }, 'senderId': { $ne: ?2 } }", count = true)
 	long countUnreadMessages(String roomId, LocalDateTime lastReadAt, Long myMemberId);
 }

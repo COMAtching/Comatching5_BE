@@ -3,6 +3,7 @@ package com.comatching.chat.domain.dto;
 import java.time.LocalDateTime;
 
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.entity.UserBlock;
 import com.comatching.common.domain.vo.KoreanAge;
 import com.comatching.common.dto.member.ProfileResponse;
 
@@ -21,8 +22,14 @@ public record ChatRoomResponse(
 	}
 
 	public static ChatRoomResponse from(ChatRoom room, long unreadCount, UserSummary otherUser) {
-		String content = (room.getLastMessageInfo() != null) ? room.getLastMessageInfo().getContent() : null;
-		LocalDateTime time = (room.getLastMessageInfo() != null) ? room.getLastMessageInfo().getSentAt() : null;
+		return from(room, unreadCount, otherUser, null);
+	}
+
+	public static ChatRoomResponse from(ChatRoom room, long unreadCount, UserSummary otherUser, UserBlock relation) {
+		var preview = room.getLastMessageInfo();
+		boolean visible = preview != null && (relation == null || !relation.hides(preview.getSentAt()));
+		String content = visible ? preview.getContent() : null;
+		LocalDateTime time = visible ? preview.getSentAt() : null;
 
 		return new ChatRoomResponse(
 			room.getId(),

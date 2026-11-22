@@ -5,7 +5,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
@@ -40,7 +39,6 @@ public class ChatMessage {
 
     private PushOutbox pushOutbox;
 
-    @CreatedDate
     private LocalDateTime createdAt;
 
     @Builder
@@ -49,13 +47,15 @@ public class ChatMessage {
             Long senderId,
             String content,
             MessageType type,
-            PushOutbox pushOutbox
+            PushOutbox pushOutbox,
+            LocalDateTime createdAt
     ) {
         this.roomId = roomId;
         this.senderId = senderId;
         this.content = content;
         this.type = type;
         this.pushOutbox = pushOutbox;
+        this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
     }
 
     public record PushOutbox(

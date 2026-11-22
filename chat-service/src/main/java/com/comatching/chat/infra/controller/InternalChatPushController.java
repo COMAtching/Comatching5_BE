@@ -28,6 +28,7 @@ public class InternalChatPushController {
         if (room == null) return false;
         var readAt = room.getOtherUserLastReadAt(message.getSenderId());
         if (readAt != null && !readAt.isBefore(message.getCreatedAt())) return false;
-        return !blocks.existsByBlockerUserIdAndBlockedUserId(targetUserId, message.getSenderId());
+        return blocks.findByBlockerUserIdAndBlockedUserId(targetUserId, message.getSenderId())
+                .filter(relation -> relation.hides(message.getCreatedAt())).isEmpty();
     }
 }

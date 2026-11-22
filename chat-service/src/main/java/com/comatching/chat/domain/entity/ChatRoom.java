@@ -9,6 +9,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.comatching.chat.domain.enums.ChatRoomStatus;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -66,6 +68,12 @@ public class ChatRoom {
 		} else if (memberId.equals(targetUserId)) {
 			this.targetLastReadAt = time;
 		}
+	}
+
+	public Long otherMemberId(Long memberId) {
+		if (memberId.equals(initiatorUserId)) return targetUserId;
+		if (memberId.equals(targetUserId)) return initiatorUserId;
+		throw new BusinessException(GeneralErrorCode.FORBIDDEN);
 	}
 
 	public LocalDateTime getOtherUserLastReadAt(Long myMemberId) {

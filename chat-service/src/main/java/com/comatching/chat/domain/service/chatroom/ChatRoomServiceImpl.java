@@ -3,6 +3,7 @@ package com.comatching.chat.domain.service.chatroom;
 import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.dto.ChatRoomResponse.UserSummary;
 import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.entity.UserBlock;
 import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
@@ -15,7 +16,6 @@ import com.comatching.common.dto.chat.ChatRoomReferenceResponse;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.common.exception.BusinessException;
-import com.comatching.common.exception.code.GeneralErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -24,9 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,51 +58,37 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     public List<ChatRoomResponse> getMyChatRooms(Long memberId) {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "updatedAt");
-        Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
-
-        List<ChatRoom> visibleRooms = chatRoomRepository.findMyChatRooms(memberId, sort).stream()
-                .filter(room -> isVisibleToMember(room, memberId))
-                .filter(room -> {
-                    Long otherUserId = getOtherUserId(room, memberId);
-                    return !blockedUserIds.contains(otherUserId);
-                })
-                .toList();
-
-        Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId);
+        var relations = blockService.getRelations(memberId);
+        List<ChatRoom> visibleRooms = visibleRooms(memberId, sort, relations);
+        Map<String, Long> unreadCountsByRoom = getUnreadCountsByRoom(visibleRooms, memberId, relations);
         Map<Long, ProfileResponse> profilesByMemberId = getProfilesByMemberId(visibleRooms, memberId);
 
         return visibleRooms.stream()
                 .map(room -> {
-                    Long otherUserId = getOtherUserId(room, memberId);
+                    Long otherUserId = room.otherMemberId(memberId);
+                    UserBlock relation = relations.get(otherUserId);
                     UserSummary otherUser = toUserSummary(otherUserId, profilesByMemberId.get(otherUserId));
-                    return ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L), otherUser);
+                    return ChatRoomResponse.from(room, unreadCountsByRoom.getOrDefault(room.getId(), 0L), otherUser, relation);
                 })
                 .toList();
     }
 
-    private Long getOtherUserId(ChatRoom room, Long memberId) {
-        return memberId.equals(room.getInitiatorUserId())
-                ? room.getTargetUserId()
-                : room.getInitiatorUserId();
+    private List<ChatRoom> visibleRooms(Long memberId, Sort sort, Map<Long, UserBlock> relations) {
+        return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
+                .filter(room -> isVisibleToMember(room, memberId))
+                .filter(room -> {
+                    UserBlock relation = relations.get(room.otherMemberId(memberId));
+                    return relation == null || !relation.isActive();
+                }).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public long getTotalUnreadCount(Long memberId) {
 
-        Sort sort = Sort.unsorted();
-        List<ChatRoom> myRooms = chatRoomRepository.findMyChatRooms(memberId, sort);
-        Set<Long> blockedUserIds = blockService.getBlockedUserIds(memberId);
-
-        List<ChatRoom> visibleRooms = myRooms.stream()
-                .filter(room -> isVisibleToMember(room, memberId))
-                .filter(room -> {
-                    Long otherUserId = getOtherUserId(room, memberId);
-                    return !blockedUserIds.contains(otherUserId);
-                })
-                .toList();
-
-        return getUnreadCountsByRoom(visibleRooms, memberId).values().stream()
+        var relations = blockService.getRelations(memberId);
+        var rooms = visibleRooms(memberId, Sort.unsorted(), relations);
+        return getUnreadCountsByRoom(rooms, memberId, relations).values().stream()
                 .mapToLong(Long::longValue)
                 .sum();
     }
@@ -113,9 +99,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
 
-        if (!isRoomMember(room, memberId)) {
-            throw new BusinessException(GeneralErrorCode.FORBIDDEN);
-        }
+        blockService.visibleAfter(memberId, room.otherMemberId(memberId));
     }
 
     @Override
@@ -153,7 +137,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         Map<Long, ChatRoom> roomsByMatchingId = chatRoomRepository.findByMatchingIdIn(matchingIds).stream()
                 .collect(Collectors.toMap(ChatRoom::getMatchingId, Function.identity(), (left, right) -> left));
 
+        Map<Long, Map<Long, UserBlock>> relationsByInitiator = new HashMap<>();
         return requests.stream()
+                .filter(request -> {
+                    var relations = relationsByInitiator.computeIfAbsent(request.initiatorUserId(), blockService::getRelations);
+                    UserBlock relation = relations.get(request.targetUserId());
+                    return relation == null || !relation.isActive();
+                })
                 .map(request -> {
                     ChatRoom room = roomsByMatchingId.get(request.matchingId());
                     if (room == null) {
@@ -181,13 +171,20 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
     }
 
-    private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId) {
+    private Map<String, Long> getUnreadCountsByRoom(List<ChatRoom> rooms, Long memberId, Map<Long, UserBlock> relations) {
         if (rooms.isEmpty()) {
             return Map.of();
         }
 
         List<UnreadCountCondition> unreadCountConditions = rooms.stream()
-                .map(room -> new UnreadCountCondition(room.getId(), getMyLastReadAt(room, memberId)))
+                .map(room -> {
+                    LocalDateTime since = getMyLastReadAt(room, memberId);
+                    UserBlock relation = relations.get(room.otherMemberId(memberId));
+                    if (relation != null && (since == null || relation.getUnblockedAt().isAfter(since))) {
+                        since = relation.getUnblockedAt();
+                    }
+                    return new UnreadCountCondition(room.getId(), since);
+                })
                 .toList();
 
         return chatMessageRepository.countUnreadMessagesByRoom(unreadCountConditions, memberId);
@@ -199,7 +196,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
 
         List<Long> otherUserIds = rooms.stream()
-                .map(room -> getOtherUserId(room, memberId))
+                .map(room -> room.otherMemberId(memberId))
                 .distinct()
                 .toList();
 
@@ -223,10 +220,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         return memberId.equals(room.getInitiatorUserId())
                 ? room.getInitiatorLastReadAt()
                 : room.getTargetLastReadAt();
-    }
-
-    private boolean isRoomMember(ChatRoom room, Long memberId) {
-        return room.getInitiatorUserId().equals(memberId) || room.getTargetUserId().equals(memberId);
     }
 
     private boolean isVisibleToMember(ChatRoom room, Long memberId) {
