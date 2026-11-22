@@ -13,10 +13,7 @@ import org.junit.jupiter.api.Test;
 /**
  * 쿨다운 억제 로직 검증.
  *
- * 알림이 안 가는 것과 도배되는 것 모두 사고다: 안 가면 tombstone TTL(2일)
- * 안에 재처리할 기회를 놓치고, 도배되면(poison pill 뒤 백로그) 웹훅 rate
- * limit 에 걸려 정작 다른 토픽의 알림까지 막힌다. 시계를 주입해 경계를
- * 결정적으로 확인한다.
+ * 같은 경로의 반복 알림은 제한하고 다른 경로는 즉시 알리는지 시계를 주입해 확인한다.
  */
 @DisplayName("DLT 적재 알림 쿨다운")
 class KafkaDltAlertNotifierTest {
@@ -28,7 +25,7 @@ class KafkaDltAlertNotifierTest {
 		final List<String> sent = new ArrayList<>();
 
 		TestNotifier(String webhookUrl) {
-			super(webhookUrl, "test-group", COOLDOWN);
+			super(webhookUrl, COOLDOWN);
 		}
 
 		@Override
@@ -51,11 +48,11 @@ class KafkaDltAlertNotifierTest {
 	void suppressesWithinCooldown() {
 		TestNotifier notifier = new TestNotifier("http://webhook");
 
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
 
 		assertThat(notifier.sent).hasSize(1);
-		assertThat(notifier.sent.get(0)).contains("topic-a.DLT").contains("key=42");
+		assertThat(notifier.sent.get(0)).contains(KafkaEventRoute.CANDIDATE_WITHDRAW.dltTopic()).contains("key=42");
 	}
 
 	@Test
@@ -63,24 +60,24 @@ class KafkaDltAlertNotifierTest {
 	void reportsSuppressedCountAfterCooldown() {
 		TestNotifier notifier = new TestNotifier("http://webhook");
 
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
 
 		notifier.now += COOLDOWN.toMillis();
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
 
 		assertThat(notifier.sent).hasSize(2);
 		assertThat(notifier.sent.get(1)).contains("2건 추가 적재");
 	}
 
 	@Test
-	@DisplayName("쿨다운은 토픽별로 독립이다 - 한 토픽의 폭주가 다른 토픽 알림을 막지 않는다")
-	void cooldownIsPerTopic() {
+	@DisplayName("같은 원본 토픽이라도 소비 그룹이 다르면 알림을 억제하지 않는다")
+	void cooldownIsPerGroupAndSource() {
 		TestNotifier notifier = new TestNotifier("http://webhook");
 
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
-		notifier.notifyParked(record("topic-b"), new IllegalStateException("boom"));
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.WITHDRAW_MAIL);
 
 		assertThat(notifier.sent).hasSize(2);
 	}
@@ -90,8 +87,18 @@ class KafkaDltAlertNotifierTest {
 	void disabledWhenUrlBlank() {
 		TestNotifier notifier = new TestNotifier("");
 
-		notifier.notifyParked(record("topic-a"), new IllegalStateException("boom"));
+		notifier.notifyParked(record("member-withdraw"), new IllegalStateException("boom"), KafkaEventRoute.CANDIDATE_WITHDRAW);
 
 		assertThat(notifier.sent).isEmpty();
 	}
+    @Test
+    @DisplayName("원본과 replay의 실패는 같은 DLT 쿨다운을 공유한다")
+    void originalAndReplayShareCooldown() {
+        TestNotifier notifier = new TestNotifier("http://webhook");
+        KafkaEventRoute route = KafkaEventRoute.CANDIDATE_WITHDRAW;
+        notifier.notifyParked(record(route.sourceTopic()), new IllegalStateException("original"), route);
+        notifier.notifyParked(record(route.replayTopic()), new IllegalStateException("replay"), route);
+        assertThat(notifier.sent).hasSize(1);
+        assertThat(notifier.sent.get(0)).contains(route.groupId(), route.dltTopic());
+    }
 }

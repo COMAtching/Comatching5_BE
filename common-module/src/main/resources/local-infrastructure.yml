@@ -1,0 +1,13 @@
+# application-local.yml에서만 import. 운영 aws 프로파일에는 적용하지 않는다.
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      ssl:
+        enabled: false
+  kafka:
+    bootstrap-servers: localhost:9092
+  jpa:
+    hibernate:
+      ddl-auto: update

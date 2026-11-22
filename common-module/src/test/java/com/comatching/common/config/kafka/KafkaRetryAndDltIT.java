@@ -20,6 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,29 +49,40 @@ import org.springframework.test.context.TestPropertySource;
  *  4) DLT 이동 시에만 알림이 발화한다 (회복된 실패는 알리지 않는다)
  */
 @SpringBootTest(classes = {
-	KafkaProducerConfig.class,
 	KafkaConsumerConfig.class,
 	KafkaRetryAndDltIT.TestListeners.class
 })
+@ImportAutoConfiguration(KafkaAutoConfiguration.class)
 @EmbeddedKafka(
 	partitions = 1,
 	topics = {
 		KafkaRetryAndDltIT.ALWAYS_FAILS_TOPIC,
-		KafkaRetryAndDltIT.ALWAYS_FAILS_TOPIC + ".DLT",
+		KafkaRetryAndDltIT.ALWAYS_FAILS_DLT,
 		KafkaRetryAndDltIT.RECOVERS_TOPIC,
-		KafkaRetryAndDltIT.RECOVERS_TOPIC + ".DLT"
+		KafkaRetryAndDltIT.RECOVERS_DLT
 	}
 )
 @TestPropertySource(properties = {
 	"spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
-	"spring.kafka.consumer.group-id=kafka-retry-dlt-it"
+	"spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
+	"spring.kafka.producer.value-serializer=com.comatching.common.config.kafka.EventValueSerializer",
+	"spring.kafka.producer.acks=all",
+	"spring.kafka.producer.properties[enable.idempotence]=true",
+	"spring.kafka.consumer.group-id=kafka-retry-dlt-it",
+	"spring.kafka.consumer.auto-offset-reset=earliest",
+	"spring.kafka.consumer.enable-auto-commit=false",
+	"spring.kafka.listener.ack-mode=record"
 })
 @DisplayName("Kafka 재시도·DLT 정책")
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Tag("integration")
 class KafkaRetryAndDltIT {
 
-	static final String ALWAYS_FAILS_TOPIC = "retry-it-always-fails";
-	static final String RECOVERS_TOPIC = "retry-it-recovers";
+	static final String ALWAYS_FAILS_TOPIC = "member-withdraw";
+	static final String RECOVERS_TOPIC = "member-signup";
+
+	static final String ALWAYS_FAILS_DLT = "member-withdraw.matching-candidate-sync-group.DLT";
+	static final String RECOVERS_DLT = "member-signup.notification-signup-group.DLT";
 
 	private static final String MEMBER_KEY = "4242";
 
@@ -80,7 +93,7 @@ class KafkaRetryAndDltIT {
 	private static final String PAYLOAD_AT_LISTENER = "boom";
 
 	@Autowired
-	private KafkaTemplate<String, String> kafkaTemplate;
+	private KafkaTemplate<String, Object> kafkaTemplate;
 
 	@Autowired
 	private TestListeners listeners;
@@ -94,7 +107,7 @@ class KafkaRetryAndDltIT {
 		kafkaTemplate.send(ALWAYS_FAILS_TOPIC, MEMBER_KEY, PAYLOAD_ON_WIRE);
 
 		ConsumerRecord<String, String> dltRecord =
-			pollOne(ALWAYS_FAILS_TOPIC + ".DLT", Duration.ofSeconds(30));
+			pollOne(ALWAYS_FAILS_DLT, Duration.ofSeconds(30));
 
 		assertThat(dltRecord).isNotNull();
 		assertThat(dltRecord.value()).isEqualTo(PAYLOAD_ON_WIRE);
@@ -110,10 +123,8 @@ class KafkaRetryAndDltIT {
 		// 최초 1회 + 재시도 3회. 즉시 포기하지도, 무한히 매달리지도 않는다.
 		assertThat(listeners.alwaysFailsAttempts.get()).isEqualTo(4);
 
-		// DLT 이동은 사람에게 알려진다. 적재를 이틀(tombstone TTL) 안에
-		// 알아채야 재처리가 의미 있기 때문이다.
 		assertThat(listeners.alerts)
-			.anySatisfy(alert -> assertThat(alert).contains(ALWAYS_FAILS_TOPIC + ".DLT"));
+			.anySatisfy(alert -> assertThat(alert).contains(ALWAYS_FAILS_DLT));
 	}
 
 	@Test
@@ -127,7 +138,7 @@ class KafkaRetryAndDltIT {
 
 		// 2번째 시도에서 성공했으므로 DLT 는 비어 있어야 하고, 알림도 없어야 한다.
 		// 회복된 실패까지 알리면 알림이 늑대소년이 된다.
-		assertThat(pollOne(RECOVERS_TOPIC + ".DLT", Duration.ofSeconds(5))).isNull();
+		assertThat(pollOne(RECOVERS_DLT, Duration.ofSeconds(5))).isNull();
 		assertThat(listeners.alerts)
 			.noneSatisfy(alert -> assertThat(alert).contains(RECOVERS_TOPIC));
 	}
@@ -167,7 +178,7 @@ class KafkaRetryAndDltIT {
 		@Bean
 		@Primary
 		KafkaDltAlertNotifier recordingDltAlertNotifier() {
-			return new KafkaDltAlertNotifier("http://recording-stub", "kafka-retry-dlt-it", Duration.ZERO) {
+			return new KafkaDltAlertNotifier("http://recording-stub", Duration.ZERO) {
 				@Override
 				protected void deliver(String message) {
 					alerts.add(message);
@@ -175,13 +186,13 @@ class KafkaRetryAndDltIT {
 			};
 		}
 
-		@KafkaListener(topics = ALWAYS_FAILS_TOPIC, groupId = "always-fails-group")
+		@KafkaListener(topics = ALWAYS_FAILS_TOPIC, groupId = "matching-candidate-sync-group")
 		void alwaysFails(String payload) {
 			alwaysFailsAttempts.incrementAndGet();
 			throw new IllegalStateException("의도적 실패: " + payload);
 		}
 
-		@KafkaListener(topics = RECOVERS_TOPIC, groupId = "recovers-group")
+		@KafkaListener(topics = RECOVERS_TOPIC, groupId = "notification-signup-group")
 		void recoversOnRetry(String payload) {
 			// 첫 시도만 실패시킨다. DB 순단 같은 일시적 실패를 흉내내는 것이다.
 			if (recoversAttempts.incrementAndGet() == 1) {

@@ -1,6 +1,7 @@
 package com.comatching.matching.domain.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +32,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.HobbyCategory;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.comatching.matching.infra.client.MemberClient;
+import com.comatching.common.dto.event.matching.MatchingProfileSnapshot;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.matching.domain.entity.MatchingCandidate;
 import com.comatching.matching.domain.repository.candidate.MatchingCandidateRepository;
@@ -49,12 +54,15 @@ import com.comatching.matching.support.MySqlContainerSupport;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(classes = CandidateServiceImplIT.Config.class)
-@Import(CandidateServiceImpl.class)
+@Import({CandidateServiceImpl.class, CandidateProfileStore.class})
 @DisplayName("CandidateService 탈퇴-갱신 순서 역전 가드")
 @Tag("integration")
 class CandidateServiceImplIT extends MySqlContainerSupport {
 
 	private static final Long MEMBER_ID = 777L;
+
+	@MockitoBean
+	private MemberClient members;
 
 	@Autowired
 	private CandidateService candidateService;
@@ -71,6 +79,7 @@ class CandidateServiceImplIT extends MySqlContainerSupport {
 	@Test
 	@DisplayName("정상 순서: 갱신 후 탈퇴가 오면 후보가 삭제되고 tombstone 이 남는다")
 	void withdrawAfterUpdate() {
+		serveCurrent(profileEvent(1L));
 		candidateService.upsertCandidate(profileEvent(1L));
 
 		candidateService.removeCandidate(MEMBER_ID, LocalDateTime.now());
@@ -82,6 +91,7 @@ class CandidateServiceImplIT extends MySqlContainerSupport {
 	@Test
 	@DisplayName("역전 순서: 탈퇴 처리 뒤에 도착한 갱신 이벤트는 후보를 부활시키지 못한다")
 	void staleUpdateAfterWithdrawDoesNotResurrect() {
+		serveCurrent(profileEvent(1L));
 		candidateService.upsertCandidate(profileEvent(1L));
 		candidateService.removeCandidate(MEMBER_ID, LocalDateTime.now());
 
@@ -104,6 +114,7 @@ class CandidateServiceImplIT extends MySqlContainerSupport {
 	@Test
 	@DisplayName("탈퇴하지 않은 회원의 upsert 는 그대로 동작한다 (신규 생성 + 갱신)")
 	void upsertStillWorksForActiveMember() {
+		serveCurrent(profileEvent(1L));
 		candidateService.upsertCandidate(profileEvent(1L));
 
 		MatchingCandidate created = candidateRepository.findById(MEMBER_ID).orElseThrow();
@@ -172,10 +183,122 @@ class CandidateServiceImplIT extends MySqlContainerSupport {
 		}
 	}
 
+	@Test
+	void staleAndDuplicateProfileEventsKeepTheLatestSnapshot() {
+		serveCurrent(versionedMajor(3L, "의학과"));
+		candidateService.upsertCandidate(versionedMajor(3L, "의학과"));
+		candidateService.upsertCandidate(versionedMajor(2L, "컴퓨터공학과"));
+		candidateService.upsertCandidate(versionedMajor(3L, "동일 버전에서 덮어쓰기 시도"));
+		var candidate = candidateRepository.findById(MEMBER_ID).orElseThrow();
+		assertThat(candidate.getLastProfileVersion()).isEqualTo(3L);
+		assertThat(candidate.getMajor()).isEqualTo("의학과");
+		verify(members).getMatchingSnapshot(MEMBER_ID);
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void concurrentOriginalAndReplayKeepHighestVersion() throws Exception {
+		serveCurrent(versionedMajor(1L, "최초 학과"));
+		candidateService.upsertCandidate(versionedMajor(1L, "최초 학과"));
+		var start = new CountDownLatch(1);
+		var pool = Executors.newFixedThreadPool(2);
+		try {
+			var original = pool.submit(() -> {
+				start.await();
+				candidateService.upsertCandidate(versionedMajor(3L, "의학과"));
+				return null;
+			});
+			var replay = pool.submit(() -> {
+				start.await();
+				candidateService.upsertCandidate(versionedMajor(2L, "이전 학과"));
+				return null;
+			});
+			start.countDown();
+			original.get(15, TimeUnit.SECONDS);
+			replay.get(15, TimeUnit.SECONDS);
+			var candidate = candidateRepository.findById(MEMBER_ID).orElseThrow();
+			assertThat(candidate.getLastProfileVersion()).isEqualTo(3L);
+			assertThat(candidate.getMajor()).isEqualTo("의학과");
+		} finally {
+			pool.shutdownNow();
+			candidateRepository.deleteById(MEMBER_ID);
+		}
+	}
+
+	@Test
+	void legacyReplayRepairsFromMemberServiceEvenBeforeFirstVersionedEdit() {
+		serveCurrent(versionedMajor(0L, "현재 학과"));
+		candidateService.upsertCandidate(versionedMajor(null, "옛 학과"));
+		assertThat(candidateRepository.findById(MEMBER_ID).orElseThrow().getMajor()).isEqualTo("현재 학과");
+		serveCurrent(versionedMajor(5L, "최신 학과"));
+		candidateService.upsertCandidate(versionedMajor(2L, "중간 학과"));
+		assertThat(candidateRepository.findById(MEMBER_ID).orElseThrow().getLastProfileVersion()).isEqualTo(5L);
+		serveCurrent(versionedMajor(4L, "조회 후 도착이 늦은 응답"));
+		candidateService.upsertCandidate(versionedMajor(null, "옛 학과"));
+		assertThat(candidateRepository.findById(MEMBER_ID).orElseThrow().getMajor()).isEqualTo("최신 학과");
+	}
+
+	@Test
+	void expiredTombstoneCannotResurrectWithdrawnMember() {
+		var withdrawnAt = LocalDateTime.now().minusDays(4);
+		candidateService.removeCandidate(MEMBER_ID, withdrawnAt);
+		assertThat(withdrawnMemberRepository.deleteAllByWithdrawnAtBefore(LocalDateTime.now().minusDays(2))).isOne();
+		when(members.getMatchingSnapshot(MEMBER_ID)).thenReturn(new MatchingProfileSnapshot(MEMBER_ID,
+			MatchingProfileSnapshot.State.WITHDRAWN, null, withdrawnAt));
+		candidateService.upsertCandidate(versionedMajor(3L, "탈퇴 전"));
+		assertThat(candidateRepository.findById(MEMBER_ID)).isEmpty();
+		assertThat(withdrawnMemberRepository.existsById(MEMBER_ID)).isTrue();
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void withdrawDuringRemoteLookupWins() {
+		var current = versionedMajor(3L, "조회 당시 학과");
+		when(members.getMatchingSnapshot(MEMBER_ID)).thenAnswer(call -> {
+			assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+			candidateService.removeCandidate(MEMBER_ID, LocalDateTime.now());
+			return active(current);
+		});
+		try {
+			candidateService.upsertCandidate(versionedMajor(1L, "옛 학과"));
+			assertThat(candidateRepository.findById(MEMBER_ID)).isEmpty();
+		} finally {
+			withdrawnMemberRepository.deleteById(MEMBER_ID);
+		}
+	}
+
+	@Test
+	void lookupFailureOrLagNeverUsesOldPayloadAsFallback() {
+		var replay = versionedMajor(3L, "옛 학과");
+		when(members.getMatchingSnapshot(MEMBER_ID))
+			.thenThrow(new IllegalStateException("user-service unavailable"))
+			.thenReturn(active(versionedMajor(2L, "지연된 응답")))
+			.thenReturn(new MatchingProfileSnapshot(MEMBER_ID, MatchingProfileSnapshot.State.NO_ACTIVE_PROFILE, null, null));
+		assertThatThrownBy(() -> candidateService.upsertCandidate(replay)).hasMessageContaining("unavailable");
+		assertThatThrownBy(() -> candidateService.upsertCandidate(replay)).hasMessageContaining("버전");
+		candidateService.upsertCandidate(replay);
+		assertThat(candidateRepository.findById(MEMBER_ID)).isEmpty();
+	}
+
+	private void serveCurrent(ProfileUpdatedMatchingEvent profile) {
+		when(members.getMatchingSnapshot(MEMBER_ID)).thenReturn(active(profile));
+	}
+
+	private MatchingProfileSnapshot active(ProfileUpdatedMatchingEvent profile) {
+		return new MatchingProfileSnapshot(MEMBER_ID, MatchingProfileSnapshot.State.ACTIVE, profile, null);
+	}
+
+	private ProfileUpdatedMatchingEvent versionedMajor(Long version, String major) {
+		return ProfileUpdatedMatchingEvent.builder()
+			.memberId(MEMBER_ID).profileId(10L).profileVersion(version)
+			.major(major).isMatchable(true).build();
+	}
+
 	private ProfileUpdatedMatchingEvent profileEvent(Long profileId) {
 		return ProfileUpdatedMatchingEvent.builder()
 			.memberId(MEMBER_ID)
 			.profileId(profileId)
+			.profileVersion(profileId)
 			.gender(Gender.MALE)
 			.mbti("ISTJ")
 			.major("컴퓨터공학과")

@@ -1,27 +1,11 @@
+# 공통 설정만 정의한다. 프로파일은 env의 SPRING_PROFILES_ACTIVE로 선택한다.
 server:
   port: 9001
 
-user-service:
-  url: http://localhost:9000
-
-item-service:
-  url: http://localhost:9006
-
-chat-service:
-  url: http://localhost:9003
-
 spring:
-  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
-  config:
-    import: classpath:feign-resilience.yml
-
   application:
     name: matching-service
-
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_matching?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${MYSQL_ROOT_PASSWORD:comatching12!@}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: HikariPool-${spring.application.name}
@@ -30,7 +14,6 @@ spring:
       connection-timeout: 30000
       max-lifetime: 1800000
       validation-timeout: 5000
-
   jpa:
     # OSIV 를 끈다 (회차 9 실측). 켜져 있으면 요청 중 첫 DB 접근에서 잡은
     # 커넥션을 "요청 끝"까지 놓지 않는다 — 트랜잭션 경계를 그어도 소용없음을
@@ -39,26 +22,28 @@ spring:
     # 끄기 전 전수 확인: 웹 경로에서 트랜잭션 밖 lazy 접근 0건
     # (LAZY 인 hobbyCategories 는 SQL 점수식·@Transactional 컨슈머에서만 사용).
     open-in-view: false
-    hibernate:
-      ddl-auto: update
-    show-sql: false
     properties:
       hibernate:
         default_batch_fetch_size: 100
-
-  data:
-    redis:
-      host: localhost
-      port: 6380
-
   kafka:
-    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.comatching.common.config.kafka.EventValueSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
     consumer:
-      group-id: matching-service-group
+      group-id: matching-candidate-sync-group
       auto-offset-reset: earliest
+      enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
+      properties:
+        "[partition.assignment.strategy]": org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+    listener:
+      type: single
+      ack-mode: record
+      concurrency: 1
   cloud:
     aws:
       credentials:
@@ -68,17 +53,22 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: ${AWS_S3_BUCKET}
+  # Feign 내부 호출 타임아웃 공통값 (common-module 소유)
+  config:
+    import: classpath:feign-resilience.yml
 
 matching:
+  outbox:
+    enabled: true
+    poll-interval-ms: 1000
   kafka:
     # member-withdraw · profile-updates 리스너 병렬도. 상한은 파티션 수(3) —
     # 넘는 값은 유휴 스레드만 만든다. 트래픽·인스턴스 수를 보고 조정한다.
     candidate-listener-concurrency: 3
   tombstone:
-    # profile-updates retention(KafkaTopicConfig, 1일)보다 길어야 한다.
-    # 근거는 WithdrawnMemberCleanupScheduler 주석 참고.
+    # 이 기간에는 탈퇴 표식으로 늦은 갱신을 거른다. 표식 정리 후 후보 생성 시 회원 상태를 다시 확인한다.
     retention-days: 2
-    cleanup-cron: "0 0 4 * * *"
+    cleanup-cron: 0 0 4 * * *
 
 jwt:
   secret: ${JWT_SECRET}
@@ -91,13 +81,6 @@ internal:
   service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      show-details: always
   metrics:
     tags:
       application: ${spring.application.name}
@@ -110,10 +93,13 @@ management:
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
 
-# 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
-# 이 서비스가 소비하는 토픽만 적는다.
+# 그룹별 DLT와 전용 replay 토픽을 기동 시 만든다.
+# KafkaEventRoute에 등록된 이 서비스의 처리 경로만 적는다.
 comatching:
+  outbox:
+    cleanup-target: MATCHING
+    cleanup-cron: "0 10 3 * * *"  # Asia/Seoul
   kafka:
-    dlt-topics: member-withdraw,profile-updates
+    dlt-routes: CANDIDATE_WITHDRAW,CANDIDATE_PROFILE
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}

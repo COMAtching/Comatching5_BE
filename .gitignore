@@ -44,6 +44,7 @@ bin/
 .env
 .env.aws
 .env.prod
+.env.local
 .claudeignore
 .claude
 .mcp.json
@@ -55,8 +56,21 @@ docker-compose.yml
 # Dockerfile / .dockerignore / docker-compose.prod.yml 은 비밀값이 없는
 # 배포 자산이라 추적한다. 실제 값은 .env.prod 에만 있고 그건 위에서 무시된다.
 /database
+!/database/
+/database/*
+!/database/init/
+/database/init/*
+!/database/init/01-create-databases.sql
+!/database/init/02-create-matching-outbox.sql
+!/database/init/03-create-member-outbox.sql
+!/database/init/04-create-order-grant-outbox.sql
+!/database/init/05-create-notification-delivery.sql
 /docs/*
 !/docs/perf-log.md
+!/docs/payment-grant-rollback.md
+!/docs/frontend_tasks/
+/docs/frontend_tasks/*
+!/docs/frontend_tasks/*.md
 # 설계 문서(spec)는 추적한다. /docs/* 가 디렉터리째 막고 있어서 하위 파일만
 # 되살릴 수 없다 - 상위 디렉터리를 먼저 열어줘야 한다.
 !/docs/superpowers/

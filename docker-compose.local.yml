@@ -1,34 +1,10 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: comatching-mysql
-    ports:
-      - "3307:3306"          # application.yml 이 3307 을 바라봄
-    environment:
-      MYSQL_ROOT_PASSWORD: "comatching12!@"
-      TZ: Asia/Seoul
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      # 부하 테스트용. 기본 128MB 로는 10만 행 + 인덱스가 안 들어가서
-      # 쿼리 비용이 아니라 디스크 I/O 를 측정하게 되고, 회차마다 캐시
-      # 적중률이 달라져 재현성도 떨어진다.
-      - --innodb-buffer-pool-size=1G
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./database/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pcomatching12!@"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
+  # MySQL은 호스트 설치본(기본 127.0.0.1:3306)을 사용한다.
   redis:
     image: redis:7-alpine
     container_name: comatching-redis
     ports:
-      - "6379:6379"          # item/chat/notification 은 기본 포트 사용
-      - "6380:6379"          # user/matching/gateway 는 6380 을 바라봄
+      - "127.0.0.1:6380:6379" # local 프로파일은 모든 서비스가 6380 사용
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -39,7 +15,7 @@ services:
     image: mongo:7
     container_name: comatching-mongo
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -52,7 +28,7 @@ services:
     image: apache/kafka:3.9.0
     container_name: comatching-kafka
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -75,5 +51,4 @@ services:
       retries: 20
 
 volumes:
-  mysql-data:
   mongo-data:

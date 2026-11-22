@@ -10,6 +10,12 @@ import com.google.firebase.messaging.Message;
 public class FirebaseMessageSender {
 
 	public String send(Message message) throws FirebaseMessagingException {
-		return FirebaseMessaging.getInstance().send(message);
+		FirebaseMessaging messaging;
+		try {
+			messaging = FirebaseMessaging.getInstance();
+		} catch (IllegalStateException e) {
+			throw new FcmDltException("FCM 초기화 오류", e);
+		}
+		return messaging.send(message);
 	}
 }

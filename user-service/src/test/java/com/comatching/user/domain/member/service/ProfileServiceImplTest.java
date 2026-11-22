@@ -100,6 +100,8 @@ class ProfileServiceImplTest {
 
 			// then
 			assertThat(response).isNotNull();
+			then(eventPublisher).should().sendProfileUpdatedMatchingEvent(
+				argThat(event -> Long.valueOf(1L).equals(event.profileVersion())));
 			assertThat(response.isMatchable()).isTrue();
 			assertThat(response.tags()).hasSize(2);
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
@@ -365,13 +367,17 @@ class ProfileServiceImplTest {
 				null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			// 생성 이벤트가 버전 1로 기록된 프로필
+			profile.advanceMatchingProfileVersion();
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when
 			ProfileResponse response = profileService.updateProfile(memberId, request);
 
 			// then
+			then(eventPublisher).should().sendProfileUpdatedMatchingEvent(
+				argThat(event -> Long.valueOf(2L).equals(event.profileVersion())));
 			assertThat(response.tags()).hasSize(2);
 			assertThat(response.tags()).extracting(ProfileTagDto::tag)
 				.containsExactly("마른 체형", "근육질");
@@ -399,7 +405,7 @@ class ProfileServiceImplTest {
 				null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 
 			// when & then
 			assertThatThrownBy(() -> profileService.updateProfile(memberId, request))
@@ -417,7 +423,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -439,7 +445,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -461,7 +467,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -485,7 +491,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -509,7 +515,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -531,7 +537,7 @@ class ProfileServiceImplTest {
 				null, null, null, null, null, null, null, null
 			);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			given(profileImageProperties.baseUrl()).willReturn("https://img.com/defaults/profile/");
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -551,7 +557,7 @@ class ProfileServiceImplTest {
 			ProfileUpdateRequest request = new ProfileUpdateRequest();
 			request.setIntro("수정된 소개");
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when
@@ -572,7 +578,7 @@ class ProfileServiceImplTest {
 			request.setSocialType(null);
 			request.setSocialAccountId(null);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when
@@ -592,7 +598,7 @@ class ProfileServiceImplTest {
 			ProfileUpdateRequest request = new ProfileUpdateRequest();
 			request.setIsMatchable(false);
 
-			given(profileRepository.findByMemberId(memberId)).willReturn(Optional.of(profile));
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when

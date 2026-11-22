@@ -8,50 +8,49 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.kafka.annotation.KafkaListener;
 
 import com.comatching.common.dto.event.chat.ChatMessageEvent;
 import com.comatching.notification.domain.service.fcm.FCMService;
+import com.comatching.notification.domain.delivery.NotificationDeliveryService;
+import com.comatching.notification.domain.service.fcm.FcmDltException;
+import com.comatching.notification.infra.client.ChatPushEligibilityClient;
 
-@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
+@ExtendWith(MockitoExtension.class)
 class ChatEventConsumerTest {
 
 	@Mock
 	private FCMService fcmService;
+	@Mock private NotificationDeliveryService deliveries;
+	@Mock private ChatPushEligibilityClient eligibility;
 
 	@Test
-	@DisplayName("채팅 알림 consumer는 JSON listener factory를 사용한다")
-	void shouldUseJsonKafkaListenerFactory() throws NoSuchMethodException {
+	@DisplayName("채팅 알림 consumer는 기본 listener factory를 선택한다")
+	void shouldUseDefaultKafkaListenerFactory() throws NoSuchMethodException {
 		// when
 		KafkaListener listener = ChatEventConsumer.class
 			.getMethod("handleChatEvent", ChatMessageEvent.class)
 			.getAnnotation(KafkaListener.class);
 
 		// then
-		assertThat(listener.containerFactory()).isEqualTo("jsonKafkaListenerContainerFactory");
+		assertThat(listener.containerFactory()).isEmpty();
 	}
 
 	@Test
-	@DisplayName("채팅 알림 이벤트를 소비하고 FCM 발송을 위임한다")
-	void handleChatEvent_logsAndDelegates(CapturedOutput output) {
+	@DisplayName("메시지 ID 없는 구형 이벤트를 원장 선점 전에 DLT 대상으로 분류한다")
+	void handleChatEvent_parksLegacyRecord() {
 		// given
-		ChatEventConsumer consumer = new ChatEventConsumer(fcmService);
+		ChatEventConsumer consumer = new ChatEventConsumer(fcmService, deliveries, eligibility);
 		ChatMessageEvent event = new ChatMessageEvent(
 			2L,
 			"sender",
 			"room-1",
 			"hello",
 			"2026-05-18T00:00:00",
-			"CHAT"
+			"CHAT", null
 		);
 
-		// when
-		consumer.handleChatEvent(event);
-
-		// then
-		assertThat(output).contains("chat.notification.consume roomId=room-1 targetUserId=2 type=CHAT");
-		then(fcmService).should().sendNotification(event);
+		assertThatThrownBy(() -> consumer.handleChatEvent(event)).isInstanceOf(FcmDltException.class);
+		verifyNoInteractions(deliveries, eligibility, fcmService);
 	}
 }

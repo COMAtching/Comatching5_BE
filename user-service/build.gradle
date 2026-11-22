@@ -41,6 +41,7 @@ dependencies {
 	// Test
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
+	testImplementation 'org.testcontainers:mysql'
 
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'

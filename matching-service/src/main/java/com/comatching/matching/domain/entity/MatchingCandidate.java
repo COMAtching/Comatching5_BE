@@ -5,14 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.hibernate.annotations.BatchSize;
-
-import com.comatching.common.domain.enums.ContactFrequency;
-import com.comatching.common.domain.enums.Gender;
-import com.comatching.common.domain.enums.HobbyCategory;
-import com.comatching.common.domain.vo.KoreanAge;
-import com.comatching.matching.domain.vo.Mbti;
-
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -26,6 +18,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
+
+import com.comatching.common.domain.enums.ContactFrequency;
+import com.comatching.common.domain.enums.Gender;
+import com.comatching.common.domain.enums.HobbyCategory;
+import com.comatching.common.domain.vo.KoreanAge;
+import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
+import com.comatching.matching.domain.vo.Mbti;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,6 +53,10 @@ public class MatchingCandidate {
     private Long memberId;
 
     private Long profileId;
+
+    @ColumnDefault("0")
+    @Column(name = "last_profile_version", nullable = false)
+    private long lastProfileVersion;
 
     @Enumerated(EnumType.STRING)
     private Gender gender;
@@ -91,6 +98,20 @@ public class MatchingCandidate {
     @Column(name = "random_key", nullable = false)
     private int randomKey;
 
+    public void applyCurrentProfile(ProfileUpdatedMatchingEvent profile) {
+        // 버전 0은 전환 전에 생성된 행이다. 회원 서비스가 확인한 현재 값으로 초기화한다.
+        if (lastProfileVersion != 0 && profile.profileVersion() <= lastProfileVersion) return;
+        syncProfile(profile.profileId(), profile.gender(), profile.mbti(), profile.major(),
+                profile.contactFrequency(), profile.hobbyCategories(), profile.birthDate(), profile.isMatchable());
+        lastProfileVersion = profile.profileVersion();
+    }
+
+    public static MatchingCandidate fromProfile(ProfileUpdatedMatchingEvent profile) {
+        MatchingCandidate candidate = newCandidate(profile.memberId());
+        candidate.applyCurrentProfile(profile);
+        return candidate;
+    }
+
     public void syncProfile(
             Long profileId, Gender gender, String mbti, String major, ContactFrequency contactFrequency,
             List<HobbyCategory> hobbyCategories, LocalDate birthDate, Boolean isMatchable) {
@@ -124,10 +145,15 @@ public class MatchingCandidate {
 
     public static MatchingCandidate create(Long memberId, Long profileId, Gender gender, String mbti, String major,
                                            ContactFrequency contactFrequency, List<HobbyCategory> hobbyCategories, LocalDate birthDate, boolean isMatchable) {
+        MatchingCandidate candidate = newCandidate(memberId);
+        candidate.syncProfile(profileId, gender, mbti, major, contactFrequency, hobbyCategories, birthDate, isMatchable);
+        return candidate;
+    }
+
+    private static MatchingCandidate newCandidate(Long memberId) {
         MatchingCandidate candidate = new MatchingCandidate();
         candidate.memberId = memberId;
         candidate.randomKey = ThreadLocalRandom.current().nextInt(RANDOM_KEY_MAX);
-        candidate.syncProfile(profileId, gender, mbti, major, contactFrequency, hobbyCategories, birthDate, isMatchable);
         return candidate;
     }
 

@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.ProfileTagItem;
+import com.comatching.common.dto.event.matching.MatchingProfileSnapshot;
 import com.comatching.common.dto.event.matching.ProfileUpdatedMatchingEvent;
 import com.comatching.common.dto.member.HobbyDto;
 import com.comatching.common.dto.member.ProfileCreateRequest;
@@ -136,7 +137,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 	@Override
 	public ProfileResponse updateProfile(Long memberId, ProfileUpdateRequest request) {
-		Profile profile = profileRepository.findByMemberId(memberId)
+		Profile profile = profileRepository.findForUpdateByMemberId(memberId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.PROFILE_NOT_EXISTS));
 
 		String normalizedNickname = normalizeNicknameForUpdate(request.nickname(), profile.getNickname(), memberId);
@@ -193,10 +194,35 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		return ProfileImageInput.empty();
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public MatchingProfileSnapshot getMatchingSnapshot(Long memberId) {
+		var member = memberRepository.findMatchingSnapshotById(memberId);
+		if (member.isEmpty()) {
+			return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.NO_ACTIVE_PROFILE, null, null);
+		}
+		Member current = member.get();
+		if (current.getStatus() == MemberStatus.WITHDRAWN) {
+			return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.WITHDRAWN,
+				null, current.getDeletedAt());
+		}
+		if (current.getStatus() != MemberStatus.ACTIVE || current.getProfile() == null) {
+			return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.NO_ACTIVE_PROFILE, null, null);
+		}
+		return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.ACTIVE,
+			matchingProfile(current.getProfile()), null);
+	}
+
 	private void publishMatchingEvent(Profile profile) {
-		ProfileUpdatedMatchingEvent event = ProfileUpdatedMatchingEvent.builder()
+		profile.advanceMatchingProfileVersion();
+		eventPublisher.sendProfileUpdatedMatchingEvent(matchingProfile(profile));
+	}
+
+	private ProfileUpdatedMatchingEvent matchingProfile(Profile profile) {
+		return ProfileUpdatedMatchingEvent.builder()
 			.memberId(profile.getMember().getId())
 			.profileId(profile.getId())
+			.profileVersion(profile.getProfileVersion())
 			.gender(profile.getGender())
 			.mbti(profile.getMbti())
 			.major(profile.getMajor())
@@ -205,8 +231,6 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.birthDate(profile.getBirthDate())
 			.isMatchable(profile.isMatchable())
 			.build();
-
-		eventPublisher.sendProfileUpdatedMatchingEvent(event);
 	}
 
 	private Profile saveProfile(ProfileCreateRequest request, Member member) {

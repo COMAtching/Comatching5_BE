@@ -2,10 +2,13 @@ package com.comatching.user.domain.member.service;
 
 import java.util.List;
 
+import com.comatching.common.dto.event.matching.MatchingProfileSnapshot;
 import com.comatching.common.dto.member.ProfileResponse;
 import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 
 public interface ProfileManageService {
+
+	MatchingProfileSnapshot getMatchingSnapshot(Long memberId);
 
 	ProfileResponse getProfile(Long memberId);
 	boolean isNicknameAvailable(String nickname);

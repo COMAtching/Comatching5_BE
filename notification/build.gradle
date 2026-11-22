@@ -14,8 +14,18 @@ dependencies {
     }
 
     implementation 'com.google.firebase:firebase-admin:9.2.0'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    testImplementation 'org.testcontainers:mysql'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // FCM 토큰 삭제는 실제 Redis Lua, 재시도·DLT는 테스트용 Kafka로 검증한다.
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('processTestResources') {
+    from(rootProject.file('database/init/05-create-notification-delivery.sql'))
 }

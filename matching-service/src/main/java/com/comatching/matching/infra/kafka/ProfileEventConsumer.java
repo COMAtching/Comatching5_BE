@@ -1,5 +1,6 @@
 package com.comatching.matching.infra.kafka;
 
+import com.comatching.common.config.kafka.KafkaEventRoute;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,15 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ProfileEventConsumer {
 
-	private final CandidateService candidateService;
+    private final CandidateService candidateService;
 
-	@KafkaListener(topics = "profile-updates", groupId = "matching-service-group",
-		concurrency = KafkaTopicConfig.CANDIDATE_LISTENER_CONCURRENCY)
-	public void consumeProfileUpdate(ProfileUpdatedMatchingEvent event) {
+    @KafkaListener(
+            topics = {"profile-updates", KafkaEventRoute.ReplayTopics.CANDIDATE_PROFILE},
+            groupId = "${spring.kafka.consumer.group-id}",
+            concurrency = KafkaTopicConfig.CANDIDATE_LISTENER_CONCURRENCY
+    )
+    public void consumeProfileUpdate(ProfileUpdatedMatchingEvent event) {
 
-		candidateService.upsertCandidate(event);
-	}
+        candidateService.upsertCandidate(event);
+    }
 }

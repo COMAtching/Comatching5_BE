@@ -58,9 +58,6 @@ public class KafkaTopicConfig {
 	 * earliest 로 막은 신규 파티션 배정 지연(최대 5분)과 차단 재시도의
 	 * head-of-line 지연도 이 창 안에 들어와야 한다. 밤새 장애를 아침에 발견하는
 	 * 최악 시나리오를 덮는 하한이 1일이다.
-	 *
-	 * 탈퇴 tombstone TTL(matching.tombstone.retention-days)은 이 값의 2배와
-	 * 맞물려 있다 — retention 을 바꾸면 그쪽도 같이 바꿔야 한다.
 	 */
 	private static final long RETENTION_MS = Duration.ofDays(1).toMillis();
 

@@ -1,0 +1,27 @@
+# 로컬 환경: 노트북 MySQL과 localhost 서비스. SPRING_PROFILES_ACTIVE=local
+member-service:
+  url: http://localhost:9002
+
+user-service:
+  url: http://localhost:9000
+
+spring:
+  datasource:
+    url: jdbc:mysql://${LOCAL_MYSQL_HOST:127.0.0.1}:${LOCAL_MYSQL_PORT:3306}/comatching_item?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${LOCAL_MYSQL_USERNAME:root}
+    password: ${LOCAL_MYSQL_PASSWORD:}
+  jpa:
+    show-sql: false
+  # 로컬 Redis/Kafka/JPA 설정 (common-module 소유)
+  config:
+    import: classpath:local-infrastructure.yml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      # 상태 상세 노출 여부는 실행 환경별로 지정한다.
+      show-details: always

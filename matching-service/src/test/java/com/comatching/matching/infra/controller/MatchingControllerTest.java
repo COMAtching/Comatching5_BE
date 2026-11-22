@@ -34,7 +34,7 @@ import com.comatching.matching.domain.service.MatchingHistoryService;
 import com.comatching.matching.domain.service.MatchingServiceImpl;
 import com.comatching.matching.infra.client.ItemClient;
 import com.comatching.matching.infra.client.MemberClient;
-import com.comatching.matching.infra.kafka.MatchingEventProducer;
+import com.comatching.matching.domain.outbox.MatchingOutboxService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +46,7 @@ class MatchingControllerTest {
 	@Mock private MatchingHistoryRepository historyRepository;
 	@Mock private MemberClient memberClient;
 	@Mock private ItemClient itemClient;
-	@Mock private MatchingEventProducer matchingEventProducer;
+	@Mock private MatchingOutboxService matchingOutboxService;
 	@Mock private MatchingItemPolicy matchingItemPolicy;
 	@Mock private MatchingProcessor matchingProcessor;
 	@Mock private MatchingHistoryService matchingHistoryService;
@@ -57,7 +57,7 @@ class MatchingControllerTest {
 			historyRepository,
 			memberClient,
 			itemClient,
-			matchingEventProducer,
+			matchingOutboxService,
 			matchingItemPolicy,
 			matchingProcessor
 		);
@@ -108,6 +108,6 @@ class MatchingControllerTest {
 			.andExpect(jsonPath("$.code").value("MATCH-001"));
 
 		then(historyRepository).shouldHaveNoInteractions();
-		then(matchingEventProducer).shouldHaveNoInteractions();
+		then(matchingOutboxService).shouldHaveNoInteractions();
 	}
 }

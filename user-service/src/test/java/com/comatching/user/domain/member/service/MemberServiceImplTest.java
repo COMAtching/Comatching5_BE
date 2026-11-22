@@ -42,6 +42,16 @@ class MemberServiceImplTest {
 	private ProfileImageProperties profileImageProperties;
 
 	@Test
+	void notificationEmailIsAvailableOnlyWhileTheRecipientExists() {
+		Member member = Member.builder().email("recipient@example.invalid").status(MemberStatus.ACTIVE).build();
+		given(memberRepository.findById(100L)).willReturn(Optional.of(member));
+		assertThat(memberService.findNotificationEmail(100L)).contains("recipient@example.invalid");
+		member.withdraw();
+		assertThat(memberService.findNotificationEmail(100L)).isEmpty();
+		assertThat(memberService.findNotificationEmail(101L)).isEmpty();
+	}
+
+	@Test
 	@DisplayName("활성 사용자 수를 조회한다")
 	void shouldReturnActiveUserCount() {
 		// given

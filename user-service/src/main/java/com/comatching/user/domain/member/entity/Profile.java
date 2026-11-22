@@ -1,14 +1,12 @@
 package com.comatching.user.domain.member.entity;
 
-import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import jakarta.persistence.*;
+
+import org.hibernate.annotations.ColumnDefault;
 
 import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
@@ -16,6 +14,11 @@ import com.comatching.common.domain.enums.HobbyCategory;
 import com.comatching.common.domain.enums.SocialAccountType;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.global.exception.UserErrorCode;
+
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
@@ -27,6 +30,10 @@ public class Profile {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "profile_id")
 	private Long id;
+
+	@ColumnDefault("0")
+	@Column(name = "profile_version", nullable = false)
+	private long profileVersion;
 
 	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "member_id", nullable = false, unique = true)
@@ -105,6 +112,10 @@ public class Profile {
 			addHobbies(hobbies);
 		if (tags != null)
 			addTags(tags);
+	}
+
+	public void advanceMatchingProfileVersion() {
+		profileVersion++;
 	}
 
 	public void clearProfileData() {

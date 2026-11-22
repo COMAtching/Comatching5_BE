@@ -3,10 +3,10 @@
 # Comatching5 로컬 실행 스크립트
 #   ./run-local.sh          -> 인프라 + 전체 서비스 기동
 #   ./run-local.sh --skip-build   -> 빌드 생략하고 기동
-#   ./run-local.sh --infra-only   -> 인프라(도커)만 기동
+#   ./run-local.sh --infra-only   -> 로컬 MySQL 확인/DB 생성 + Docker 인프라 기동
 #   ./run-local.sh --with-monitoring -> Prometheus/Grafana 까지 기동
 #   ./run-local.sh --perf-s1  -> 부하 테스트 S1 최소 구성만 기동
-#                                (mysql + redis + gateway + user-service)
+#                                (호스트 MySQL + Docker Redis + gateway + user-service)
 #
 # --perf-s1 를 왜 만들었나
 #   이 맥은 메모리 8GB 다. 1회차 부하 테스트에서 서비스 6개 + 컨테이너 7개
@@ -18,7 +18,7 @@
 #   denylist 조회에 필요해서 남긴다.
 # ============================================================
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 ROOT="$(pwd)"
 LOG_DIR="$ROOT/logs"
@@ -38,26 +38,75 @@ for arg in "$@"; do
   esac
 done
 
-# ---------- 1. 환경변수 로드 ----------
-if [ ! -f .env ]; then
-  echo "❌ .env 파일이 없습니다."
+# ---------- 1. 로컬 환경변수 / JDK ----------
+if [ ! -f .env.local ]; then
+  echo "❌ .env.local 파일이 없습니다. .env.local.example을 복사하고 로컬 키를 채우세요."
   exit 1
 fi
 set -a
 # shellcheck disable=SC1091
-source .env
+source .env.local
 set +a
-echo "✅ .env 로드 완료"
+if [ "${SPRING_PROFILES_ACTIVE:-}" != local ]; then
+  echo "❌ run-local.sh는 로컬 인프라 전용입니다. .env.local에 SPRING_PROFILES_ACTIVE=local을 설정하세요."
+  echo "   AWS 실행은 .env.prod를 읽는 Docker Compose 또는 별도 IDE 실행 구성을 사용하세요."
+  exit 1
+fi
+if [ -z "${JWT_SECRET:-}" ] || [ -z "${INTERNAL_SERVICE_TOKEN:-}" ]; then
+  echo "❌ .env.local의 JWT_SECRET / INTERNAL_SERVICE_TOKEN을 로컬 전용 값으로 채우세요."
+  exit 1
+fi
+if [ "$(uname -s)" = Darwin ]; then
+  JAVA_HOME=$(/usr/libexec/java_home -v 17)
+  export JAVA_HOME
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+if ! java -version 2>&1 | grep -q 'version "17\.'; then
+  echo "❌ JDK 17이 필요합니다. JAVA_HOME을 확인하세요."
+  exit 1
+fi
+
+# MySQL은 Docker로 만들지 않는다. 노트북 설치본에 같은 설정으로 접속한다.
+export LOCAL_MYSQL_HOST="${LOCAL_MYSQL_HOST:-127.0.0.1}"
+export LOCAL_MYSQL_PORT="${LOCAL_MYSQL_PORT:-3306}"
+export LOCAL_MYSQL_USERNAME="${LOCAL_MYSQL_USERNAME:-root}"
+export LOCAL_MYSQL_PASSWORD="${LOCAL_MYSQL_PASSWORD:-}"
+local_mysql() {
+  MYSQL_PWD="$LOCAL_MYSQL_PASSWORD" mysql --no-defaults --protocol=TCP \
+    --host="$LOCAL_MYSQL_HOST" --port="$LOCAL_MYSQL_PORT" \
+    --user="$LOCAL_MYSQL_USERNAME" --connect-timeout=5 "$@"
+}
+if ! command -v mysql >/dev/null 2>&1; then
+  echo "❌ mysql 클라이언트가 없습니다. 설치된 MySQL의 bin 경로를 PATH에 추가하세요."
+  exit 1
+fi
+if ! local_mysql --batch --skip-column-names -e 'SELECT 1' >/dev/null; then
+  echo "❌ 로컬 MySQL 연결 실패: $LOCAL_MYSQL_HOST:$LOCAL_MYSQL_PORT"
+  echo "   MySQL을 실행하고 .env.local의 LOCAL_MYSQL_* 설정을 확인하세요."
+  echo "   Homebrew 설치본: brew services start mysql"
+  exit 1
+fi
+# init에는 반복 실행 가능한 생성 SQL만 둔다. 기존 스키마 변경은 별도 migration으로 관리한다.
+for init_sql in database/init/*.sql; do
+  local_mysql < "$init_sql"
+done
+echo "✅ 호스트 MySQL 준비 완료 ($LOCAL_MYSQL_HOST:$LOCAL_MYSQL_PORT)"
+
+if ! docker info >/dev/null 2>&1; then
+  echo "❌ Docker 엔진에 연결할 수 없습니다. Docker Desktop을 실행하세요."
+  exit 1
+fi
+echo "✅ .env.local / JDK 17 준비 완료 (Spring $SPRING_PROFILES_ACTIVE 프로파일)"
 
 # ---------- 2. 인프라 기동 ----------
 if [ "$PERF_S1" = true ]; then
-  echo "🐳 [perf-s1] 인프라 최소 기동 (mysql/redis)..."
-  docker compose -f docker-compose.local.yml up -d mysql redis
+  echo "🐳 [perf-s1] Docker Redis 기동 (MySQL은 호스트 설치본 사용)..."
+  docker compose -f docker-compose.local.yml up -d redis
   # 이미 떠 있으면 내린다. down 이 아니라 stop 이라 데이터는 남는다.
   echo "🛑 [perf-s1] kafka/mongo 정지 (S1 경로에 없음, 메모리 약 1.2GB 회수)"
   docker compose -f docker-compose.local.yml stop kafka mongo 2>/dev/null || true
 else
-  echo "🐳 인프라 컨테이너 기동 중 (mysql/redis/mongo/kafka)..."
+  echo "🐳 인프라 컨테이너 기동 중 (redis/mongo/kafka)..."
   docker compose -f docker-compose.local.yml up -d
 fi
 
@@ -72,6 +121,7 @@ for i in $(seq 1 60); do
   if [ "$i" -eq 60 ]; then
     echo "⚠️  일부 컨테이너가 healthy 상태가 아닙니다. 아래 상태를 확인하세요."
     docker compose -f docker-compose.local.yml ps
+    exit 1
   fi
 done
 
@@ -120,33 +170,35 @@ else
   )
 fi
 
-# 이미 떠 있는 서비스를 먼저 내린다.
-#
-# 왜 필요한가: 이게 없으면 새 JVM 이 포트 바인딩에 실패해 죽는데,
-# wait_for_port 는 "포트가 열려 있다"만 확인하므로 옛 프로세스를 보고
-# "기동 완료"라고 보고한다. 그런데 Hibernate 의 ddl-auto: create 는
-# 포트 바인딩보다 먼저 돌아서 스키마를 이미 드롭·재생성한 뒤다.
-# 결과: 시드 데이터만 사라지고 옛 코드가 계속 돈다. 실제로 겪었다.
+# 이 프로젝트가 기록한 PID만 종료한다. 다른 앱이 포트를 쓰면 중단한다.
 stop_existing() {
-  local found=false pids
+  local pid command_line
   for entry in "${SERVICES[@]}"; do
-    IFS=':' read -r name _ port <<< "$entry"
-    pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
-    if [ -n "$pids" ]; then
-      echo "🛑 포트 $port 사용 중이던 프로세스 종료 ($name): $(echo $pids | tr '\n' ' ')"
-      kill $pids 2>/dev/null || true
-      found=true
+    IFS=':' read -r name module port <<< "$entry"
+    pid=$(cat "$PID_DIR/$name.pid" 2>/dev/null || true)
+    if [ -n "$pid" ]; then
+      command_line=$(ps -p "$pid" -o args= 2>/dev/null || true)
+      case "$command_line" in
+        *"$ROOT/$module/build/libs/"*)
+          echo "🛑 기존 $name 종료 (pid $pid)"
+          kill "$pid" 2>/dev/null || true
+          for i in $(seq 1 20); do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then
+            echo "❌ $name 종료가 지연됩니다. logs/$name.log를 확인하세요."
+            return 1
+          fi
+          ;;
+      esac
+      rm -f "$PID_DIR/$name.pid"
+    fi
+    if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "❌ 포트 $port를 다른 프로세스가 사용 중입니다. 자동으로 종료하지 않습니다."
+      return 1
     fi
   done
-  if [ "$found" = true ]; then
-    sleep 3
-    for entry in "${SERVICES[@]}"; do
-      IFS=':' read -r _ _ port <<< "$entry"
-      pids=$(lsof -ti tcp:"$port" 2>/dev/null || true)
-      [ -n "$pids" ] && kill -9 $pids 2>/dev/null || true
-    done
-    sleep 1
-  fi
 }
 
 start_service() {
@@ -183,7 +235,7 @@ wait_for_port() {
     fi
     sleep 2
   done
-  echo "   ⚠️  $name 이 90초 안에 뜨지 않았습니다. logs/$name.log 확인"
+  echo "   ⚠️  $name 이 180초 안에 뜨지 않았습니다. logs/$name.log 확인"
   return 1
 }
 
@@ -199,10 +251,7 @@ done
 if [ ${#FAILED[@]} -gt 0 ]; then
   echo ""
   echo "❌ 기동 실패: ${FAILED[*]}"
-  echo "   이 상태로 부하 테스트를 돌리면 안 된다."
-  echo "   user-service 는 ddl-auto: create 라, 기동에 실패해도 스키마는 이미"
-  echo "   드롭·재생성된 뒤다. 즉 시드 데이터가 날아가 있다."
-  echo "   원인을 고치고 다시 띄운 뒤 tools/perf/seed/load_seed.sh 를 다시 실행하라."
+  echo "   logs/<service>.log에서 원인을 확인하세요. 로컬 스키마 설정은 update입니다."
   exit 1
 fi
 

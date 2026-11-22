@@ -18,14 +18,14 @@ import lombok.RequiredArgsConstructor;
  * DLT 알림을 받은 운영자가 원인을 고친 뒤, 해당 서비스에 직접 호출한다:
  *
  *   curl -X POST -H "X-Internal-Token: $TOKEN" \
- *     "http://<서비스>/api/internal/kafka/dlt/redrive?topic=profile-updates"
+ *     "http://<서비스>/api/internal/kafka/dlt/redrive?route=CANDIDATE_PROFILE"
  *
  * 자동 재적재를 두지 않는 이유: DLT 는 "재시도로 회복 안 된" 실패라 원인
  * 교정 없이 되돌리면 재시도-DLT-재적재 무한 순환이 된다. 사람이 고쳤다고
  * 판단한 시점에만 되돌리는 것이 맞다.
  */
 @RestController
-@ConditionalOnProperty(name = "comatching.kafka.dlt-topics")
+@ConditionalOnProperty(name = "comatching.kafka.dlt-routes")
 @RequestMapping("/api/internal/kafka/dlt")
 @RequiredArgsConstructor
 public class KafkaDltRedriveController {
@@ -33,7 +33,7 @@ public class KafkaDltRedriveController {
 	private final KafkaDltRedriveService redriveService;
 
 	@PostMapping("/redrive")
-	public ApiResponse<KafkaDltRedriveService.RedriveResult> redrive(@RequestParam("topic") String topic) {
-		return ApiResponse.ok(redriveService.redrive(topic));
+	public ApiResponse<KafkaDltRedriveService.RedriveResult> redrive(@RequestParam("route") KafkaEventRoute route) {
+		return ApiResponse.ok(redriveService.redrive(route));
 	}
 }

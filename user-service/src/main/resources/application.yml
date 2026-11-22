@@ -1,3 +1,4 @@
+# 공통 설정만 정의한다. 프로파일은 env의 SPRING_PROFILES_ACTIVE로 선택한다.
 server:
   port: 9000
   servlet:
@@ -7,38 +8,28 @@ server:
         name: JSESSIONID
         path: /
         http-only: true
-        secure: false
-
-client:
-  url: ${CLIENT_URL:http://localhost:3000}
-
-item-service:
-  url: ${ITEM_SERVICE_URL:http://localhost:9006}
 
 auth:
   cookie:
-    secure: ${AUTH_COOKIE_SECURE:false}
-    domain: ${AUTH_COOKIE_DOMAIN:}
     same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
 
 comatching:
+  outbox:
+    cleanup-target: MEMBER
+    cleanup-cron: "0 0 3 * * *"  # Asia/Seoul
+    poll-interval-ms: 1000
   profile:
     default-images:
-      base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:http://localhost:8080/api/public/profile-images/}
       filenames:
-        - "default.png"
-        - "animal_dog_male1.png"
-        - "animal_cat_female1.png"
-        - "animal_dinosaur1.png"
+        - default.png
+        - animal_dog_male1.png
+        - animal_cat_female1.png
+        - animal_dinosaur1.png
 
 spring:
   application:
     name: user-service
-
   datasource:
-    url: jdbc:mysql://localhost:3307/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${MYSQL_ROOT_PASSWORD:comatching12!@}
     hikari:
       pool-name: HikariPool-${spring.application.name}
       maximum-pool-size: 10
@@ -46,33 +37,30 @@ spring:
       connection-timeout: 30000
       max-lifetime: 1800000
       validation-timeout: 5000
-
   jpa:
-    hibernate:
-      ddl-auto: create
-    show-sql: true
     properties:
       default_batch_fetch_size: 100
-
   data:
-    redis:
-      host: localhost
-      port: 6380
     web:
       pageable:
         max-page-size: 10000
-
   kafka:
-    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: com.comatching.common.config.kafka.EventValueSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
     consumer:
       group-id: user-group
       auto-offset-reset: earliest
+      enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
+    listener:
+      type: single
+      ack-mode: record
+      concurrency: 1
   mail:
     host: smtp.gmail.com
     port: 587
@@ -84,7 +72,6 @@ spring:
           auth: true
           starttls:
             enable: true
-
   cloud:
     aws:
       credentials:
@@ -94,7 +81,6 @@ spring:
         static: ap-northeast-2
       s3:
         bucket: ${AWS_S3_BUCKET}
-
   security:
     oauth2:
       client:
@@ -103,12 +89,10 @@ spring:
             client-name: kakao
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: ${CLIENT_URL:http://localhost:8080}/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
             scope:
               - openid
-
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
@@ -135,13 +119,6 @@ kakao:
     unlink-target-id-type: user_id
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    health:
-      show-details: always
   metrics:
     tags:
       application: ${spring.application.name}

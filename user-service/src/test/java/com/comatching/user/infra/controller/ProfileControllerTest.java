@@ -3,6 +3,7 @@ package com.comatching.user.infra.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +57,20 @@ class ProfileControllerTest {
 		mockMvc = MockMvcBuilders.standaloneSetup(
 			new ProfileController(profileService, profileService, enumLookupService)
 		).build();
+	}
+
+	@Test
+	void matchingSnapshotIdentifiesWithdrawalWithoutExposingProfileFields() throws Exception {
+		Member member = Member.builder().email("withdrawn@example.invalid").build();
+		ReflectionTestUtils.setField(member, "id", 42L);
+		member.withdraw();
+		given(memberRepository.findMatchingSnapshotById(42L)).willReturn(Optional.of(member));
+		mockMvc.perform(get("/api/internal/users/42/matching-profile"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.memberId").value(42))
+			.andExpect(jsonPath("$.state").value("WITHDRAWN"))
+			.andExpect(jsonPath("$.withdrawnAt").exists())
+			.andExpect(jsonPath("$.profile").doesNotExist());
 	}
 
 	@Test

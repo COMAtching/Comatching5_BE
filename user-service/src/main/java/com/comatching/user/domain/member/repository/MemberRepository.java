@@ -18,6 +18,15 @@ import com.comatching.user.domain.member.entity.Member;
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
+	// 복구 판단에 쓰는 상태와 프로필(취미 포함)을 같은 SELECT의 스냅샷으로 읽는다.
+	@Query("""
+		select distinct m from Member m
+		left join fetch m.profile p
+		left join fetch p.hobbies
+		where m.id = :memberId
+		""")
+	Optional<Member> findMatchingSnapshotById(@Param("memberId") Long memberId);
+
 	Optional<Member> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 
 	Optional<Member> findByEmail(String email);

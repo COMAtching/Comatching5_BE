@@ -1,5 +1,7 @@
 package com.comatching.user.domain.member.service;
 
+import java.util.Optional;
+
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +59,14 @@ public class MemberServiceImpl implements MemberService {
 
 		return memberRepository.findById(memberId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+	}
+
+	@Override
+	public Optional<String> findNotificationEmail(Long memberId) {
+		return memberRepository.findById(memberId)
+				.filter(member -> member.getStatus() != MemberStatus.WITHDRAWN)
+				.map(Member::getEmail)
+				.filter(StringUtils::hasText);
 	}
 
 	@Override

@@ -1,7 +1,4 @@
-# AWS 환경 설정 - Docker 컨테이너 간 통신용
-server:
-  port: 9006
-
+# AWS 환경: RDS와 Docker 서비스 주소. SPRING_PROFILES_ACTIVE=aws
 member-service:
   url: http://user-service:9000
 
@@ -9,37 +6,15 @@ user-service:
   url: http://user-service:9000
 
 spring:
-  application:
-    name: item-service
-
   datasource:
     url: jdbc:mysql://${RDS_ENDPOINT}:3306/comatching_item?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=true&requireSSL=true
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
-    hikari:
-      pool-name: HikariPool-${spring.application.name}
-      maximum-pool-size: 10
-      minimum-idle: 5
-      connection-timeout: 30000
-      max-lifetime: 1800000
-      validation-timeout: 5000
-
   jpa:
     hibernate:
-      # 첫 배포는 JPA_DDL_AUTO=create 로 스키마를 만들고, 그 뒤에는 값을 빼서
-      # validate 로 돌린다. update 를 상시로 두면 엔티티를 고칠 때마다 앱이
-      # 운영 스키마를 말없이 바꾸고, 그 변경은 되돌릴 수단이 없다.
+      # 운영은 기본 validate. create/create-drop은 기존 스키마를 삭제하므로 일반 기동에 사용하지 않는다.
       ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: false
-
-  data:
-    redis:
-      host: ${REDIS_ENDPOINT}
-      port: 6379
-      ssl:
-        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
-        enabled: ${REDIS_SSL_ENABLED:true}
-
   kafka:
     # 3노드 클러스터. 하나만 적어도 나머지를 찾아가지만, 그 하나가 죽어 있으면
     # 기동 시 접속 자체를 못 하므로 셋 다 적는다.
@@ -50,56 +25,13 @@ spring:
       # 배포가 되고 발행·구독이 런타임에 조용히 실패한다. true 면 그 자리에서
       # 컨텍스트 로딩이 깨져 배포 시점에 드러난다.
       fail-fast: true
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-    consumer:
-      group-id: item-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
-  cloud:
-    aws:
-      credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
-      region:
-        static: ap-northeast-2
-      s3:
-        bucket: ${AWS_S3_BUCKET}
-
-jwt:
-  secret: ${JWT_SECRET}
-  access-token:
-    expiration: ${ACCESS_TOKEN_EXP:86400000}
-  refresh-token:
-    expiration: ${REFRESH_TOKEN_EXP:604800000}
-
-internal:
-  service-token: ${INTERNAL_SERVICE_TOKEN:}
-
-comatching:
-  order:
-    expire-minutes: ${ORDER_EXPIRE_MINUTES:43200}
-  pre-signup:
-    matching-ticket-grant:
-      # 사전가입 이벤트는 종료됐다. 기본값을 꺼 두고, 다시 열 때만 env 로 켠다.
-      # 가입 이벤트(member-signup) 자체는 환영 메일도 쓰므로 발행 쪽은 건드리지 않는다.
-      # 끈 상태에서도 리스너는 메시지를 읽고 넘긴다(오프셋 진행) - 나중에 켜도
-      # 꺼져 있던 동안의 가입자에게 소급 지급하지 않는다.
-      enabled: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_ENABLED:false}
-      quantity: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_QUANTITY:1}
-      campaign-code: ${PRE_SIGNUP_MATCHING_TICKET_GRANT_CAMPAIGN_CODE:PRE_SIGNUP_2026}
-  kafka:
-    # 코드가 선언하는 토픽(NewTopic)의 복제 수. 운영은 3노드라 3.
-    # 로컬(브로커 1대)은 기본값 1을 쓴다.
-    replication-factor: 3
-    # 재시도를 다 쓴 메시지를 옮길 DLT 토픽(<토픽>.DLT)을 기동 시 만든다.
-    # 이 서비스가 소비하는 토픽만 적는다.
-    dlt-topics: member-signup
-    # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
-    dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
+  data:
+    redis:
+      host: ${REDIS_ENDPOINT}
+      port: 6379
+      ssl:
+        # ElastiCache(전송 중 암호화 켬)면 true, EC2 컨테이너 Redis 면 false.
+        enabled: ${REDIS_SSL_ENABLED:true}
 
 management:
   endpoints:
@@ -110,6 +42,11 @@ management:
         include: health,prometheus
   endpoint:
     health:
-      # base 프로파일의 always 를 여기서 덮는다. 상속되면 구성요소 상태가
-      # 인증 없이 그대로 드러난다.
+      # 상태 상세 노출 여부는 실행 환경별로 지정한다.
       show-details: never
+
+# 운영은 3노드 클러스터라 코드가 선언하는 토픽(NewTopic)과 DLT 의 복제 수를 3으로 둔다.
+# 로컬(브로커 1대)은 기본값 1을 쓴다. 나머지 comatching.kafka 값은 application.yml 에 있다.
+comatching:
+  kafka:
+    replication-factor: 3
