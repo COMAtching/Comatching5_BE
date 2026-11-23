@@ -2,6 +2,11 @@ package com.comatching.user.domain.member.service;
 
 import java.util.Optional;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.LockModeType;
+import org.springframework.transaction.annotation.Propagation;
+
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +19,7 @@ import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.user.domain.event.UserEventPublisher;
+import com.comatching.user.domain.auth.service.LoginSessionStore;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
 import com.comatching.user.global.config.CacheConfig;
@@ -30,6 +36,8 @@ public class MemberServiceImpl implements MemberService {
 	private static final String DEFAULT_PROFILE_IMAGE_FILENAME = "default.png";
 
 	private final MemberRepository memberRepository;
+	private final LoginSessionStore sessions;
+	private final EntityManager entityManager;
 	private final UserEventPublisher eventPublisher;
 	private final ProfileImageProperties profileImageProperties;
 
@@ -62,6 +70,19 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public Member getMemberByIdForUpdate(Long memberId) {
+		try {
+			Member member = entityManager.getReference(Member.class, memberId);
+			// A login request may already have the pre-verification member in its persistence context.
+			entityManager.refresh(member, LockModeType.PESSIMISTIC_WRITE);
+			return member;
+		} catch (EntityNotFoundException e) {
+			throw new BusinessException(UserErrorCode.USER_NOT_EXIST);
+		}
+	}
+
+	@Override
 	public Optional<String> findNotificationEmail(Long memberId) {
 		return memberRepository.findById(memberId)
 				.filter(member -> member.getStatus() != MemberStatus.WITHDRAWN)
@@ -78,17 +99,18 @@ public class MemberServiceImpl implements MemberService {
 	@Override
 	@Transactional
 	public void updatePassword(String email, String encryptedPassword) {
-		Member member = memberRepository.findByEmail(email)
+		Member member = memberRepository.findByEmailForUpdate(email)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
 
+		sessions.endAll(member.getId());
 		member.changePassword(encryptedPassword);
 	}
 
 	@Override
 	@Transactional
 	public void withdrawMember(Long memberId) {
-		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_EXIST));
+		Member member = getMemberByIdForUpdate(memberId);
+		sessions.endAll(memberId);
 
 		String email = member.getEmail();
 		member.withdraw(resolveWithdrawnProfileImageUrl());
@@ -166,6 +188,7 @@ public class MemberServiceImpl implements MemberService {
 	private MemberLoginDto toLoginDto(Member member) {
 		return MemberLoginDto.builder()
 			.id(member.getId())
+			.authVersion(member.getAuthVersion())
 			.email(member.getEmail())
 			.password(member.getPassword())
 			.role(member.getRole().name())

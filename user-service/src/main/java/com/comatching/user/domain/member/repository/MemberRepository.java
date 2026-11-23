@@ -3,6 +3,9 @@ package com.comatching.user.domain.member.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,6 +33,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	Optional<Member> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 
 	Optional<Member> findByEmail(String email);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select m from Member m where m.email = :email")
+	Optional<Member> findByEmailForUpdate(@Param("email") String email);
 
 	boolean existsByEmail(String email);
 

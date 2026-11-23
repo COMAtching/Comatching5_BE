@@ -44,7 +44,7 @@ spring:
             - id: user-service-protected
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
+                - Path=/api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
               filters:
                 - AuthorizationHeaderFilter
             - id: admin-user-notice
@@ -56,7 +56,7 @@ spring:
             - id: user-service-public
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
             - id: user-service-swagger
               uri: http://user-service:9000
               predicates:

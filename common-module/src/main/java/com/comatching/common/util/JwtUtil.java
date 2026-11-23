@@ -7,117 +7,74 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.comatching.common.auth.LoginSession;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
-
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Component
 public class JwtUtil {
-
 	private final Key key;
 	private final long accessTokenValidity;
 	private final long refreshTokenValidity;
 
-	public JwtUtil(
-		@Value("${jwt.secret}") String secret,
+	public JwtUtil(@Value("${jwt.secret}") String secret,
 		@Value("${jwt.access-token.expiration}") long accessTokenValidity,
 		@Value("${jwt.refresh-token.expiration}") long refreshTokenValidity) {
-
-		byte[] keyBytes = Decoders.BASE64.decode(secret);
-		this.key = Keys.hmacShaKeyFor(keyBytes);
-
+		this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
 		this.accessTokenValidity = accessTokenValidity;
 		this.refreshTokenValidity = refreshTokenValidity;
 	}
 
-	// Access Token 생성
-	public String createAccessToken(Long memberId, String email, String role, String status, String nickname) {
-		MemberRole memberRole = MemberRole.valueOf(role);
-		MemberStatus memberStatus = MemberStatus.valueOf(status);
-		return createToken(memberId, email, memberRole, memberStatus, nickname, accessTokenValidity, true);
+	public String createAccessToken(LoginSession session, String email, MemberRole role, MemberStatus status, String nickname) {
+		return builder(session, "access", accessTokenValidity, UUID.randomUUID())
+			.claim("email", email).claim("role", role.name()).claim("status", status.name())
+			.claim("nickname", nickname).compact();
 	}
 
-	// Refresh Token 생성
-	public String createRefreshToken(Long memberId) {
-		return createToken(memberId, null, null, null, null, refreshTokenValidity, false);
+	public String createRefreshToken(LoginSession session, UUID tokenId) {
+		return builder(session, "refresh", refreshTokenValidity, tokenId).compact();
 	}
 
-	// 내부 토큰 생성 로직
-	private String createToken(
-		Long memberId,
-		String email,
-		MemberRole role,
-		MemberStatus status,
-		String nickname,
-		long validity,
-		boolean includeTokenId
-	) {
+	private JwtBuilder builder(LoginSession session, String use, long validity, UUID tokenId) {
 		Date now = new Date();
-		Date expiration = new Date(now.getTime() + validity);
-
-		var builder = Jwts.builder()
-			.setSubject(String.valueOf(memberId))
-			.setIssuedAt(now)
-			.setExpiration(expiration)
+		return Jwts.builder().setSubject(Long.toString(session.memberId())).setId(tokenId.toString())
+			.setIssuedAt(now).setExpiration(new Date(now.getTime() + validity))
+			.claim("token_use", use).claim("sid", session.id().toString()).claim("auth_version", session.authVersion())
 			.signWith(key, SignatureAlgorithm.HS256);
-
-		if (includeTokenId) {
-			builder.setId(UUID.randomUUID().toString());
-		}
-		if (email != null)
-			builder.claim("email", email);
-		if (role != null)
-			builder.claim("role", role);
-		if (status != null)
-			builder.claim("status", status);
-		if (nickname != null)
-			builder.claim("nickname", nickname);
-
-		return builder.compact();
 	}
 
-	// 토큰 파싱 (Claims 반환)
-	public Claims parseToken(String token) {
+	public record VerifiedToken(LoginSession session, Claims claims) {}
+
+	public VerifiedToken readAccess(String token) {
+		return verify(token, "access");
+	}
+
+	public VerifiedToken readRefresh(String token) {
+		return verify(token, "refresh");
+	}
+
+	private VerifiedToken verify(String token, String use) {
 		try {
-			return Jwts.parserBuilder()
-				.setSigningKey(key)
-				.build()
-				.parseClaimsJws(token)
-				.getBody();
-		} catch (ExpiredJwtException e) {
-			throw new BusinessException(GeneralErrorCode.UNAUTHORIZED, "토큰이 만료되었습니다.");
-		} catch (Exception e) {
-			throw new BusinessException(GeneralErrorCode.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+			Claims claims = Jwts.parserBuilder().setSigningKey(key).require("token_use", use).build()
+				.parseClaimsJws(token).getBody();
+			Long version = claims.get("auth_version", Long.class);
+			if (version == null || claims.getExpiration() == null || claims.getId() == null || claims.get("sid") == null) {
+				throw new IllegalArgumentException("Missing session claims");
+			}
+			LoginSession session = new LoginSession(Long.parseLong(claims.getSubject()), version,
+				UUID.fromString(claims.get("sid", String.class)));
+			return new VerifiedToken(session, claims);
+		} catch (JwtException | IllegalArgumentException e) {
+			throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
 		}
-	}
-
-	// 토큰 만료 여부 등 유효성 검증 (Gateway용)
-	public boolean validateToken(String token) {
-		try {
-			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-			return true;
-		} catch (Exception e) {
-			log.warn("Invalid JWT Token: {}", e.getMessage());
-			return false;
-		}
-	}
-
-	public long getRemainingValidityMillis(String token) {
-		Claims claims = parseToken(token);
-		Date expiration = claims.getExpiration();
-		if (expiration == null) {
-			return 0;
-		}
-		return Math.max(0, expiration.getTime() - System.currentTimeMillis());
 	}
 }

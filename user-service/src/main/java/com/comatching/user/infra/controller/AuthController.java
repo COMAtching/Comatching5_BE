@@ -1,5 +1,8 @@
 package com.comatching.user.infra.controller;
 
+import java.time.Duration;
+
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -53,19 +56,23 @@ public class AuthController {
 	private final AuthCookieFactory authCookieFactory;
 
 	@PostMapping("/signup")
-	public ResponseEntity<ApiResponse<Void>> signup(@RequestBody @Valid SignupRequest request) {
-		signupService.signup(request);
-		return ResponseEntity.ok(ApiResponse.ok());
+	public ResponseEntity<ApiResponse<Void>> signup(@RequestBody @Valid SignupRequest request,
+		@CookieValue(name = AuthCookieFactory.SIGNUP_PROOF, required = false) String proof) {
+		signupService.signup(request, proof);
+		return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,
+			authCookieFactory.signupProof("", Duration.ZERO).toString()).body(ApiResponse.ok());
 	}
 
 	@PostMapping("/signup/profile")
 	public ResponseEntity<ApiResponse<CompleteSignupResponse>> completeSignup(
 		@CurrentMember MemberInfo memberInfo,
 		@RequestBody ProfileCreateRequest request,
+		@CookieValue(name = "accessToken", required = false) String accessToken,
 		HttpServletResponse response
 	) {
-		CompleteSignupResponse result = signupService.completeSignup(memberInfo, request, response);
-		return ResponseEntity.ok(ApiResponse.ok(result));
+		var result = signupService.completeSignup(memberInfo, request, accessToken);
+		authCookieFactory.writeTokens(response, result.tokens());
+		return ResponseEntity.ok(ApiResponse.ok(result.body()));
 	}
 
 	@GetMapping("/signup/nickname/availability")
@@ -93,11 +100,7 @@ public class AuthController {
 
 		TokenResponse tokenResponse = authService.reissue(refreshToken);
 
-		ResponseCookie accessCookie = authCookieFactory.createAccessTokenCookie(tokenResponse.accessToken());
-		ResponseCookie refreshCookie = authCookieFactory.createRefreshTokenCookie(tokenResponse.refreshToken());
-
-		response.addHeader("Set-Cookie", accessCookie.toString());
-		response.addHeader("Set-Cookie", refreshCookie.toString());
+		authCookieFactory.writeTokens(response, tokenResponse);
 
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
@@ -146,10 +149,9 @@ public class AuthController {
 	@DeleteMapping("/withdraw")
 	public ResponseEntity<ApiResponse<Void>> withdraw(
 		@CurrentMember MemberInfo memberInfo,
-		@CookieValue(name = "accessToken", required = false) String accessToken,
 		HttpServletResponse response
 	) {
-		authService.withdraw(memberInfo.memberId(), accessToken);
+		authService.withdraw(memberInfo.memberId());
 
 		ResponseCookie accessCookie = authCookieFactory.createExpiredCookie("accessToken");
 		ResponseCookie refreshCookie = authCookieFactory.createExpiredCookie("refreshToken");

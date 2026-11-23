@@ -15,6 +15,8 @@ public interface MemberService {
 
 	Member getMemberById(Long memberId);
 
+	Member getMemberByIdForUpdate(Long memberId);
+
 	Optional<String> findNotificationEmail(Long memberId);
 
 	Member getMemberByEmail(String email);

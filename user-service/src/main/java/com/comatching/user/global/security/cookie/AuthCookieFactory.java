@@ -2,6 +2,9 @@ package com.comatching.user.global.security.cookie;
 
 import java.time.Duration;
 
+import com.comatching.user.domain.auth.dto.TokenResponse;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -9,6 +12,13 @@ import org.springframework.util.StringUtils;
 
 @Component
 public class AuthCookieFactory {
+
+	public static final String SIGNUP_PROOF = "signupProof";
+
+	public ResponseCookie signupProof(String proof, Duration lifetime) {
+		return ResponseCookie.from(SIGNUP_PROOF, proof).path("/api/auth/signup")
+			.httpOnly(true).secure(secure).sameSite(sameSite).maxAge(lifetime).build();
+	}
 
 	private static final String ACCESS_TOKEN_COOKIE_NAME = "accessToken";
 	private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
@@ -27,6 +37,11 @@ public class AuthCookieFactory {
 		this.secure = secure;
 		this.domain = domain;
 		this.sameSite = sameSite;
+	}
+
+	public void writeTokens(HttpServletResponse response, TokenResponse tokens) {
+		response.addHeader("Set-Cookie", createAccessTokenCookie(tokens.accessToken()).toString());
+		response.addHeader("Set-Cookie", createRefreshTokenCookie(tokens.refreshToken()).toString());
 	}
 
 	public ResponseCookie createAccessTokenCookie(String accessToken) {

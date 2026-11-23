@@ -1,6 +1,8 @@
 package com.comatching.user.infra.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import com.comatching.user.global.security.cookie.AuthCookieFactory;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class EmailController {
 
 	private final EmailService emailService;
+	private final AuthCookieFactory cookies;
 
 	@PostMapping("/send")
 	public ResponseEntity<ApiResponse<Void>> sendEmail(@RequestBody @Valid EmailRequest request) {
@@ -29,8 +32,9 @@ public class EmailController {
 
 	@PostMapping("/verify")
 	public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestBody @Valid EmailVerifyRequest request) {
-		emailService.verifyCode(request.email(), request.code());
-		return ResponseEntity.ok(ApiResponse.ok());
+		String proof = emailService.verifySignupCode(request.email(), request.code());
+		return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,
+			cookies.signupProof(proof, EmailService.SIGNUP_PROOF_TTL).toString()).body(ApiResponse.ok());
 	}
 
 

@@ -14,5 +14,5 @@ public interface AuthService {
 
 	void changePassword(Long memberId, ChangePasswordRequest request);
 
-	void withdraw(Long memberId, String accessToken);
+	void withdraw(Long memberId);
 }

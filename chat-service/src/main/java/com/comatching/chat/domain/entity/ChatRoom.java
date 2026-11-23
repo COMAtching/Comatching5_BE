@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Document(collection = "chat_rooms")
+@CompoundIndex(name = "chat_room_participants", def = "{'initiatorUserId': 1, 'targetUserId': 1}")
 public class ChatRoom {
 
 	@Id
@@ -68,6 +70,10 @@ public class ChatRoom {
 		} else if (memberId.equals(targetUserId)) {
 			this.targetLastReadAt = time;
 		}
+	}
+
+	public boolean isVisibleTo(Long memberId) {
+		return memberId.equals(initiatorUserId) || (memberId.equals(targetUserId) && status == ChatRoomStatus.ACTIVE);
 	}
 
 	public Long otherMemberId(Long memberId) {

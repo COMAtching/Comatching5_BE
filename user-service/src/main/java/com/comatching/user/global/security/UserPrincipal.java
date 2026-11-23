@@ -40,6 +40,10 @@ public class UserPrincipal implements UserDetails {
 		return memberDto.email();
 	}
 
+	public long getAuthVersion() {
+		return memberDto.authVersion();
+	}
+
 	public Long getId() {
 		return memberDto.id();
 	}

@@ -68,6 +68,7 @@ docker-compose.yml
 /docs/*
 !/docs/perf-log.md
 !/docs/payment-grant-rollback.md
+!/docs/AUTH_SESSION_ROLLOUT.md
 !/docs/frontend_tasks/
 /docs/frontend_tasks/*
 !/docs/frontend_tasks/*.md
