@@ -1,5 +1,8 @@
 package com.comatching.user.domain.member.service;
 
+import jakarta.persistence.EntityManager;
+import com.comatching.user.domain.auth.service.LoginSessionStore;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -55,6 +58,16 @@ class MemberServiceCacheTest {
 	@Configuration
 	@Import({CacheConfig.class, MemberServiceImpl.class})
 	static class TestConfig {
+
+		@Bean
+		LoginSessionStore sessions() {
+			return mock(LoginSessionStore.class);
+		}
+
+		@Bean
+		EntityManager entityManager() {
+			return mock(EntityManager.class);
+		}
 
 		@Bean
 		MemberRepository memberRepository() {

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.util.List;
 
+import org.junit.jupiter.api.Test;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -39,7 +41,7 @@ class GatewayRouteConfigurationTest {
 		var publicRoute = gateway.getRoutes().stream()
 			.filter(route -> route.getId().equals("user-service-public")).findFirst().orElseThrow();
 		assertThat(publicRoute.getPredicates()).anySatisfy(predicate ->
-			assertThat(predicate.getArgs().values()).contains("/api/auth/reissue"));
+			assertThat(predicate.getArgs().values()).contains("/api/auth/reissue", "/api/auth/logout"));
 		assertThat(publicRoute.getFilters()).noneMatch(filter -> filter.getName().equals("AuthorizationHeaderFilter"));
 
 		GlobalCorsProperties cors = binder
@@ -47,6 +49,19 @@ class GatewayRouteConfigurationTest {
 			.orElseThrow(() -> new IllegalStateException("CORS configuration missing"));
 		assertThat(cors.getCorsConfigurations()).containsKey("/**");
 		assertThat(cors.getCorsConfigurations().get("/**").getAllowedMethods()).contains("PATCH");
+	}
+
+	@Test
+	void localDocumentationRoutesAcceptOnlyDocumentationResources() throws Exception {
+		var gateway = load("application-local.yml").bind("spring.cloud.gateway.server.webflux",
+			Bindable.of(GatewayProperties.class)).orElseThrow(() -> new IllegalStateException("Gateway configuration missing"));
+		var docs = gateway.getRoutes().stream().filter(route -> route.getId().endsWith("-swagger")).toList();
+		assertThat(docs).hasSize(3);
+		for (var route : docs) {
+			assertThat(route.getPredicates().get(0).getArgs().values()).allMatch(path ->
+				path.endsWith("/v3/api-docs") || path.endsWith("/v3/api-docs/**")
+					|| path.endsWith("/swagger-ui.html") || path.endsWith("/swagger-ui/**"));
+		}
 	}
 
 	private Binder load(String resourceName) throws Exception {

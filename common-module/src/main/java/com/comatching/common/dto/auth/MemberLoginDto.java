@@ -13,6 +13,7 @@ public record MemberLoginDto(
 	String status,
 	String socialId,
 	SocialType socialType,
-	String nickname
+	String nickname,
+	long authVersion
 ) {
 }

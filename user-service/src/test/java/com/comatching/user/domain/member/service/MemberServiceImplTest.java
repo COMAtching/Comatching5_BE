@@ -7,6 +7,9 @@ import static org.mockito.BDDMockito.then;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import jakarta.persistence.EntityManager;
+import com.comatching.user.domain.auth.service.LoginSessionStore;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +40,12 @@ class MemberServiceImplTest {
 
 	@Mock
 	private UserEventPublisher eventPublisher;
+
+	@Mock
+	private LoginSessionStore sessions;
+
+	@Mock
+	private EntityManager entityManager;
 
 	@Mock
 	private ProfileImageProperties profileImageProperties;
@@ -108,7 +117,7 @@ class MemberServiceImplTest {
 			.profileImageUrl("https://s3.com/profiles/100/custom.png")
 			.build();
 		member.setProfile(profile);
-		given(memberRepository.findById(100L)).willReturn(Optional.of(member));
+		given(entityManager.getReference(Member.class, 100L)).willReturn(member);
 		given(profileImageProperties.baseUrl()).willReturn("https://srv.comatching.site/api/public/profile-images");
 
 		// when
@@ -125,6 +134,8 @@ class MemberServiceImplTest {
 		assertThat(profile.isMatchable()).isFalse();
 		assertThat(profile.getHobbies()).isEmpty();
 		assertThat(profile.getTags()).isEmpty();
+		assertThat(member.getAuthVersion()).isOne();
+		then(sessions).should().endAll(100L);
 		then(eventPublisher).should().sendWithdrawEvent(100L, "user@example.com");
 	}
 }

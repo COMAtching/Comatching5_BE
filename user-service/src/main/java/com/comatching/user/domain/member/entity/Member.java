@@ -3,6 +3,8 @@ package com.comatching.user.domain.member.entity;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.hibernate.annotations.DynamicUpdate;
+
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
 import com.comatching.common.domain.enums.SocialType;
@@ -26,6 +28,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@DynamicUpdate
 @Getter
 @Table(
 	name = "members",
@@ -46,6 +49,9 @@ public class Member {
 	private String email;
 
 	private String password;
+
+	@Column(name = "auth_version", nullable = false)
+	private long authVersion;
 
 	@Enumerated(EnumType.STRING)
 	private SocialType socialType;
@@ -86,6 +92,7 @@ public class Member {
 	}
 
 	public void withdraw(String defaultProfileImageUrl) {
+		authVersion++;
 		this.status = MemberStatus.WITHDRAWN;
 		this.deletedAt = LocalDateTime.now();
 
@@ -104,6 +111,7 @@ public class Member {
 	}
 
 	public void changePassword(String newEncodedPassword) {
+		authVersion++;
 		this.password = newEncodedPassword;
 	}
 

@@ -266,11 +266,9 @@ services:
     container_name: comatching-redis
     restart: unless-stopped
     networks: [comatching]
-    # maxmemory-policy 가 noeviction 인 것이 중요하다. allkeys-lru 로 두면
-    # 메모리가 찰 때 액세스 토큰 denylist 키가 조용히 evict 되고, 로그아웃으로
-    # 취소한 토큰이 다시 유효해진다(액세스 토큰 만료가 24시간이라 창이 길다).
-    # noeviction 은 대신 쓰기가 실패해서 시끄럽게 드러난다.
-    # appendonly: 재기동에도 denylist·리프레시 토큰이 살아남아야 한다.
+    # 활성 세션 키가 사라지면 해당 요청은 거부된다. noeviction은 메모리가 찰 때
+    # 기존 세션을 지우지 않고 새 쓰기를 실패시킨다.
+    # AOF를 복원해도 재시작·주 노드 전환 전의 세션에는 다시 로그인이 필요하다.
     command:
       - redis-server
       - --appendonly

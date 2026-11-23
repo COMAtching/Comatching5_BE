@@ -5,13 +5,15 @@ import com.comatching.common.dto.auth.SignupRequest;
 import com.comatching.common.dto.member.MemberInfo;
 import com.comatching.common.dto.member.ProfileCreateRequest;
 
-import jakarta.servlet.http.HttpServletResponse;
+import com.comatching.user.domain.auth.dto.TokenResponse;
 
 public interface SignupService {
 
 	// 계정 생성
-	void signup(SignupRequest request);
+	void signup(SignupRequest request, String signupProof);
 
 	// 프로필 + 토큰 갱신
-	CompleteSignupResponse completeSignup(MemberInfo memberInfo, ProfileCreateRequest request, HttpServletResponse response);
+	CompletedSignup completeSignup(MemberInfo memberInfo, ProfileCreateRequest request, String accessToken);
+
+	record CompletedSignup(CompleteSignupResponse body, TokenResponse tokens) {}
 }

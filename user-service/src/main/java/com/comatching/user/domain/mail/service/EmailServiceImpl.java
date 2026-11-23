@@ -1,10 +1,18 @@
 package com.comatching.user.domain.mail.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Locale;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -31,7 +39,12 @@ public class EmailServiceImpl implements EmailService {
 	private static final String CHARACTERS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 	private static final int CODE_LENGTH = 6;
 	private static final long CODE_EXPIRATION = Duration.ofMinutes(5).toSeconds();
-	private static final long VERIFIED_EXPIRATION = Duration.ofMinutes(30).toSeconds();
+	private static final DefaultRedisScript<Long> CONSUME_IF_MATCHED = new DefaultRedisScript<>("""
+		if redis.call('GET', KEYS[1]) == ARGV[1] then
+			return redis.call('DEL', KEYS[1])
+		end
+		return 0
+		""", Long.class);
 
 	@Override
 	public void sendAuthCode(String email) {
@@ -39,15 +52,33 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	@Override
-	public void verifyCode(String email, String code) {
+	public String verifySignupCode(String email, String code) {
 		verifyCodeProcess(email, code, EmailType.SIGNUP);
+		byte[] bytes = new byte[32];
+		secureRandom.nextBytes(bytes);
+		String proof = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+		redisTemplate.opsForValue().set(proofKey(proof), email, SIGNUP_PROOF_TTL);
+		return proof;
 	}
 
 	@Override
-	public boolean isVerified(String email) {
-		return Boolean.TRUE.toString().equals(
-			redisTemplate.opsForValue().get(EmailType.SIGNUP.getVerifiedPrefix() + email)
-		);
+	public void consumeSignupProof(String email, String proof) {
+		if (proof == null || proof.length() != 43 || !consume(proofKey(proof), email)) {
+			throw new BusinessException(UserErrorCode.EMAIL_NOT_AUTHENTICATED);
+		}
+	}
+
+	private static String proofKey(String proof) {
+		try {
+			byte[] hash = MessageDigest.getInstance("SHA-256").digest(proof.getBytes(StandardCharsets.UTF_8));
+			return "auth:signup-proof:" + HexFormat.of().formatHex(hash);
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private boolean consume(String key, String expected) {
+		return Long.valueOf(1).equals(redisTemplate.execute(CONSUME_IF_MATCHED, List.of(key), expected));
 	}
 
 	@Override
@@ -73,19 +104,9 @@ public class EmailServiceImpl implements EmailService {
 
 	private void verifyCodeProcess(String email, String code, EmailType type) {
 		String key = type.getPrefix() + email;
-		String storedCode = redisTemplate.opsForValue().get(key);
-
-		if (storedCode == null || !storedCode.equalsIgnoreCase(code)) {
+		if (code == null || !consume(key, code.toUpperCase(Locale.ROOT))) {
 			throw new BusinessException(UserErrorCode.INVALID_AUTH_CODE);
 		}
-
-		redisTemplate.delete(key);
-		redisTemplate.opsForValue().set(
-			type.getVerifiedPrefix() + email,
-			"true",
-			VERIFIED_EXPIRATION,
-			TimeUnit.SECONDS
-		);
 	}
 
 	private void sendEmailProcess(String email, EmailType type) {

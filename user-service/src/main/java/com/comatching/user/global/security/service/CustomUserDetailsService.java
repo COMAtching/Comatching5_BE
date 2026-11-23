@@ -35,6 +35,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
 		MemberLoginDto memberDto = MemberLoginDto.builder()
 			.id(member.getId())
+			.authVersion(member.getAuthVersion())
 			.email(member.getEmail())
 			.password(member.getPassword())
 			.role(member.getRole().name())

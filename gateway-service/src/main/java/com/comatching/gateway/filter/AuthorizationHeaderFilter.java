@@ -3,10 +3,12 @@ package com.comatching.gateway.filter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+import com.comatching.common.exception.BusinessException;
+
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.exception.code.ErrorCode;
 import com.comatching.common.util.JwtUtil;
-import com.comatching.gateway.auth.AccessTokenDenylistService;
+import com.comatching.gateway.auth.GatewaySessions;
 import com.comatching.gateway.exception.GatewayErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,17 +32,17 @@ import reactor.core.publisher.Mono;
 public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config> {
 
 	private final JwtUtil jwtUtil;
-	private final AccessTokenDenylistService accessTokenDenylistService;
+	private final GatewaySessions sessions;
 	private final ObjectMapper objectMapper;
 
 	public AuthorizationHeaderFilter(
 		JwtUtil jwtUtil,
-		AccessTokenDenylistService accessTokenDenylistService,
+		GatewaySessions sessions,
 		ObjectMapper objectMapper
 	) {
 		super(Config.class);
 		this.jwtUtil = jwtUtil;
-		this.accessTokenDenylistService = accessTokenDenylistService;
+		this.sessions = sessions;
 		this.objectMapper = objectMapper;
 	}
 
@@ -58,50 +60,34 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 				return onError(exchange, GatewayErrorCode.TOKEN_MISSING);
 			}
 
-			// 토큰 유효성 검증
-			if (!jwtUtil.validateToken(accessToken)) {
+			JwtUtil.VerifiedToken token;
+			try {
+				token = jwtUtil.readAccess(accessToken);
+			} catch (BusinessException invalid) {
 				return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
 			}
-
-			// 사용자 정보 추출 및 헤더 주입
-			try {
-				Claims claims = jwtUtil.parseToken(accessToken);
-				return accessTokenDenylistService.isDenied(claims.getId())
-					.flatMap(denied -> {
-						if (denied) {
-							return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
-						}
-
-						ServerHttpRequest.Builder requestBuilder = request.mutate();
-						requestBuilder.headers(headers -> {
-							headers.remove("X-Member-Id");
-							headers.remove("X-Member-Email");
-							headers.remove("X-Member-Role");
-							headers.remove("X-Member-Nickname");
-							headers.remove("X-Internal-Token");
-						});
-
-						requestBuilder
-							.header("X-Member-Id", claims.getSubject())
-							.header("X-Member-Email", claims.get("email", String.class))
-							.header("X-Member-Role", claims.get("role", String.class));
-
+			Claims claims = token.claims();
+			return sessions.isActive(token.session())
+				.map(active -> active ? HttpStatus.OK : HttpStatus.UNAUTHORIZED)
+				.doOnError(e -> log.error("Session lookup failed", e))
+				.onErrorReturn(HttpStatus.SERVICE_UNAVAILABLE)
+				.flatMap(status -> {
+					if (status == HttpStatus.SERVICE_UNAVAILABLE) return onError(exchange, GatewayErrorCode.SESSION_UNAVAILABLE);
+					if (status != HttpStatus.OK) return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
+					ServerHttpRequest.Builder builder = request.mutate();
+					builder.headers(headers -> {
+						headers.remove("X-Internal-Token");
+						headers.remove("X-Member-Nickname");
+						headers.set("X-Member-Id", claims.getSubject());
+						headers.set("X-Member-Email", claims.get("email", String.class));
+						headers.set("X-Member-Role", claims.get("role", String.class));
 						String nickname = claims.get("nickname", String.class);
 						if (nickname != null && !nickname.isBlank()) {
-							nickname = URLEncoder.encode(nickname, StandardCharsets.UTF_8);
-							requestBuilder.header("X-Member-Nickname", nickname);
+							headers.set("X-Member-Nickname", URLEncoder.encode(nickname, StandardCharsets.UTF_8));
 						}
-
-						return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
-					})
-					.onErrorResume(e -> {
-						log.error("Access token denylist lookup failed: {}", e.getMessage());
-						return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
 					});
-			} catch (Exception e) {
-				log.error("Token parsing error: {}", e.getMessage());
-				return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
-			}
+					return chain.filter(exchange.mutate().request(builder.build()).build());
+				});
 		};
 	}
 

@@ -23,7 +23,11 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 
 import com.comatching.common.util.JwtUtil;
-import com.comatching.gateway.auth.AccessTokenDenylistService;
+import com.comatching.common.auth.LoginSession;
+import com.comatching.common.domain.enums.MemberRole;
+import com.comatching.common.domain.enums.MemberStatus;
+import java.util.UUID;
+import com.comatching.gateway.auth.GatewaySessions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.Jwts;
@@ -37,22 +41,23 @@ class AuthorizationHeaderFilterTest {
 	private static final String SECRET = Base64.getEncoder()
 		.encodeToString("01234567890123456789012345678912".getBytes(StandardCharsets.UTF_8));
 
+	private final LoginSession session = new LoginSession(42L, 0, UUID.randomUUID());
 	private final JwtUtil jwtUtil = new JwtUtil(SECRET, 3600000L, 3600000L);
-	private final AccessTokenDenylistService accessTokenDenylistService = mock(AccessTokenDenylistService.class);
+	private final GatewaySessions sessions = mock(GatewaySessions.class);
 	private final AuthorizationHeaderFilter filter = new AuthorizationHeaderFilter(
 		jwtUtil,
-		accessTokenDenylistService,
+		sessions,
 		new ObjectMapper()
 	);
 
 	@BeforeEach
 	void setUp() {
-		given(accessTokenDenylistService.isDenied(any())).willReturn(Mono.just(false));
+		given(sessions.isActive(any())).willReturn(Mono.just(true));
 	}
 
 	@Test
 	void shouldReplaceSpoofedMemberHeadersAndRemoveInternalToken() {
-		String token = jwtUtil.createAccessToken(42L, "real@example.com", "ROLE_USER", "ACTIVE", "real-nickname");
+		String token = jwtUtil.createAccessToken(session, "real@example.com", MemberRole.ROLE_USER, MemberStatus.ACTIVE, "real-nickname");
 		MockServerHttpRequest request = MockServerHttpRequest.get("/api/items")
 			.cookie(new HttpCookie("accessToken", token))
 			.header("X-Member-Id", "999")
@@ -96,10 +101,9 @@ class AuthorizationHeaderFilterTest {
 	}
 
 	@Test
-	void shouldRejectDenylistedAccessToken() {
-		String token = jwtUtil.createAccessToken(42L, "real@example.com", "ROLE_USER", "ACTIVE", "real-nickname");
-		String tokenId = jwtUtil.parseToken(token).getId();
-		given(accessTokenDenylistService.isDenied(tokenId)).willReturn(Mono.just(true));
+	void shouldRejectInactiveSession() {
+		String token = jwtUtil.createAccessToken(session, "real@example.com", MemberRole.ROLE_USER, MemberStatus.ACTIVE, "real-nickname");
+		given(sessions.isActive(session)).willReturn(Mono.just(false));
 		MockServerWebExchange exchange = MockServerWebExchange.from(
 			MockServerHttpRequest.get("/api/items")
 				.cookie(new HttpCookie("accessToken", token))
@@ -118,7 +122,7 @@ class AuthorizationHeaderFilterTest {
 	}
 
 	@Test
-	void shouldAllowLegacyTokenWithoutJti() {
+	void shouldRejectLegacyTokenWithoutSessionClaims() {
 		String token = createLegacyAccessTokenWithoutJti();
 		MockServerWebExchange exchange = MockServerWebExchange.from(
 			MockServerHttpRequest.get("/api/items")
@@ -133,7 +137,17 @@ class AuthorizationHeaderFilterTest {
 
 		filter.apply(new AuthorizationHeaderFilter.Config()).filter(exchange, chain).block();
 
-		assertThat(chainCalled).isTrue();
+		assertThat(chainCalled).isFalse();
+		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void sessionStoreFailureReturnsUnavailableBeforeRouting() {
+		given(sessions.isActive(session)).willReturn(Mono.error(new IllegalStateException("session store unavailable")));
+		var token = jwtUtil.createAccessToken(session, "member@example.invalid", MemberRole.ROLE_USER, MemberStatus.ACTIVE, null);
+		var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/items").cookie(new HttpCookie("accessToken", token)));
+		filter.apply(new AuthorizationHeaderFilter.Config()).filter(exchange, ignored -> Mono.error(new AssertionError("unexpected route"))).block();
+		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
 	}
 
 	private String createLegacyAccessTokenWithoutJti() {

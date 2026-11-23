@@ -37,17 +37,17 @@ spring:
             - id: user-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
             - id: user-service-protected
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/logout, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
+                - Path=/api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
               filters:
                 - AuthorizationHeaderFilter
             - id: user-service-swagger
               uri: http://localhost:9000
               predicates:
-                - Path=/user-doc/**
+                - Path=/user-doc/v3/api-docs, /user-doc/v3/api-docs/**, /user-doc/swagger-ui.html, /user-doc/swagger-ui/**
               filters:
                 - RewritePath=/user-doc/(?<segment>.*), /$\{segment}
             - id: matching-service
@@ -59,7 +59,7 @@ spring:
             - id: matching-service-swagger
               uri: http://localhost:9001
               predicates:
-                - Path=/matching-doc/**
+                - Path=/matching-doc/v3/api-docs, /matching-doc/v3/api-docs/**, /matching-doc/swagger-ui.html, /matching-doc/swagger-ui/**
               filters:
                 - RewritePath=/matching-doc/(?<segment>.*), /$\{segment}
             - id: chat-service
@@ -71,7 +71,7 @@ spring:
             - id: chat-service-swagger
               uri: http://localhost:9003
               predicates:
-                - Path=/chat-doc/**
+                - Path=/chat-doc/v3/api-docs, /chat-doc/v3/api-docs/**, /chat-doc/swagger-ui.html, /chat-doc/swagger-ui/**
               filters:
                 - RewritePath=/chat-doc/(?<segment>.*), /$\{segment}
             - id: item-service

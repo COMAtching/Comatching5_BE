@@ -6,6 +6,10 @@ import static org.mockito.BDDMockito.*;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.comatching.chat.domain.entity.ChatRoom;
+import com.comatching.chat.domain.repository.ChatRoomRepository;
+import com.comatching.chat.domain.service.block.BlockService;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +33,10 @@ import com.comatching.common.exception.code.GeneralErrorCode;
 class ChatProfileServiceImplTest {
 
 	@Mock
+	private ChatRoomRepository rooms;
+	@Mock
+	private BlockService blocks;
+	@Mock
 	private MemberClient memberClient;
 
 	@Mock
@@ -44,6 +52,7 @@ class ChatProfileServiceImplTest {
 		Long currentMemberId = 1L;
 		Long targetMemberId = 2L;
 		Long historyId = 100L;
+		given(rooms.findBetweenMembers(1L, 2L)).willReturn(List.of(room(1L, 2L)));
 			given(memberClient.getProfiles(List.of(targetMemberId)))
 				.willReturn(List.of(ProfileResponse.builder()
 					.memberId(targetMemberId)
@@ -92,6 +101,10 @@ class ChatProfileServiceImplTest {
 		// given
 		Long currentMemberId = 1L;
 		Long targetMemberId = 2L;
+		ChatRoom active = room(2L, 1L);
+		active.updateLastMessageInfo("first", java.time.LocalDateTime.now());
+		given(rooms.findBetweenMembers(1L, 2L)).willReturn(List.of(active));
+		given(matchingHistoryClient.getHistoryReference(1L, 2L)).willReturn(MatchingHistoryReferenceResponse.empty());
 		given(memberClient.getProfiles(List.of(targetMemberId)))
 			.willReturn(List.of(ProfileResponse.builder()
 				.memberId(targetMemberId)
@@ -114,12 +127,43 @@ class ChatProfileServiceImplTest {
 		assertThat(result.favorite()).isFalse();
 	}
 
+	private ChatRoom room(long initiator, long target) {
+		return ChatRoom.builder().initiatorUserId(initiator).targetUserId(target).build();
+	}
+
+	@Test
+	void noRoomOrWaitingRecipientCannotReadProfile() {
+		assertHidden();
+		given(rooms.findBetweenMembers(1L, 2L)).willReturn(List.of(room(2L, 1L)));
+		assertHidden();
+	}
+
+	@Test
+	void onlyAnOutgoingActiveBlockHidesTheProfile() {
+		ChatRoom active = room(2L, 1L);
+		active.updateLastMessageInfo("first", java.time.LocalDateTime.now());
+		given(rooms.findBetweenMembers(1L, 2L)).willReturn(List.of(active));
+		given(blocks.isBlocked(1L, 2L)).willReturn(true, false);
+		assertHidden();
+		given(memberClient.getProfiles(List.of(2L))).willReturn(List.of(ProfileResponse.builder().memberId(2L).build()));
+		assertThat(chatProfileService.getMemberProfile(1L, 2L).memberId()).isEqualTo(2L);
+		then(blocks).should(never()).isBlocked(2L, 1L);
+	}
+
+	private void assertHidden() {
+		assertThatThrownBy(() -> chatProfileService.getMemberProfile(1L, 2L))
+			.isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getErrorCode()).isEqualTo(GeneralErrorCode.NOT_FOUND));
+		then(memberClient).shouldHaveNoInteractions();
+		then(matchingHistoryClient).shouldHaveNoInteractions();
+	}
+
 	@Test
 	@DisplayName("프로필이 없으면 404 예외를 던진다")
 	void getMemberProfile_throwsNotFoundWhenProfileMissing() {
 		// given
 		Long currentMemberId = 1L;
 		Long targetMemberId = 2L;
+		given(rooms.findBetweenMembers(1L, 2L)).willReturn(List.of(room(1L, 2L)));
 		given(memberClient.getProfiles(List.of(targetMemberId))).willReturn(List.of());
 
 		// when & then

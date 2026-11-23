@@ -4,7 +4,6 @@ import com.comatching.chat.domain.dto.ChatRoomResponse;
 import com.comatching.chat.domain.dto.ChatRoomResponse.UserSummary;
 import com.comatching.chat.domain.entity.ChatRoom;
 import com.comatching.chat.domain.entity.UserBlock;
-import com.comatching.chat.domain.enums.ChatRoomStatus;
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UnreadCountCondition;
@@ -75,7 +74,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     private List<ChatRoom> visibleRooms(Long memberId, Sort sort, Map<Long, UserBlock> relations) {
         return chatRoomRepository.findMyChatRooms(memberId, sort).stream()
-                .filter(room -> isVisibleToMember(room, memberId))
+                .filter(room -> room.isVisibleTo(memberId))
                 .filter(room -> {
                     UserBlock relation = relations.get(room.otherMemberId(memberId));
                     return relation == null || !relation.isActive();
@@ -222,10 +221,4 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 : room.getTargetLastReadAt();
     }
 
-    private boolean isVisibleToMember(ChatRoom room, Long memberId) {
-        if (memberId.equals(room.getInitiatorUserId())) {
-            return true;
-        }
-        return memberId.equals(room.getTargetUserId()) && room.getStatus() == ChatRoomStatus.ACTIVE;
-    }
 }
