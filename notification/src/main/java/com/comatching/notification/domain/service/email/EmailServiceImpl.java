@@ -1,8 +1,11 @@
 package com.comatching.notification.domain.service.email;
 
 import java.net.ConnectException;
+import java.text.NumberFormat;
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import com.comatching.common.dto.event.order.ItemsGranted;
 import com.comatching.common.dto.event.order.RefundCompleted;
 import com.comatching.notification.domain.delivery.DeliveryNotSentException;
@@ -10,7 +13,6 @@ import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailParseException;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -33,25 +35,26 @@ public class EmailServiceImpl implements EmailService{
 
 	@Override
 	public void sendItemsGranted(String toEmail, ItemsGranted event) {
-		String items = event.items().stream()
+		List<String> items = event.items().stream()
 				.map(line -> line.itemType().getName() + " " + line.quantity() + "장")
-				.collect(Collectors.joining(", "));
-		sendOrderEmail(toEmail, "구매한 아이템이 지급됐어요",
-				"주문 " + event.orderId() + "의 " + items + " 지급이 완료됐어요. 지금 사용할 수 있어요.");
+				.toList();
+		sendOrderEmail(toEmail, "구매한 아이템이 지급됐어요", "지금 코매칭에서 사용할 수 있어요.",
+				event.orderId(), "지급 아이템", items);
 	}
 
 	@Override
 	public void sendRefundCompleted(String toEmail, RefundCompleted event) {
-		sendOrderEmail(toEmail, "주문 환불이 완료됐어요",
-				"주문 " + event.orderId() + "의 환불 금액 " + event.amount() + "원을 계좌이체했어요.");
+		String amount = NumberFormat.getIntegerInstance(Locale.KOREA).format(event.amount()) + "원";
+		sendOrderEmail(toEmail, "주문 환불이 완료됐어요", "환불 금액을 계좌이체했어요.",
+				event.orderId(), "환불 금액", List.of(amount));
 	}
 
-	private void sendOrderEmail(String toEmail, String subject, String body) {
-		var message = new SimpleMailMessage();
-		message.setTo(toEmail);
-		message.setSubject(subject);
-		message.setText(body);
-		sendToSmtp(toEmail, () -> mailSender.send(message));
+	private void sendOrderEmail(String toEmail, String subject, String description, long orderId,
+			String detailLabel, List<String> details) {
+		String plainText = String.join("\n", subject, description, "", "주문번호 #" + orderId,
+				detailLabel, String.join("\n", details));
+		sendEmail(toEmail, subject, "order-email", Map.of("heading", subject, "description", description,
+				"orderId", orderId, "detailLabel", detailLabel, "details", details), plainText);
 	}
 
 	private void sendToSmtp(String toEmail, Runnable send) {
@@ -88,29 +91,32 @@ public class EmailServiceImpl implements EmailService{
 
 	@Override
 	public void sendWelcomeEmail(String toEmail, String nickname) {
-		sendEmail(toEmail, "Comatching 회원가입을 축하합니다! 🎉", "welcome-email", nickname);
+		sendEmail(toEmail, "Comatching 회원가입을 축하합니다! 🎉", "welcome-email",
+				Map.of("nickname", nickname != null ? nickname : "회원"), null);
 	}
 
 	@Override
 	public void sendWithdrawalEmail(String toEmail) {
-		sendEmail(toEmail, "Comatching 이용해 주셔서 감사합니다.", "goodbye-email", null);
+		sendEmail(toEmail, "Comatching 이용해 주셔서 감사합니다.", "goodbye-email", Map.of(), null);
 	}
 
-	private void sendEmail(String toEmail, String subject, String templateName, String nickname) {
+	private void sendEmail(String toEmail, String subject, String templateName, Map<String, Object> variables,
+			String plainText) {
 		MimeMessage mimeMessage;
 		try {
 			mimeMessage = mailSender.createMimeMessage();
-			Context context = new Context();
-			context.setVariable("nickname", nickname != null ? nickname : "회원");
-
-			String htmlContent = templateEngine.process(templateName, context);
-
-			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, false, "UTF-8");
+			String htmlContent = templateEngine.process(templateName, new Context(Locale.KOREAN, variables));
+			int mode = plainText == null ? MimeMessageHelper.MULTIPART_MODE_NO : MimeMessageHelper.MULTIPART_MODE_MIXED;
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, mode, "UTF-8");
 			helper.setTo(toEmail);
 			helper.setSubject(subject);
-			helper.setText(htmlContent, true);
+			if (plainText == null) {
+				helper.setText(htmlContent, true);
+			} else {
+				helper.setText(plainText, htmlContent);
+			}
 		} catch (MessagingException | RuntimeException e) {
-			throw new DeliveryNotSentException("회원 메일 작성 실패: " + templateName, e);
+			throw new DeliveryNotSentException("메일 작성 실패: " + templateName, e);
 		}
 		sendToSmtp(toEmail, () -> mailSender.send(mimeMessage));
 	}
