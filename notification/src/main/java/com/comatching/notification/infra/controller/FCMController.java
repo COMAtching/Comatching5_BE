@@ -75,6 +75,14 @@ public class FCMController {
                 .cacheControl(CacheControl.noStore()).body(room);
     }
 
+    @GetMapping(value = "/chat-links/{reference}/sender", produces = "text/plain;charset=UTF-8")
+    public ResponseEntity<String> senderNickname(@PathVariable UUID reference, @RequestHeader HttpHeaders headers,
+            @CookieValue(value = PushInstallations.COOKIE, required = false) String cookie) {
+        String nickname = installations.resolveSenderNickname(device(cookie), login(headers), reference);
+        return nickname == null ? ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build()
+                : ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(nickname);
+    }
+
     private UUID device(String cookie) {
         UUID id = InstallationCookie.verify(cookie, gatewaySecret);
         if (id == null) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);

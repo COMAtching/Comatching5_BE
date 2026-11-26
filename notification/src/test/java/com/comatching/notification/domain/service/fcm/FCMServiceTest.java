@@ -155,7 +155,7 @@ class FCMServiceTest {
     private void prepareToken() {
         given(installations.installations(2L)).willReturn(Set.of(device.toString()));
         given(installations.target(device, 2L)).willReturn(target);
-        given(installations.rememberRoom(target, "room-1")).willReturn(chatRef);
+        given(installations.rememberRoom(target, "room-1", "sender")).willReturn(chatRef);
         doAnswer(invocation -> invocation.getArgument(2, Supplier.class).get()).when(deliveries).deliver(anyString(), anyString(), any());
     }
 
