@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:text="${heading}">코매칭 주문 안내</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f7f9; color:#222222; font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f7f9">
+    <tr>
+        <td align="center" style="padding:32px 16px;">
+            <!--[if mso]><table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"
+                   style="max-width:520px; border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,0.05);">
+                <tr>
+                    <td align="center" style="padding:28px 24px 24px; border-bottom:1px solid #f0f0f0;">
+                        <span style="display:inline-block; padding:6px 14px; border-radius:999px; background-color:#ffecf6; color:#b92472; font-size:11px; font-weight:700; letter-spacing:0.12em;">COMATCHING</span>
+                        <h1 style="margin:16px 0 8px; font-size:22px; line-height:1.4; word-break:keep-all;" th:text="${heading}">구매한 아이템이 지급됐어요</h1>
+                        <p style="margin:0; font-size:14px; line-height:1.65; color:#626262; word-break:keep-all;" th:text="${description}">지금 코매칭에서 사용할 수 있어요.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:24px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fff7fb"
+                               aria-label="주문 내역" style="border:1px solid #f5d7e6; border-radius:12px; border-spacing:0;">
+                            <tr>
+                                <th scope="row" align="left" valign="top" style="padding:14px 16px; color:#59515a; font-size:13px; line-height:22px; font-weight:500; white-space:nowrap;">주문번호</th>
+                                <td align="right" style="padding:14px 16px 14px 0; color:#363136; font-size:15px; line-height:22px; font-weight:600;" th:text="|#${orderId}|">#123</td>
+                            </tr>
+                            <tr>
+                                <th scope="row" align="left" valign="top" style="padding:14px 16px; border-top:1px solid #f5d7e6; color:#59515a; font-size:13px; line-height:24px; font-weight:500; white-space:nowrap;" th:text="${detailLabel}">지급 아이템</th>
+                                <td align="right" style="padding:14px 16px 14px 0; border-top:1px solid #f5d7e6; color:#b92472; font-size:16px; line-height:24px; font-weight:700;">
+                                    <div th:each="detail : ${details}" th:text="${detail}">매칭권 2장</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" bgcolor="#fafafa" style="padding:16px 24px; border-top:1px solid #f0f0f0; color:#707070; font-size:11px; line-height:1.7;">
+                        &copy; 2026 Comatching. All rights reserved.<br />
+                        본 메일은 발신 전용이며 회신되지 않습니다.
+                    </td>
+                </tr>
+            </table>
+            <!--[if mso]></td></tr></table><![endif]-->
+        </td>
+    </tr>
+</table>
+</body>
+</html>

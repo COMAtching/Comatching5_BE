@@ -18,9 +18,7 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,12 +29,7 @@ public class FCMService {
     private final FirebaseMessageSender firebase;
     private final NotificationDeliveryService deliveries;
 
-    @Autowired
-    public FCMService(StringRedisTemplate redis, FirebaseMessageSender firebase, NotificationDeliveryService deliveries) {
-        this(new PushInstallations(redis), firebase, deliveries);
-    }
-
-    FCMService(PushInstallations installations, FirebaseMessageSender firebase, NotificationDeliveryService deliveries) {
+    public FCMService(PushInstallations installations, FirebaseMessageSender firebase, NotificationDeliveryService deliveries) {
         this.installations = installations;
         this.firebase = firebase;
         this.deliveries = deliveries;
@@ -57,14 +50,16 @@ public class FCMService {
     }
 
     public DeliveryOutcome sendNotification(ChatMessageEvent event) {
-        return dispatch(event.targetUserId(), event.eventId(), true);
+        if (!StringUtils.hasText(event.roomId())) return DeliveryOutcome.SKIPPED;
+        return dispatch(event.targetUserId(), event.eventId(), event.roomId());
     }
 
     public DeliveryOutcome sendItemsGranted(ItemsGranted event) {
-        return dispatch(event.memberId(), event.eventId(), false);
+        return dispatch(event.memberId(), event.eventId(), null);
     }
 
-    private DeliveryOutcome dispatch(long member, String eventId, boolean chat) {
+    private DeliveryOutcome dispatch(long member, String eventId, String roomId) {
+        boolean chat = roomId != null;
         Set<String> devices;
         try {
             devices = installations.installations(member);
@@ -80,7 +75,7 @@ public class FCMService {
             try {
                 // Fits the existing 40-character handler key. Keep the outer event ledger for old replays.
                 deliveries.deliver(eventId, (chat ? "C:" : "G:") + device,
-                        () -> send(member, UUID.fromString(device), chat));
+                        () -> send(member, UUID.fromString(device), roomId));
             } catch (RuntimeException failure) {
                 // An uncertain or rejected installation must not prevent attempts to independent recipients.
                 if (pending == null || failure instanceof DeliveryNotSentException) pending = failure;
@@ -90,7 +85,7 @@ public class FCMService {
         return DeliveryOutcome.SENT;
     }
 
-    private DeliveryOutcome send(long member, UUID device, boolean chat) {
+    private DeliveryOutcome send(long member, UUID device, String roomId) {
         PushInstallations.Target target;
         try {
             target = installations.target(device, member);
@@ -99,13 +94,20 @@ public class FCMService {
         }
         if (target == null) return DeliveryOutcome.SKIPPED;
         // FCM may deliver after an account switch. The entire payload must be safe on a shared lock screen.
-        Message message = Message.builder().setToken(target.token())
+        boolean chat = roomId != null;
+        var message = Message.builder().setToken(target.token())
                 .putData("type", chat ? "CHAT" : "ITEMS_GRANTED")
                 .putData("title", "코매칭")
-                .putData("body", chat ? "새 메시지가 있습니다." : "아이템 지급이 완료되었습니다.")
-                .build();
+                .putData("body", chat ? "새 메시지가 있습니다." : "아이템 지급이 완료되었습니다.");
+        if (chat) {
+            try {
+                message.putData("chatRef", installations.rememberRoom(target, roomId).toString());
+            } catch (DataAccessException unavailable) {
+                throw new DeliveryNotSentException("채팅 알림 연결 저장 실패", unavailable);
+            }
+        }
         try {
-            firebase.send(message);
+            firebase.send(message.build());
             return DeliveryOutcome.SENT;
         } catch (FirebaseMessagingException failure) {
             if (failure.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {

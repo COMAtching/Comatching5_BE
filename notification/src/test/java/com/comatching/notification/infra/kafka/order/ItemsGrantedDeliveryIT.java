@@ -35,6 +35,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +46,10 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -123,6 +127,11 @@ class ItemsGrantedDeliveryIT {
     @MockitoBean FirebaseMessageSender firebase;
     @MockitoBean KafkaDltAlertNotifier alerts;
 
+    @BeforeEach
+    void prepareMailSender() {
+        when(smtp.createMimeMessage()).thenAnswer(call -> new JavaMailSenderImpl().createMimeMessage());
+    }
+
     @Test
     void repeatedSourceAndChannelReplaysSendOncePerChannel() throws Exception {
         var event = event(123);
@@ -134,8 +143,7 @@ class ItemsGrantedDeliveryIT {
         awaitCommit(ItemsGrantedGroups.PUSH, publish(ReplayTopics.ITEMS_GRANTED_PUSH, event));
 
         assertThat(states(event)).containsExactly("SENT", "SENT");
-        verify(smtp).send(argThat((SimpleMailMessage m) ->
-                List.of(m.getTo()).equals(List.of("member123@example.invalid")) && m.getText().contains("매칭권 2장")));
+        assertOrderMail("member123@example.invalid", "구매한 아이템이 지급됐어요", "#123", "매칭권 2장", "옵션권 1장");
         verify(firebase).send(any(Message.class));
         verifyNoMoreInteractions(smtp, firebase);
     }
@@ -149,8 +157,7 @@ class ItemsGrantedDeliveryIT {
         }
         assertThat(jdbc.queryForList("SELECT state FROM notification_delivery WHERE event_id=? AND handler_id='REFUND_MAIL'",
                 String.class, event.eventId())).containsExactly("SENT");
-        verify(smtp).send(argThat((SimpleMailMessage m) -> List.of(m.getTo()).equals(List.of("member131@example.invalid"))
-                && m.getSubject().contains("환불") && m.getText().contains("131") && m.getText().contains("3500원")));
+        assertOrderMail("member131@example.invalid", "주문 환불이 완료됐어요", "#131", "환불 금액", "3,500원", "계좌이체");
         verifyNoMoreInteractions(smtp);
         verifyNoInteractions(firebase);
     }
@@ -158,21 +165,21 @@ class ItemsGrantedDeliveryIT {
     @Test
     void mailRejectionGoesToMailDltAndOnlyMailIsRedriven() throws Exception {
         var event = event(124);
-        doThrow(new MailAuthenticationException("test SMTP rejection")).when(smtp).send(any(SimpleMailMessage.class));
+        doThrow(new MailAuthenticationException("test SMTP rejection")).when(smtp).send(any(MimeMessage.class));
         var source = publish(ItemsGranted.TOPIC, event);
         awaitCommit(ItemsGrantedGroups.MAIL, source);
         awaitCommit(ItemsGrantedGroups.PUSH, source);
         assertThat(states(event)).containsExactly("RETRYABLE", "SENT");
         verify(alerts).notifyParked(argThat(r -> "124".equals(r.key())), any(), eq(KafkaEventRoute.ITEMS_GRANTED_MAIL));
-        verify(smtp, times(4)).send(any(SimpleMailMessage.class)); // 최초 + 1·2·4초 후 재시도
-        doNothing().when(smtp).send(any(SimpleMailMessage.class));
+        verify(smtp, times(4)).send(any(MimeMessage.class)); // 최초 + 1·2·4초 후 재시도
+        doNothing().when(smtp).send(any(MimeMessage.class));
 
         var result = redrive.redrive(KafkaEventRoute.ITEMS_GRANTED_MAIL);
         assertThat(result.replayTopic()).isEqualTo(ReplayTopics.ITEMS_GRANTED_MAIL);
         assertThat(result.redriven()).isPositive();
         Awaitility.await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
                 assertThat(states(event)).containsExactly("SENT", "SENT"));
-        verify(smtp, times(5)).send(any(SimpleMailMessage.class));
+        verify(smtp, times(5)).send(any(MimeMessage.class));
         verify(firebase).send(any(Message.class));
         try (var admin = admin()) {
             var pushOffsets = admin.listConsumerGroupOffsets(ItemsGrantedGroups.PUSH)
@@ -184,13 +191,13 @@ class ItemsGrantedDeliveryIT {
     @Test
     void ambiguousMailOutcomeIsParkedEvenWhenReplayed() throws Exception {
         var event = event(125);
-        doThrow(new MailSendException("test lost acknowledgement")).when(smtp).send(any(SimpleMailMessage.class));
+        doThrow(new MailSendException("test lost acknowledgement")).when(smtp).send(any(MimeMessage.class));
         var source = publish(ItemsGranted.TOPIC, event);
         awaitCommit(ItemsGrantedGroups.MAIL, source);
         awaitCommit(ItemsGrantedGroups.PUSH, source);
         awaitCommit(ItemsGrantedGroups.MAIL, publish(ReplayTopics.ITEMS_GRANTED_MAIL, event));
         assertThat(states(event)).containsExactly("UNKNOWN", "SENT");
-        verify(smtp).send(any(SimpleMailMessage.class));
+        verify(smtp).send(any(MimeMessage.class));
         verify(firebase).send(any(Message.class));
     }
 
@@ -203,7 +210,7 @@ class ItemsGrantedDeliveryIT {
             sending.countDown();
             assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
             return null;
-        }).when(smtp).send(any(SimpleMailMessage.class));
+        }).when(smtp).send(any(MimeMessage.class));
         var pool = Executors.newSingleThreadExecutor();
         try {
             var first = pool.submit(() -> consumer.mail(event));
@@ -216,7 +223,7 @@ class ItemsGrantedDeliveryIT {
             pool.shutdownNow();
         }
         assertThat(states(event)).containsExactly("SENT");
-        verify(smtp).send(any(SimpleMailMessage.class));
+        verify(smtp).send(any(MimeMessage.class));
     }
 
     @Test
@@ -240,7 +247,7 @@ class ItemsGrantedDeliveryIT {
         awaitCommit(ItemsGrantedGroups.PUSH, source);
         awaitCommit(ItemsGrantedGroups.PUSH, publish(ReplayTopics.ITEMS_GRANTED_PUSH, event));
         assertThat(states(event)).containsExactly("SENT", "UNKNOWN");
-        verify(smtp).send(any(SimpleMailMessage.class));
+        verify(smtp).send(any(MimeMessage.class));
         verify(firebase).send(any(Message.class));
     }
 
@@ -264,8 +271,30 @@ class ItemsGrantedDeliveryIT {
         }
         awaitCommit(ItemsGrantedGroups.MAIL, publish(ReplayTopics.ITEMS_GRANTED_MAIL, event));
         assertThat(states(event)).containsExactly("SENDING", "SENT");
-        verify(smtp).send(any(SimpleMailMessage.class));
+        verify(smtp).send(any(MimeMessage.class));
         verify(firebase).send(any(Message.class));
+    }
+
+    private void assertOrderMail(String recipient, String subject, String... details) throws Exception {
+        verify(smtp).createMimeMessage();
+        var capture = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(smtp).send(capture.capture());
+        MimeMessage message = capture.getValue();
+        message.saveChanges();
+
+        assertThat(message.getAllRecipients()).containsExactly(new InternetAddress(recipient));
+        assertThat(message.getSubject()).isEqualTo(subject);
+        var root = (MimeMultipart) message.getContent();
+        var alternatives = (MimeMultipart) root.getBodyPart(0).getContent();
+        assertThat(alternatives.getContentType()).startsWith("multipart/alternative");
+        assertThat(alternatives.getCount()).isEqualTo(2);
+        var plain = alternatives.getBodyPart(0);
+        var html = alternatives.getBodyPart(1);
+        assertThat(plain.isMimeType("text/plain")).isTrue();
+        assertThat(html.isMimeType("text/html")).isTrue();
+        assertThat((String) plain.getContent()).contains(subject).contains(details);
+        assertThat((String) html.getContent()).contains("COMATCHING", subject).contains(details)
+                .doesNotContain("th:text", "th:each");
     }
 
     private ItemsGranted event(long id) {
@@ -275,7 +304,8 @@ class ItemsGrantedDeliveryIT {
 
     private ItemsGranted granted(long id) {
         return new ItemsGranted("items-granted:" + id, id, id, LocalDateTime.now(),
-                List.of(new ItemsGranted.GrantedItem(ItemType.MATCHING_TICKET, 2)));
+                List.of(new ItemsGranted.GrantedItem(ItemType.MATCHING_TICKET, 2),
+                        new ItemsGranted.GrantedItem(ItemType.OPTION_TICKET, 1)));
     }
 
     private List<String> states(ItemsGranted event) {

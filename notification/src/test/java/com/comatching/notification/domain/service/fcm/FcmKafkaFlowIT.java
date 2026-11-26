@@ -68,6 +68,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import com.comatching.common.auth.PushInstallations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -168,6 +169,28 @@ class FcmKafkaFlowIT {
     // Boot의 @Bean 반환 타입은 KafkaTemplate<?, ?>이므로 spy도 같은 타입으로 찾는다.
     @MockitoSpyBean(name = "kafkaTemplate") KafkaTemplate<?, ?> autoConfiguredTemplate;
     @Autowired KafkaTemplate<Object, Object> template;
+
+    @Test
+    void mutingAndOpeningAChatNotificationAreInstallationScoped() {
+        var store = new PushInstallations(redis);
+        var device = java.util.UUID.randomUUID();
+        var other = java.util.UUID.randomUUID();
+        var login = com.comatching.notification.support.TestInstallations.activate(redis, device, 980, java.util.UUID.randomUUID()).login();
+        var otherLogin = com.comatching.notification.support.TestInstallations.activate(redis, other, 980, java.util.UUID.randomUUID()).login();
+        store.register(device, login, "preference-test-token");
+        store.register(other, otherLogin, "independent-token");
+        var ref = store.rememberRoom(store.target(device, 980), "fixture-room");
+        assertThat(store.resolveRoom(device, login, ref)).isEqualTo("fixture-room");
+        assertThat(store.resolveRoom(other, otherLogin, ref)).isNull();
+        assertThat(store.resolveRoom(device, otherLogin, ref)).isNull();
+        store.setEnabled(device, login, false);
+        store.register(device, login, "refreshed-token");
+        assertThat(store.target(device, 980)).isNull();
+        assertThat(store.target(other, 980)).isNotNull();
+        assertThat(store.preference(device, login).muted()).isTrue();
+        store.setEnabled(device, login, true);
+        assertThat(store.target(device, 980).token()).isEqualTo("refreshed-token");
+    }
 
     @Test
     @DisplayName("실제 Redis에서 UNREGISTERED 토큰을 삭제하고 DLT 없이 offset을 커밋한다")
@@ -503,7 +526,7 @@ class FcmKafkaFlowIT {
     void sharedBrowserMovesAtomicallyAndOtherInstallationsReceiveOnlyOneGenericPush() throws Exception {
         var a = event();
         var b = event();
-        var store = new com.comatching.common.auth.PushInstallations(redis);
+        var store = new PushInstallations(redis);
         var browser = UUID.randomUUID();
         var phone = UUID.randomUUID();
         var aBrowser = TestInstallations.activate(redis, browser, a.targetUserId(), UUID.randomUUID());
@@ -569,7 +592,7 @@ class FcmKafkaFlowIT {
 
     @Configuration(proxyBeanMethods = false)
     @EnableKafka
-    @Import({KafkaConsumerConfig.class, FcmKafkaErrorConfig.class, FCMService.class, ChatEventConsumer.class,
+    @Import({PushInstallations.class, KafkaConsumerConfig.class, FcmKafkaErrorConfig.class, FCMService.class, ChatEventConsumer.class,
             ChatPushEligibilityClient.class, NotificationDeliveryRepository.class, NotificationDeliveryService.class})
     @ImportAutoConfiguration({KafkaAutoConfiguration.class, RedissonAutoConfigurationV2.class, RedisAutoConfiguration.class,
             RestClientAutoConfiguration.class, DataSourceAutoConfiguration.class, JdbcTemplateAutoConfiguration.class,

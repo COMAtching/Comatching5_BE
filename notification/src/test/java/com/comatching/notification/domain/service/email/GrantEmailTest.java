@@ -15,7 +15,9 @@ import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.thymeleaf.context.IContext;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
@@ -36,13 +38,17 @@ class GrantEmailTest {
     @MethodSource("explicitRejections")
     void explicitRejectionIsSafeToReplay(SendFailedException rejection) {
         JavaMailSender smtp = mock();
+        when(smtp.createMimeMessage()).thenReturn(new JavaMailSenderImpl().createMimeMessage());
+        var templates = mock(SpringTemplateEngine.class);
+        when(templates.process(eq("order-email"), any(IContext.class))).thenReturn("<p>지급 완료</p>");
         doAnswer(call -> {
             throw new MailSendException(Map.of(call.getArgument(0), rejection));
-        }).when(smtp).send(any(SimpleMailMessage.class));
-        var service = new EmailServiceImpl(smtp, mock(SpringTemplateEngine.class));
+        }).when(smtp).send(any(MimeMessage.class));
+        var service = new EmailServiceImpl(smtp, templates);
         var event = new ItemsGranted("items-granted:1", 1L, 1L, LocalDateTime.now(),
                 List.of(new ItemsGranted.GrantedItem(ItemType.OPTION_TICKET, 1)));
         assertThatThrownBy(() -> service.sendItemsGranted(RECIPIENT, event))
-                .isInstanceOf(DeliveryNotSentException.class);
+                .isInstanceOf(DeliveryNotSentException.class)
+                .hasCauseInstanceOf(MailSendException.class);
     }
 }

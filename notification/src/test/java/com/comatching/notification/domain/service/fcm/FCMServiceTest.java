@@ -35,6 +35,7 @@ class FCMServiceTest {
     @Mock private PushInstallations installations;
     @Mock private FirebaseMessageSender firebaseMessageSender;
     @Mock private NotificationDeliveryService deliveries;
+    private final UUID chatRef = UUID.randomUUID();
     private final UUID device = UUID.randomUUID();
     private final LoginSession session = new LoginSession(2, 0, UUID.randomUUID());
     private final PushInstallations.Target target = new PushInstallations.Target(device, session, "firebase-token");
@@ -54,14 +55,14 @@ class FCMServiceTest {
         verifyNoInteractions(deliveries, firebaseMessageSender);
     }
 
-    @Test void payloadContainsOnlyGenericTextAndKind() throws Exception {
+    @Test void payloadContainsAnOpaqueDestinationAndGenericText() throws Exception {
         prepareToken();
         service().sendNotification(event());
         var message = ArgumentCaptor.forClass(Message.class);
         verify(firebaseMessageSender).send(message.capture());
         assertThat(ReflectionTestUtils.getField(message.getValue(), "notification")).isNull();
         assertThat(ReflectionTestUtils.getField(message.getValue(), "data")).isEqualTo(
-                Map.of("type", "CHAT", "title", "코매칭", "body", "새 메시지가 있습니다."));
+                Map.of("type", "CHAT", "title", "코매칭", "body", "새 메시지가 있습니다.", "chatRef", chatRef.toString()));
     }
 
     @Test void invalidFirebaseTokenIsConditionallyCleared() throws Exception {
@@ -154,6 +155,7 @@ class FCMServiceTest {
     private void prepareToken() {
         given(installations.installations(2L)).willReturn(Set.of(device.toString()));
         given(installations.target(device, 2L)).willReturn(target);
+        given(installations.rememberRoom(target, "room-1")).willReturn(chatRef);
         doAnswer(invocation -> invocation.getArgument(2, Supplier.class).get()).when(deliveries).deliver(anyString(), anyString(), any());
     }
 
