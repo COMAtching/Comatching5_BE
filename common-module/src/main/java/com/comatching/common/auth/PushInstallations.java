@@ -1,5 +1,8 @@
 package com.comatching.common.auth;
 
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -91,6 +94,12 @@ public final class PushInstallations {
         return 1
         """, Long.class);
 
+    private static final DefaultRedisScript<Long> SET_PREFERENCE = new DefaultRedisScript<>("""
+        if redis.call('HGET', KEYS[1], 'sid') ~= ARGV[1] then return 0 end
+        redis.call('HSET', KEYS[1], 'muted', ARGV[2])
+        return 1
+        """, Long.class);
+
     private final StringRedisTemplate redis;
 
     public PushInstallations(StringRedisTemplate redis) {
@@ -145,9 +154,37 @@ public final class PushInstallations {
     public Target target(UUID installation, long memberId) {
         Map<Object, Object> data = redis.opsForHash().entries(installKey(installation));
         String token = (String)data.get("token");
-        if (token == null || !Long.toString(memberId).equals(data.get("member"))) return null;
+        if (token == null || "1".equals(data.get("muted")) || !Long.toString(memberId).equals(data.get("member"))) return null;
         var session = new LoginSession(memberId, Long.parseLong((String)data.get("version")), UUID.fromString((String)data.get("sid")));
         return isActive(session) ? new Target(installation, session, token) : null;
+    }
+
+    public record Preference(boolean muted, boolean registered) {}
+
+    public Preference preference(UUID installation, LoginSession login) {
+        var fields = redis.opsForHash().multiGet(installKey(installation), List.of("sid", "muted", "digest"));
+        if (!login.id().toString().equals(fields.get(0))) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+        return new Preference("1".equals(fields.get(1)), fields.get(2) != null);
+    }
+
+    public void setEnabled(UUID installation, LoginSession login, boolean enabled) {
+        Long saved = redis.execute(SET_PREFERENCE, List.of(installKey(installation)), login.id().toString(), enabled ? "0" : "1");
+        if (!Long.valueOf(1).equals(saved)) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+    }
+
+    // A notification can outlive a login. Only that login on that installation can resolve its destination.
+    public UUID rememberRoom(Target target, String roomId) {
+        UUID reference = UUID.randomUUID();
+        redis.opsForValue().set(linkKey(target.installation(), target.session(), reference), roomId, Duration.ofDays(28));
+        return reference;
+    }
+
+    public String resolveRoom(UUID installation, LoginSession login, UUID reference) {
+        return redis.opsForValue().get(linkKey(installation, login, reference));
+    }
+
+    private static String linkKey(UUID installation, LoginSession login, UUID reference) {
+        return "push:v2:chat-link:" + installation + ":" + login.id() + ":" + reference;
     }
 
     public boolean isActive(LoginSession session) {

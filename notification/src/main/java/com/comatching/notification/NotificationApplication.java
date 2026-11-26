@@ -1,5 +1,6 @@
 package com.comatching.notification;
 
+import com.comatching.common.auth.PushInstallations;
 import com.comatching.common.config.kafka.KafkaConsumerConfig;
 import com.comatching.common.config.kafka.KafkaDltRedriveController;
 import com.comatching.common.config.kafka.KafkaDltTopicConfig;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Import;
         }
 )
 @Import({
+        PushInstallations.class,
         KafkaConsumerConfig.class,
         KafkaDltTopicConfig.class,
         KafkaDltRedriveController.class,
