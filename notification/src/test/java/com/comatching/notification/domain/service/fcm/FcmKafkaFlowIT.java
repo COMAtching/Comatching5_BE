@@ -179,8 +179,11 @@ class FcmKafkaFlowIT {
         var otherLogin = com.comatching.notification.support.TestInstallations.activate(redis, other, 980, java.util.UUID.randomUUID()).login();
         store.register(device, login, "preference-test-token");
         store.register(other, otherLogin, "independent-token");
-        var ref = store.rememberRoom(store.target(device, 980), "fixture-room");
+        var ref = store.rememberRoom(store.target(device, 980), "fixture-room", "보낸 사람");
         assertThat(store.resolveRoom(device, login, ref)).isEqualTo("fixture-room");
+        assertThat(store.resolveSenderNickname(device, login, ref)).isEqualTo("보낸 사람");
+        assertThat(store.resolveSenderNickname(other, otherLogin, ref)).isNull();
+        assertThat(store.resolveSenderNickname(device, otherLogin, ref)).isNull();
         assertThat(store.resolveRoom(other, otherLogin, ref)).isNull();
         assertThat(store.resolveRoom(device, otherLogin, ref)).isNull();
         store.setEnabled(device, login, false);

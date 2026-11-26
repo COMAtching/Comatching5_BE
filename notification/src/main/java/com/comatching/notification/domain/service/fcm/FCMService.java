@@ -51,14 +51,14 @@ public class FCMService {
 
     public DeliveryOutcome sendNotification(ChatMessageEvent event) {
         if (!StringUtils.hasText(event.roomId())) return DeliveryOutcome.SKIPPED;
-        return dispatch(event.targetUserId(), event.eventId(), event.roomId());
+        return dispatch(event.targetUserId(), event.eventId(), event.roomId(), event.senderNickname());
     }
 
     public DeliveryOutcome sendItemsGranted(ItemsGranted event) {
-        return dispatch(event.memberId(), event.eventId(), null);
+        return dispatch(event.memberId(), event.eventId(), null, null);
     }
 
-    private DeliveryOutcome dispatch(long member, String eventId, String roomId) {
+    private DeliveryOutcome dispatch(long member, String eventId, String roomId, String senderNickname) {
         boolean chat = roomId != null;
         Set<String> devices;
         try {
@@ -75,7 +75,7 @@ public class FCMService {
             try {
                 // Fits the existing 40-character handler key. Keep the outer event ledger for old replays.
                 deliveries.deliver(eventId, (chat ? "C:" : "G:") + device,
-                        () -> send(member, UUID.fromString(device), roomId));
+                        () -> send(member, UUID.fromString(device), roomId, senderNickname));
             } catch (RuntimeException failure) {
                 // An uncertain or rejected installation must not prevent attempts to independent recipients.
                 if (pending == null || failure instanceof DeliveryNotSentException) pending = failure;
@@ -85,7 +85,7 @@ public class FCMService {
         return DeliveryOutcome.SENT;
     }
 
-    private DeliveryOutcome send(long member, UUID device, String roomId) {
+    private DeliveryOutcome send(long member, UUID device, String roomId, String senderNickname) {
         PushInstallations.Target target;
         try {
             target = installations.target(device, member);
@@ -101,7 +101,7 @@ public class FCMService {
                 .putData("body", chat ? "새 메시지가 있습니다." : "아이템 지급이 완료되었습니다.");
         if (chat) {
             try {
-                message.putData("chatRef", installations.rememberRoom(target, roomId).toString());
+                message.putData("chatRef", installations.rememberRoom(target, roomId, senderNickname).toString());
             } catch (DataAccessException unavailable) {
                 throw new DeliveryNotSentException("채팅 알림 연결 저장 실패", unavailable);
             }

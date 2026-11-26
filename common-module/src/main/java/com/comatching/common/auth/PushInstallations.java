@@ -173,14 +173,23 @@ public final class PushInstallations {
     }
 
     // A notification can outlive a login. Only that login on that installation can resolve its destination.
-    public UUID rememberRoom(Target target, String roomId) {
+    public UUID rememberRoom(Target target, String roomId, String senderNickname) {
         UUID reference = UUID.randomUUID();
-        redis.opsForValue().set(linkKey(target.installation(), target.session(), reference), roomId, Duration.ofDays(28));
+        String key = linkKey(target.installation(), target.session(), reference);
+        Duration lifetime = Duration.ofDays(28);
+        redis.opsForValue().set(key, roomId, lifetime);
+        if (senderNickname != null && !senderNickname.isBlank()) {
+            redis.opsForValue().set(key + ":sender", senderNickname.strip(), lifetime);
+        }
         return reference;
     }
 
     public String resolveRoom(UUID installation, LoginSession login, UUID reference) {
         return redis.opsForValue().get(linkKey(installation, login, reference));
+    }
+
+    public String resolveSenderNickname(UUID installation, LoginSession login, UUID reference) {
+        return redis.opsForValue().get(linkKey(installation, login, reference) + ":sender");
     }
 
     private static String linkKey(UUID installation, LoginSession login, UUID reference) {
