@@ -6,15 +6,19 @@ import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServic
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 import com.comatching.item.domain.grant.config.PreSignupMatchingTicketGrantProperties;
 import com.comatching.item.domain.order.config.PaymentOrderProperties;
 
+import com.comatching.common.operations.RemoteFeatureGate;
+
 @SpringBootApplication(exclude = { UserDetailsServiceAutoConfiguration.class })
 @ComponentScan(basePackages = {"com.comatching.item", "com.comatching.common"})
 @EnableFeignClients(basePackages = "com.comatching.item")
+@Import(RemoteFeatureGate.class)
 @EnableScheduling
 @EnableJpaAuditing
 @EnableConfigurationProperties({

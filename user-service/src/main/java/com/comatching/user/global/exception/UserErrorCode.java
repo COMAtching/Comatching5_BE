@@ -10,6 +10,7 @@ import lombok.Getter;
 public enum UserErrorCode implements ErrorCode {
 
 	// Auth 관련 에러 (AUTH-001 ~ AUTH-099)
+	VERIFICATION_MAIL_LIMITED("AUTH-010", HttpStatus.TOO_MANY_REQUESTS, "인증 메일 발송 한도에 도달했습니다. 잠시 후 다시 시도해주세요."),
 	SEND_EMAIL_FAILED("AUTH-001", HttpStatus.INTERNAL_SERVER_ERROR, "이메일 전송에 실패했습니다."),
 	EMAIL_NOT_AUTHENTICATED("AUTH-002", HttpStatus.BAD_REQUEST, "인증되지 않은 이메일입니다."),
 	INVALID_AUTH_CODE("AUTH-003", HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않습니다."),

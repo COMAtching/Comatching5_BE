@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>코매칭 · 입금 장부</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div class="brand"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>코매칭</span><span class="slash" aria-hidden="true">/</span><h1>입금 장부</h1></div>
+      <span id="mode" class="mode">은행 조회</span>
+    </header>
+
+    <div class="overview">
+      <section class="statement" aria-label="현재 페이지 입출금 합계">
+        <div class="statement-copy">
+          <p class="eyebrow"><span class="sum-dot"></span>조회된 입금 합계</p>
+          <p class="hero-amount"><strong id="total-in">—</strong><span>원</span></p>
+          <div class="statement-meta">
+            <div><span>입금 건수</span><b id="credit-count">—</b></div>
+            <div><span>출금 합계</span><b id="total-out">—</b></div>
+          </div>
+        </div>
+        <div class="receipt-art" aria-hidden="true">
+          <div class="sheet back"></div><div class="sheet front">
+            <i class="seal">✓</i><div class="paper-line"></div><div class="paper-line short"></div>
+            <div class="perforation"></div><div class="barcode"></div>
+          </div>
+        </div>
+      </section>
+      <section class="account" aria-labelledby="account-heading">
+        <h2 id="account-heading">조회 계좌</h2>
+        <label><span>은행</span><select id="bank">
+          <option value="kb" selected>KB국민은행</option><option value="toss">토스뱅크 · KB 다른금융</option><option value="other">기타 · KB 다른금융</option>
+        </select></label>
+        <label><span>별칭</span><input id="alias" value="행사입금" maxlength="60" autocomplete="off" placeholder="계좌 별칭"></label>
+        <button type="button" id="scan" class="action"><span aria-hidden="true">↻</span><span id="scan-text">거래내역 읽기</span></button>
+      </section>
+    </div>
+
+    <section id="auto-controls" hidden aria-label="KB 자동 조회">
+      <button type="button" class="action" id="auto-toggle" disabled>3분 자동 조회 시작</button>
+      <span id="auto-status" role="status"></span>
+    </section>
+    <p id="status" role="status" aria-live="polite" hidden></p>
+    <details id="configuration" hidden>
+      <summary>표와 열 설정</summary>
+      <div class="settings-body">
+        <div class="controls"><label>거래내역 표<select id="table"></select></label><label>제목행의 마지막 행 번호<input id="header-end" type="number" min="1" step="1" value="1"></label></div>
+        <p>은행 표에 맞는 열을 선택하세요. 순번은 은행 거래고유번호와 다릅니다.</p>
+        <div id="mapping" class="controls"></div>
+        <button type="button" id="convert" class="action">선택한 열 적용</button>
+      </div>
+    </details>
+    <section class="ledger" aria-labelledby="ledger-heading">
+      <div class="ledger-top"><div><h2 id="ledger-heading">거래 내역</h2><p id="scope">현재 페이지에 표시된 거래</p></div>
+        <button id="save" class="download" type="button" disabled><span aria-hidden="true">↓</span> JSON 저장</button></div>
+      <div id="filters" class="filters" aria-label="거래 필터" role="group">
+        <button type="button" data-filter="all" aria-pressed="true">전체 <small></small></button>
+        <button type="button" data-filter="CREDIT" aria-pressed="false">입금 <small></small></button>
+        <button type="button" data-filter="DEBIT" aria-pressed="false">출금 <small></small></button>
+        <button type="button" data-filter="review" aria-pressed="false">확인 필요 <small></small></button>
+      </div>
+      <table id="ledger-table" hidden><caption class="sr">현재 필터에 해당하는 거래</caption>
+        <thead><tr><th scope="col">통장 표시</th><th scope="col">거래 일시</th><th scope="col">구분</th><th scope="col" class="money">금액</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="empty">은행에서 거래내역을 조회한 후 ‘거래내역 읽기’를 눌러주세요.</p>
+      <button type="button" id="more" hidden>거래 더 보기</button>
+      <footer id="ledger-foot" hidden><span id="range"></span><span>현재 페이지 기준</span></footer>
+    </section>
+    <details id="delivery-panel" hidden><summary>서버로 입금 전송</summary>
+      <div class="settings-body">
+        <p>연결 후 자동 조회에서 읽은 입금을 보냅니다. 수동으로 읽은 페이지는 아래 전송 버튼을 누르세요.</p>
+        <div class="controls">
+          <label>수신 서버<select id="delivery-origin"><option value="http://127.0.0.1:9006">로컬 item-service</option><option value="https://srv.comatching.site">코매칭 운영 서버</option></select></label>
+          <label>수집 전용 토큰<input id="delivery-token" type="password" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <button type="button" class="action" id="delivery-connect">전송 연결</button>
+        <button type="button" id="delivery-pause" disabled>전송 중지</button>
+        <button type="button" id="delivery-send" disabled>현재 입금 보내기</button>
+        <button type="button" id="delivery-retry" hidden>보류 묶음 다시 보내기</button>
+        <p role="status" id="delivery-info"></p><p role="alert" id="delivery-error"></p>
+      </div>
+    </details>
+    <details id="notes"><summary>조회 범위와 저장 안내</summary>
+      <div class="settings-body"><p id="warnings"></p>
+      <p>JSON에는 모든 정상 거래와 확인이 필요한 행의 번호·사유가 들어갑니다. 같은 표를 다시 읽으면 같은 거래도 다시 저장됩니다.</p>
+      <p>계좌 정보는 직접 지정한 값입니다. 서버 연결 시 정상 입금 행만 전송합니다. 주문 승인은 운영자 화면에서 처리합니다.</p></div>
+    </details>
+  </main>
+  <script type="module" src="popup.mjs"></script>
+</body></html>

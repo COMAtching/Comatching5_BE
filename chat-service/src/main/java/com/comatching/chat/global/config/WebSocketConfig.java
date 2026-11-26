@@ -1,5 +1,14 @@
 package com.comatching.chat.global.config;
 
+import com.comatching.common.auth.SessionRedisScripts;
+import com.comatching.common.auth.TrustedSession;
+import com.comatching.common.socket.SocketSessionGuard;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import com.comatching.common.operations.FeatureGate;
+import com.comatching.common.operations.Feature;
 import java.security.Principal;
 import java.util.Map;
 
@@ -33,6 +42,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	private final WebSocketHandshakeInterceptor handshakeInterceptor;
 	private final ChatRoomService chatRoomService;
+
+	@Bean
+	static SocketSessionGuard chatSessionGuard(StringRedisTemplate redis, FeatureGate features, RedisMessageListenerContainer listener) {
+		var guard = new SocketSessionGuard(() -> features.state(Feature.CHAT).open(),
+			identity -> SessionRedisScripts.isActive(redis, identity.login()));
+		listener.addMessageListener(guard, new ChannelTopic(TrustedSession.REVOCATIONS));
+		return guard;
+	}
 
 	@Override
 	public void registerStompEndpoints(StompEndpointRegistry registry) {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>KB 입금 문구 테스트 · 코매칭</title>
+  <style>
+    :root{color-scheme:light;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;color:#20372c;background:#faf9f5}
+    main{max-width:36rem;margin:4vh auto;padding:1rem}h1{margin:.2rem 0;font-size:1.65rem}p{margin:.5rem 0 1rem}
+    form,article{background:white;border:1px solid #d6ded4;border-radius:14px;padding:1rem;margin:.65rem 0}
+    label{display:block;margin-bottom:1rem;font-weight:600}input,select,button,a.action{box-sizing:border-box;font:inherit;border:1px solid #c5d0c6;border-radius:8px;padding:.55rem .8rem}
+    input,select{display:block;width:100%;margin-top:.3rem}button,a.action{cursor:pointer;background:#f2f5ed;color:#20372c}
+    .primary,a.action{background:#204a39;color:white;text-decoration:none}h2{font-size:1rem;margin:0 0 .65rem}
+    .buttons{display:flex;flex-wrap:wrap;gap:.55rem;align-items:center}code{font-size:1.1rem}#status{min-height:1.5rem;font-size:.9rem}
+  </style>
+</head>
+<body><main>
+  <h1>KB 입금 문구 테스트</h1>
+  <p>두 송금 링크에 서로 다른 주문코드를 넣습니다. KB 빠른조회에 같은 코드가 들어오는지 비교하세요.</p>
+  <form id="form" autocomplete="off">
+    <label>수취할 KB국민은행 계좌번호<input id="account" type="text" inputmode="numeric" placeholder="본인 KB 계좌" maxlength="30" required></label>
+    <label>두 링크에 공통으로 넣을 금액<select id="amount"><option value="1">1원 (테스트)</option><option value="1000">1,000원 (행사 정가)</option></select></label>
+    <button class="primary" type="submit">테스트 링크 두 개 만들기</button>
+  </form>
+  <section id="links" aria-label="생성된 테스트 링크"></section>
+  <p role="status" id="status"></p>
+  <p>휴대폰의 토스 송금 화면에서 수취 계좌와 금액을 확인하세요. 입금자명과 메모는 그대로 두어야 자동 전달 여부를 판단할 수 있습니다.</p>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  function clearLinks() { $('links').replaceChildren(); $('status').textContent = ''; }
+  $('form').addEventListener('input', clearLinks);
+  $('form').addEventListener('submit', event => {
+    event.preventDefault();
+    clearLinks();
+    const accountNo = $('account').value.replace(/[-\s]/g, '');
+    if (!/^\d{8,16}$/.test(accountNo)) {
+      $('status').textContent = 'KB 계좌번호의 숫자와 자릿수를 확인하세요.';
+      return;
+    }
+    const amount = $('amount').value;
+    if (!['1', '1000'].includes(amount)) return;
+    const bytes = crypto.getRandomValues(new Uint8Array(2));
+    const prefix = 'CM' + Array.from(bytes, n => n.toString(16).padStart(2, '0')).join('').toUpperCase();
+    for (const suffix of ['A', 'B']) {
+      const code = prefix + suffix;
+      const href = 'supertoss://send?' + new URLSearchParams({accountNo, bankCode:'004', amount, message:code});
+      const row = document.createElement('article');
+      const label = document.createElement('h2');
+      label.textContent = suffix + ' · 주문코드 ' + code + ' · ' + Number(amount).toLocaleString('ko-KR') + '원';
+      const buttons = document.createElement('div'); buttons.className = 'buttons';
+      const open = document.createElement('a');
+      open.href = href; open.className = 'action'; open.textContent = '토스에서 열기';
+      const copy = document.createElement('button');
+      copy.type = 'button'; copy.textContent = '링크 복사';
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(href); $('status').textContent = suffix + ' 링크를 복사했습니다.'; }
+        catch { window.prompt('아래 링크를 복사하세요.', href); }
+      };
+      buttons.append(open, copy); row.append(label, buttons); $('links').append(row);
+    }
+    $('status').textContent = '링크를 생성했습니다. 각 링크에는 입력한 수취 계좌번호가 포함됩니다.';
+  });
+</script></body></html>

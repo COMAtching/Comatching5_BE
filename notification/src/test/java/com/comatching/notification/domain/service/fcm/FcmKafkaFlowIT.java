@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.comatching.notification.support.TestInstallations;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -172,7 +173,7 @@ class FcmKafkaFlowIT {
     @DisplayName("실제 Redis에서 UNREGISTERED 토큰을 삭제하고 DLT 없이 offset을 커밋한다")
     void unregisteredTokenIsDeletedAndCommitted() throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "expired-token");
+        register(event.targetUserId(), "expired-token");
         assertThat(redis.getExpire(tokenKey(event), TimeUnit.SECONDS)).isBetween(5_183_900L, 5_184_000L);
         FirebaseMessagingException unregistered = failure(MessagingErrorCode.UNREGISTERED);
         when(sender.send(any(Message.class))).thenThrow(unregistered);
@@ -181,7 +182,7 @@ class FcmKafkaFlowIT {
         RecordMetadata sent = publish(event);
         awaitCommit(sent, Duration.ofSeconds(30));
 
-        assertThat(redis.opsForValue().get(tokenKey(event))).isNull();
+        assertThat(redis.opsForHash().get(tokenKey(event), "token")).isNull();
         verify(sender, times(1)).send(any(Message.class));
         assertThat(dltEndOffset()).isEqualTo(beforeDlt);
         verifyNoInteractions(notifier);
@@ -191,18 +192,18 @@ class FcmKafkaFlowIT {
     @DisplayName("전송 중 새로 등록된 토큰을 Lua 조건부 삭제가 보존한다")
     void tokenRegisteredDuringSendSurvivesCleanup() throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "old-token");
+        register(event.targetUserId(), "old-token");
         FirebaseMessagingException unregistered = failure(MessagingErrorCode.UNREGISTERED);
         when(sender.send(any(Message.class))).thenAnswer(invocation -> {
             // FCMService가 old-token을 읽은 뒤, 실패 응답 전에 재등록되는 경쟁 상황.
-            service.saveToken(event.targetUserId(), "new-token");
+            register(event.targetUserId(), "new-token");
             throw unregistered;
         });
         long beforeDlt = dltEndOffset();
 
         awaitCommit(publish(event), Duration.ofSeconds(30));
 
-        assertThat(redis.opsForValue().get(tokenKey(event))).isEqualTo("new-token");
+        assertThat(redis.opsForHash().get(tokenKey(event), "token")).isEqualTo("new-token-" + event.targetUserId());
         verify(sender, times(1)).send(any(Message.class));
         assertThat(dltEndOffset()).isEqualTo(beforeDlt);
         verifyNoInteractions(notifier);
@@ -222,7 +223,7 @@ class FcmKafkaFlowIT {
     @DisplayName("INVALID_ARGUMENT는 토큰 보존·최초 1회 호출·DLT 발행 후 커밋한다")
     void invalidArgumentParksWithoutRetry(String topic) throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         FirebaseMessagingException invalidArgument = failure(MessagingErrorCode.INVALID_ARGUMENT);
         when(sender.send(any(Message.class))).thenThrow(invalidArgument);
 
@@ -230,7 +231,7 @@ class FcmKafkaFlowIT {
         awaitCommit(sent, Duration.ofSeconds(30));
 
         assertDlt(event, sent);
-        assertThat(redis.opsForValue().get(tokenKey(event))).isEqualTo("valid-token");
+        assertThat(redis.opsForHash().get(tokenKey(event), "token")).isEqualTo("valid-token-" + event.targetUserId());
         verify(sender, times(1)).send(any(Message.class));
         verify(notifier, times(1)).notifyParked(any(), any(), org.mockito.ArgumentMatchers.eq(KafkaEventRoute.CHAT_NOTIFICATION));
     }
@@ -240,7 +241,7 @@ class FcmKafkaFlowIT {
     @DisplayName("429 또는 Retry-After가 있으면 10초 재시도 대신 바로 DLT에 보관한다")
     void serverRequestedDelayParksForManualRedrive(int status) throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         IncomingHttpResponse response = mock(IncomingHttpResponse.class);
         when(response.getStatusCode()).thenReturn(status);
         when(response.getHeaders()).thenReturn(Map.of("Retry-After", List.of("120")));
@@ -253,7 +254,7 @@ class FcmKafkaFlowIT {
 
         assertDlt(event, sent);
         verify(sender, times(1)).send(any(Message.class));
-        assertThat(redis.opsForValue().get(tokenKey(event))).isEqualTo("valid-token");
+        assertThat(redis.opsForHash().get(tokenKey(event), "token")).isEqualTo("valid-token-" + event.targetUserId());
     }
 
     @ParameterizedTest
@@ -261,7 +262,7 @@ class FcmKafkaFlowIT {
     @DisplayName("첫 일시 장애 뒤 실제 10초 이상 기다려 성공하면 DLT 없이 커밋한다")
     void transientFailureRecoversAfterRealBackoff(String topic) throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         List<Long> attempts = new CopyOnWriteArrayList<>();
         FirebaseMessagingException unavailable = explicitUnavailable();
         when(sender.send(any(Message.class))).thenAnswer(invocation -> {
@@ -286,7 +287,7 @@ class FcmKafkaFlowIT {
     @DisplayName("실제 10·20·40초 재시도 소진 뒤 원본 key·payload·위치를 DLT에 보존한다")
     void exhaustedRetriesParkAndCommit() throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         List<Long> attempts = new CopyOnWriteArrayList<>();
         FirebaseMessagingException unavailable = explicitUnavailable();
         when(sender.send(any(Message.class))).thenAnswer(invocation -> {
@@ -308,7 +309,7 @@ class FcmKafkaFlowIT {
     @DisplayName("DLT 발행 실패 시 원본 offset을 넘기지 않고 DLT 복구 성공 뒤 커밋한다")
     void dltPublicationFailureDoesNotCommitSource() throws Exception {
         ChatMessageEvent event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         FirebaseMessagingException invalidArgument = failure(MessagingErrorCode.INVALID_ARGUMENT);
         when(sender.send(any(Message.class))).thenThrow(invalidArgument);
         AtomicInteger dltAttempts = new AtomicInteger();
@@ -352,7 +353,7 @@ class FcmKafkaFlowIT {
         var first = event();
         var second = new ChatMessageEvent(first.targetUserId(), first.senderNickname(), first.roomId(),
                 first.content(), first.timestamp(), first.type(), first.messageId() + "-2");
-        service.saveToken(first.targetUserId(), "valid-token");
+        register(first.targetUserId(), "valid-token");
         awaitCommit(publish(first), Duration.ofSeconds(20));
         awaitCommit(publish(first), Duration.ofSeconds(20));
         awaitCommit(publish(REPLAY, first), Duration.ofSeconds(20));
@@ -365,7 +366,7 @@ class FcmKafkaFlowIT {
     @Test
     void lostFcmAcknowledgementIsNotSentAgainOnReplay() throws Exception {
         var event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         when(sender.send(any(Message.class))).thenThrow(failure(MessagingErrorCode.UNAVAILABLE));
         awaitCommit(publish(event), Duration.ofSeconds(20));
         assertThat(state(event)).isEqualTo("UNKNOWN");
@@ -378,7 +379,7 @@ class FcmKafkaFlowIT {
     @Test
     void failedEligibilityLookupIsRetriedAndNewlyReadMessageIsSkipped() throws Exception {
         var event = event();
-        service.saveToken(event.targetUserId(), "valid-token");
+        register(event.targetUserId(), "valid-token");
         eligibility.put(event.messageId(), "unavailable");
         var record = publish(event);
         Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(state(event)).isEqualTo("RETRYABLE"));
@@ -498,8 +499,72 @@ class FcmKafkaFlowIT {
         return new ChatMessageEvent(id, "sender", "room-" + id, "hello", "2026-11-19T12:00:00", "CHAT", "message-" + id);
     }
 
+    @Test
+    void sharedBrowserMovesAtomicallyAndOtherInstallationsReceiveOnlyOneGenericPush() throws Exception {
+        var a = event();
+        var b = event();
+        var store = new com.comatching.common.auth.PushInstallations(redis);
+        var browser = UUID.randomUUID();
+        var phone = UUID.randomUUID();
+        var aBrowser = TestInstallations.activate(redis, browser, a.targetUserId(), UUID.randomUUID());
+        var aPhone = TestInstallations.activate(redis, phone, a.targetUserId(), UUID.randomUUID());
+        service.register(browser, aBrowser, "shared-" + browser);
+        service.register(phone, aPhone, "phone-" + phone);
+        var bBrowser = TestInstallations.activate(redis, browser, b.targetUserId(), UUID.randomUUID());
+        assertThat(store.target(browser, a.targetUserId())).isNull();
+        service.register(browser, bBrowser, "shared-" + browser);
+        assertThatThrownBy(() -> service.register(browser, aBrowser, "shared-" + browser))
+                .isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        assertThatThrownBy(() -> service.register(phone, aPhone, "shared-" + browser))
+                .isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        store.revoke(a.targetUserId(), aBrowser.login().id());
+        assertThat(store.target(browser, b.targetUserId()).token()).isEqualTo("shared-" + browser);
+        var tablet = UUID.randomUUID();
+        var aTablet = TestInstallations.activate(redis, tablet, a.targetUserId(), UUID.randomUUID());
+        service.register(tablet, aTablet, "tablet-" + tablet);
+        service.sendNotification(a);
+        service.sendNotification(a);
+        var sent = org.mockito.ArgumentCaptor.forClass(Message.class);
+        verify(sender, times(2)).send(sent.capture());
+        assertThat(sent.getAllValues()).extracting(message -> ReflectionTestUtils.getField(message, "token"))
+                .containsExactlyInAnyOrder("phone-" + phone, "tablet-" + tablet);
+        store.revoke(a.targetUserId(), null);
+        assertThat(store.installations(a.targetUserId())).isEmpty();
+        assertThat(store.target(browser, b.targetUserId())).isNotNull();
+    }
+
+    @Test
+    void aPartiallySuccessfulEventRetriesOnlyTheUnsentInstallation() throws Exception {
+        var event = event();
+        var phone = UUID.randomUUID();
+        var browser = UUID.randomUUID();
+        service.register(phone, TestInstallations.activate(redis, phone, event.targetUserId(), UUID.randomUUID()), "phone-" + phone);
+        service.register(browser, TestInstallations.activate(redis, browser, event.targetUserId(), UUID.randomUUID()), "browser-" + browser);
+        var browserAttempts = new java.util.concurrent.atomic.AtomicInteger();
+        var phoneAttempts = new java.util.concurrent.atomic.AtomicInteger();
+        when(sender.send(any(Message.class))).thenAnswer(invocation -> {
+            var token = ReflectionTestUtils.getField(invocation.<Message>getArgument(0), "token");
+            if (("browser-" + browser).equals(token)) {
+                if (browserAttempts.incrementAndGet() == 1) throw explicitUnavailable();
+            } else {
+                phoneAttempts.incrementAndGet();
+            }
+            return "accepted";
+        });
+        assertThatThrownBy(() -> service.sendNotification(event))
+            .isInstanceOf(com.comatching.notification.domain.delivery.DeliveryNotSentException.class);
+        service.sendNotification(event);
+        service.sendNotification(event);
+        assertThat(browserAttempts.get()).isEqualTo(2);
+        assertThat(phoneAttempts.get()).isEqualTo(1);
+    }
+
+    private void register(long member, String token) {
+        TestInstallations.register(redis, service, member, token + "-" + member);
+    }
+
     private String tokenKey(ChatMessageEvent event) {
-        return "fcm:token:" + event.targetUserId();
+        return "push:v2:{installations}:i:" + com.comatching.notification.support.TestInstallations.device(event.targetUserId());
     }
 
     @Configuration(proxyBeanMethods = false)

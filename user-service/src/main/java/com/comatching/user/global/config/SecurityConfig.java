@@ -51,6 +51,7 @@ public class SecurityConfig {
 		"/api/profile/tags",
 		"/api/hobbies/categories",
 		"/api/public/profile-images/**",
+		"/api/public/operations", "/api/public/operations/**",
 		"/actuator/**"
 	);
 

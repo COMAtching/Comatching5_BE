@@ -1,0 +1,30 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KB 입금 대조 · 로컬 리허설</title>
+<style>body{max-width:46rem;margin:3rem auto;padding:0 1rem;font:16px/1.6 system-ui;color:#17342c}input,button{font:inherit;padding:.4rem .7rem}table{width:100%;text-align:left;border-collapse:collapse}th,td{padding:.4rem;border-bottom:1px solid #ddd}p{color:#476057}h2{margin-top:2rem}button{cursor:pointer}</style>
+<h1>KB 입금 대조</h1><p>이 Mac의 임시 장부 · 자동 승인 꺼짐</p>
+<form id="query"><label>리허설 토큰 <input id="token" type="password" autocomplete="off" required></label> <button>장부 조회</button></form>
+<p role="status" id="result"></p>
+<section hidden id="ledger"><h2>최근 받은 한 페이지</h2><p id="current"></p>
+<table><thead><tr><th>거래 일시</th><th>입금자</th><th>입금액</th></tr></thead><tbody></tbody></table>
+<h2>회차 대조 결과</h2><p id="totals"></p><p id="sync"></p></section>
+<script>
+const $=s=>document.querySelector(s), number=n=>n.toLocaleString('ko-KR');
+$('#query').onsubmit=async event=>{
+ event.preventDefault();$('#ledger').hidden=true;$('#result').textContent='조회 중…';
+ try {
+   const response=await fetch('/rehearsal/ledger',{headers:{Authorization:'Bearer '+$('#token').value},cache:'no-store'});
+   if (!response.ok) throw Error(response.status===401?'리허설 토큰을 확인하세요.':'조회에 실패했습니다.');
+   const data=await response.json(), page=data.lastPage;
+   $('#current').textContent=page?'서버 접수 '+number(page.count)+'건 · '+number(page.won)+'원. 확장의 전송 대기가 0일 때 KB 원본의 같은 페이지와 비교하세요.':'아직 접수한 입금 행이 없습니다.';
+   $('tbody').replaceChildren();
+   for(const row of page?.rows ?? []) {
+     const tr=document.createElement('tr');for(const value of [row.date+' '+(row.time ?? ''),row.payer || '미표시',number(row.won)+'원']){
+       tr.insertCell().textContent=value;
+     }$('tbody').append(tr);
+   }
+   $('#totals').textContent='이번 리허설 누적 장부 '+number(data.ledger.count)+'건 · '+number(data.ledger.won)+'원';
+   $('#sync').textContent='처리된 정상 회차 '+data.completedScans+'회 · 마지막 정상 조회 '+(data.lastSuccess?.replace('T',' ').slice(0,19) ?? '기록 없음')+' · Kafka 발행 대기 '+data.unpublishedRows+'행'+(data.issue?' · 확인 필요 '+data.issue:'');
+   $('#result').textContent='조회 완료';$('#ledger').hidden=false;
+ }catch(e){$('#result').textContent=e.message;}
+};
+</script></html>

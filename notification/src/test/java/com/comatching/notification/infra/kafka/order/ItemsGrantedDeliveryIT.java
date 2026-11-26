@@ -118,6 +118,7 @@ class ItemsGrantedDeliveryIT {
     @Autowired KafkaDltRedriveService redrive;
     @Autowired ItemsGrantedConsumer consumer;
     @Autowired FCMService fcm;
+    @Autowired org.springframework.data.redis.core.StringRedisTemplate pushRedis;
     @MockitoBean JavaMailSenderImpl smtp;
     @MockitoBean FirebaseMessageSender firebase;
     @MockitoBean KafkaDltAlertNotifier alerts;
@@ -268,7 +269,7 @@ class ItemsGrantedDeliveryIT {
     }
 
     private ItemsGranted event(long id) {
-        fcm.saveToken(id, "test-token-" + id);
+        com.comatching.notification.support.TestInstallations.register(pushRedis, fcm, id, "test-token-" + id);
         return granted(id);
     }
 
@@ -278,7 +279,7 @@ class ItemsGrantedDeliveryIT {
     }
 
     private List<String> states(ItemsGranted event) {
-        return jdbc.queryForList("SELECT state FROM notification_delivery WHERE event_id=? ORDER BY handler_id",
+        return jdbc.queryForList("SELECT state FROM notification_delivery WHERE event_id=? AND handler_id IN (\'GRANT_MAIL\',\'GRANT_PUSH\') ORDER BY handler_id",
                 String.class, event.eventId());
     }
 

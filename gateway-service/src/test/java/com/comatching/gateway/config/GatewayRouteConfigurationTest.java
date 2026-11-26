@@ -64,6 +64,23 @@ class GatewayRouteConfigurationTest {
 		}
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = {"application-local.yml", "application-aws.yml"})
+	void collectorAcceptsExtensionOriginOnlyOnIngestPath(String resourceName) throws Exception {
+		var configs = load(resourceName).bind("spring.cloud.gateway.server.webflux.globalcors",
+			Bindable.of(GlobalCorsProperties.class)).orElseThrow(IllegalStateException::new).getCorsConfigurations();
+		var source = new org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource();
+		source.setCorsConfigurations(configs);
+		var request = org.springframework.mock.http.server.reactive.MockServerHttpRequest
+			.options("/api/v1/collector/deposit-observations").build();
+		var cors = source.getCorsConfiguration(org.springframework.mock.web.server.MockServerWebExchange.from(request));
+		String origin = "chrome-extension://example";
+		assertThat(cors.checkOrigin(origin)).isEqualTo(origin);
+		assertThat(cors.getAllowCredentials()).isFalse();
+		assertThat(cors.getAllowedMethods()).containsExactly("POST");
+		assertThat(configs.get("/**").checkOrigin(origin)).isNull();
+	}
+
 	private Binder load(String resourceName) throws Exception {
 		List<PropertySource<?>> sources = new YamlPropertySourceLoader()
 			.load(resourceName, new ClassPathResource(resourceName));

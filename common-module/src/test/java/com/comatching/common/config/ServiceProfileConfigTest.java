@@ -42,7 +42,7 @@ class ServiceProfileConfigTest {
 			"notification", List.of(KafkaEventRoute.SIGNUP_MAIL, KafkaEventRoute.WITHDRAW_MAIL, KafkaEventRoute.CHAT_NOTIFICATION,
 					KafkaEventRoute.ITEMS_GRANTED_MAIL, KafkaEventRoute.ITEMS_GRANTED_PUSH, KafkaEventRoute.REFUND_MAIL),
 			"chat-service", List.of(KafkaEventRoute.CHAT_ROOM_CREATE),
-			"item-service", List.of(KafkaEventRoute.PRE_SIGNUP_ITEM));
+			"item-service", List.of(KafkaEventRoute.PRE_SIGNUP_ITEM, KafkaEventRoute.BANK_SCAN));
 		expected.forEach((service, routes) -> {
 			StandardEnvironment env = load(service, profile, Map.of());
 			assertThat(Binder.get(env).bind("comatching.kafka.dlt-routes", Bindable.listOf(KafkaEventRoute.class)).get())

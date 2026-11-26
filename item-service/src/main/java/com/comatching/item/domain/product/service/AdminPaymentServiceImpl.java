@@ -26,12 +26,17 @@ import com.comatching.item.domain.order.service.OrderOutboxService;
 import com.comatching.item.domain.product.dto.PurchaseRequestDto;
 import com.comatching.item.global.exception.PaymentErrorCode;
 
+import com.comatching.item.infra.bankdeposit.BankApprovalGate;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AdminPaymentServiceImpl implements AdminPaymentService {
+	@Autowired(required = false)
+	private BankApprovalGate depositGate;
+
 
 	private static final String EXPIRE_REASON = "AUTO_EXPIRED_BEFORE_ADMIN_DECISION";
 	private static final int MAX_PAGE_SIZE = 100;
@@ -136,6 +141,12 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 
 	@Override
 	public void approvePurchase(Long requestId, Long adminId) {
+		if (depositGate != null) depositGate.requireUnlinkedApprovalAllowed(requestId);
+		approveMatchedPurchase(requestId, adminId, null);
+	}
+
+	@Override
+	public void approveMatchedPurchase(Long requestId, Long adminId, String reason) {
 		LocalDateTime now = LocalDateTime.now();
 		Order order = findOrderWithItems(requestId);
 
@@ -153,7 +164,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
 			OrderStatus.PENDING,
 			OrderStatus.APPROVED,
 			adminId,
-			null,
+			reason,
 			now
 		);
 		orderOutboxService.enqueueOrderStatusChanged(

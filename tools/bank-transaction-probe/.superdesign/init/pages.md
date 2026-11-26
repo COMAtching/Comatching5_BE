@@ -1,0 +1,1 @@
+extension/popup.html -> popup.css and popup.mjs -> parser.mjs + extractor.mjs. Demo additionally loads fixtures/bank.html -> fixtures/data.mjs, parser.mjs, extractor.mjs. No other client dependencies.

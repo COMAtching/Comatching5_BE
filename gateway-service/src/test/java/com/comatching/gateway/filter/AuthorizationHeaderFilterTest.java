@@ -47,7 +47,7 @@ class AuthorizationHeaderFilterTest {
 	private final AuthorizationHeaderFilter filter = new AuthorizationHeaderFilter(
 		jwtUtil,
 		sessions,
-		new ObjectMapper()
+		new ObjectMapper(), "test-gateway-proof"
 	);
 
 	@BeforeEach
@@ -60,6 +60,8 @@ class AuthorizationHeaderFilterTest {
 		String token = jwtUtil.createAccessToken(session, "real@example.com", MemberRole.ROLE_USER, MemberStatus.ACTIVE, "real-nickname");
 		MockServerHttpRequest request = MockServerHttpRequest.get("/api/items")
 			.cookie(new HttpCookie("accessToken", token))
+			.header("X-Gateway-Session-Proof", "untrusted")
+			.header("X-Login-Version", "123")
 			.header("X-Member-Id", "999")
 			.header("X-Member-Email", "spoof@example.com")
 			.header("X-Member-Role", "ROLE_ADMIN")
@@ -76,11 +78,28 @@ class AuthorizationHeaderFilterTest {
 		filter.apply(new AuthorizationHeaderFilter.Config()).filter(exchange, chain).block();
 
 		ServerHttpRequest mutatedRequest = capturedRequest.get();
+		var identity = com.comatching.common.auth.TrustedSession.from(mutatedRequest.getHeaders(), "test-gateway-proof");
+		assertThat(identity.login()).isEqualTo(session);
+		var changed = new org.springframework.http.HttpHeaders();
+		changed.putAll(mutatedRequest.getHeaders());
+		changed.set("X-Member-Role", "ROLE_ADMIN");
+		assertThat(com.comatching.common.auth.TrustedSession.from(changed, "test-gateway-proof")).isNull();
 		assertThat(mutatedRequest.getHeaders().getFirst("X-Member-Id")).isEqualTo("42");
 		assertThat(mutatedRequest.getHeaders().getFirst("X-Member-Email")).isEqualTo("real@example.com");
 		assertThat(mutatedRequest.getHeaders().getFirst("X-Member-Role")).isEqualTo("ROLE_USER");
 		assertThat(mutatedRequest.getHeaders()).doesNotContainKey("X-Internal-Token");
 		assertThat(mutatedRequest.getHeaders().get("X-Member-Id")).containsExactly("42");
+	}
+
+	@Test
+	void protectedRetryWithAnEarlierBrowserSessionStopsBeforeRouting() {
+		var token = jwtUtil.createAccessToken(session, "member@example.invalid", MemberRole.ROLE_USER, MemberStatus.ACTIVE, null);
+		var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/orders")
+			.cookie(new HttpCookie("accessToken", token))
+			.header(LoginSession.EXPECTED_HEADER, new LoginSession(42, 0, UUID.randomUUID()).clientMarker()));
+		filter.apply(new AuthorizationHeaderFilter.Config()).filter(exchange,
+			ignored -> Mono.error(new AssertionError("unexpected route"))).block();
+		assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 	}
 
 	@Test

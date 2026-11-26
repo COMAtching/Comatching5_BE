@@ -21,6 +21,9 @@ comatching:
     default-images:
       base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:https://srv.comatching.site/api/public/profile-images/}
 
+operations:
+  initially-closed: ${OPERATIONS_INITIALLY_CLOSED:LOGIN,MATCHING,SHOP_PAYMENT}
+
 spring:
   datasource:
     url: jdbc:mysql://${RDS_ENDPOINT}:3306/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=true&requireSSL=true

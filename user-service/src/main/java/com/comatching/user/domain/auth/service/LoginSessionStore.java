@@ -1,6 +1,9 @@
 package com.comatching.user.domain.auth.service;
 
 import java.util.List;
+import java.util.UUID;
+import com.comatching.common.auth.PushInstallations;
+import com.comatching.common.auth.TrustedSession;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -16,14 +19,18 @@ import com.comatching.common.exception.code.GeneralErrorCode;
 @Component
 public class LoginSessionStore {
 	private static final String SAVE = """
-		redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[3])
-		redis.call('SET', KEYS[2], sessionStamp, 'PX', ARGV[3])
+		redis.call('SET', KEYS[1], generation, 'PX', ARGV[3])
+		redis.call('SET', KEYS[2], sessionValue(generation), 'PX', ARGV[3])
 		redis.call('SET', KEYS[3], ARGV[2], 'PX', ARGV[4])
 		return 1
 		""";
-	private static final DefaultRedisScript<Long> START = new DefaultRedisScript<>(SessionRedisScripts.SESSION_STAMP + SAVE, Long.class);
+	private static final DefaultRedisScript<Long> START = new DefaultRedisScript<>(SessionRedisScripts.SESSION_STAMP + """
+		local generation = redis.call('GET', KEYS[1])
+		if not matchesVersion(generation) then generation = ARGV[1] .. '/' .. string.match(ARGV[2], '^[^:]+') end
+		""" + SAVE, Long.class);
 	private static final DefaultRedisScript<Long> ROTATE = new DefaultRedisScript<>(SessionRedisScripts.SESSION_STAMP + """
-		if redis.call('GET', KEYS[1]) ~= ARGV[1] or redis.call('GET', KEYS[2]) ~= sessionStamp then return 0 end
+		local generation = redis.call('GET', KEYS[1])
+		if not matchesVersion(generation) or redis.call('GET', KEYS[2]) ~= sessionValue(generation) then return 0 end
 		local current = redis.call('GET', KEYS[3])
 		if not current then return 0 end
 		if ARGV[6] == 'onboarding' then
@@ -32,27 +39,34 @@ public class LoginSessionStore {
 			return 0
 		end
 		""" + SAVE, Long.class);
-	private static final DefaultRedisScript<Long> END = new DefaultRedisScript<>("""
-		redis.call('DEL', KEYS[1])
-		local current = redis.call('GET', KEYS[2])
-		if current and string.sub(current, 1, #ARGV[1]) == ARGV[1] then redis.call('DEL', KEYS[2]) end
-		return 1
-		""", Long.class);
 	private static final DefaultRedisScript<Long> END_ALL = new DefaultRedisScript<>("return redis.call('DEL', KEYS[1], KEYS[2])", Long.class);
 
 	private final StringRedisTemplate redis;
+	private final PushInstallations installations;
 	private final String sessionTtl;
 	private final String refreshTtl;
 
 	public LoginSessionStore(StringRedisTemplate redis, @Value("${jwt.access-token.expiration}") long accessMillis,
 		@Value("${jwt.refresh-token.expiration}") long refreshMillis) {
 		this.redis = redis;
+		this.installations = new PushInstallations(redis);
 		this.sessionTtl = Long.toString(Math.max(accessMillis, refreshMillis));
 		this.refreshTtl = Long.toString(refreshMillis);
 	}
 
 	void start(LoginSession session, String newTokenId) {
 		execute(START, keys(session), Long.toString(session.authVersion()), credential(session, newTokenId), sessionTtl, refreshTtl);
+	}
+
+	UUID claimInstallation(UUID installation, LoginSession session, boolean newLogin) {
+		try {
+			if (!installations.isActive(session)) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+			UUID bound = installations.bind(installation, session, newLogin);
+			if (bound == null) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+			return bound;
+		} catch (DataAccessException unavailable) {
+			throw new BusinessException(GeneralErrorCode.INTERNAL_SERVICE_UNAVAILABLE);
+		}
 	}
 
 	void rotate(LoginSession session, String previousTokenId, String newTokenId) {
@@ -69,12 +83,28 @@ public class LoginSessionStore {
 		if (updated == 0) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
 	}
 
-	void end(LoginSession session) {
-		execute(END, List.of(session.sessionKey(), LoginSession.refreshKey(session.memberId())), session.id() + ":");
+	boolean end(LoginSession session) {
+		try {
+			boolean ended = SessionRedisScripts.end(redis, session);
+			installations.revoke(session.memberId(), session.id());
+			return ended;
+		} catch (DataAccessException unavailable) {
+			throw new BusinessException(GeneralErrorCode.INTERNAL_SERVICE_UNAVAILABLE);
+		}
 	}
 
 	public void endAll(long memberId) {
 		execute(END_ALL, List.of(LoginSession.versionKey(memberId), LoginSession.refreshKey(memberId)));
+		revokeInstallations(memberId, null);
+	}
+
+	private void revokeInstallations(long memberId, UUID sid) {
+		try {
+			installations.revoke(memberId, sid);
+			redis.convertAndSend(TrustedSession.REVOCATIONS, memberId + ":" + (sid == null ? "*" : sid));
+		} catch (DataAccessException unavailable) {
+			throw new BusinessException(GeneralErrorCode.INTERNAL_SERVICE_UNAVAILABLE);
+		}
 	}
 
 	private static List<String> keys(LoginSession session) {

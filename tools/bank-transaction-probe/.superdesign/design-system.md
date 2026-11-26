@@ -1,0 +1,1 @@
+Korean festival operator desktop ledger and compact browser popup. Show local account scope and accurate KRW totals. Keep parse controls, JSON export, and manual column correction accessible. Demo is synthetic. No remote assets or marketing copy.

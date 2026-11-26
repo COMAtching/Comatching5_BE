@@ -9,11 +9,13 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.comatching.chat.domain.entity.ChatMessage;
+import com.comatching.chat.domain.enums.MessageType;
 
 @Repository
 public interface ChatMessageRepository extends MongoRepository<ChatMessage, String>, ChatMessageRepositoryCustom {
 
 	List<ChatMessage> findByRoomId(String roomId, Pageable pageable);
+	boolean existsByRoomIdAndTypeAndContentEndingWith(String roomId, MessageType type, String objectPath);
 
 	List<ChatMessage> findByRoomIdAndCreatedAtAfter(String roomId, LocalDateTime visibleAfter, Pageable pageable);
 

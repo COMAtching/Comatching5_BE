@@ -1,5 +1,8 @@
 package com.comatching.matching.domain.service;
 
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
+
 import com.comatching.common.annotation.DistributedLock;
 import com.comatching.common.domain.enums.ItemRoute;
 import com.comatching.common.dto.event.matching.MatchingSuccessEvent;
@@ -32,6 +35,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class MatchingServiceImpl implements MatchingService {
+    private final FeatureGate features;
 
     private static final int MAX_ALLOWED_AGE = 27;
     private static final int MAX_MATCHING_ATTEMPTS = 2;
@@ -47,6 +51,8 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     @DistributedLock(key = "MATCHING_REQUEST", identifier = "#memberId", leaseTime = 15L)
     public MatchingResponse match(Long memberId, MatchingRequest request) {
+        features.requireOpen(Feature.MATCHING);
+        request.validateMbtiPreference();
         ProfileResponse myProfile = memberClient.getProfile(memberId);
         validateAgeLimitRequest(request);
 

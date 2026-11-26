@@ -1,5 +1,6 @@
 package com.comatching.user.global.security.oauth2.service;
 
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -12,6 +13,7 @@ import com.comatching.user.global.security.oauth2.user.CustomOAuth2User;
 import com.comatching.user.global.security.oauth2.user.OAuth2UserInfo;
 import com.comatching.user.domain.member.service.MemberService;
 import com.comatching.common.domain.enums.MemberStatus;
+import com.comatching.common.exception.BusinessException;
 import com.comatching.common.domain.enums.SocialType;
 import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
@@ -39,7 +41,12 @@ public class SocialLoginService {
 		);
 
 		// Member Service 호출 (로컬 메서드 호출로 변경)
-		MemberLoginDto memberDto = memberService.socialLogin(loginRequest);
+		MemberLoginDto memberDto;
+		try {
+			memberDto = memberService.socialLogin(loginRequest);
+		} catch (BusinessException e) {
+			throw new AuthenticationServiceException(e.getMessage(), e);
+		}
 		validateStatus(memberDto);
 
 		// CustomOAuth2User 반환

@@ -21,6 +21,9 @@ comatching:
     default-images:
       base-url: ${DEFAULT_PROFILE_IMAGE_BASE_URL:http://localhost:8080/api/public/profile-images/}
 
+operations:
+  initially-closed: ${OPERATIONS_INITIALLY_CLOSED:}
+
 spring:
   datasource:
     url: jdbc:mysql://${LOCAL_MYSQL_HOST:127.0.0.1}:${LOCAL_MYSQL_PORT:3306}/comatching_user?serverTimezone=Asia/Seoul&characterEncoding=UTF-8

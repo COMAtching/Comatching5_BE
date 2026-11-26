@@ -1,6 +1,9 @@
 package com.comatching.user.global.security.cookie;
 
 import java.time.Duration;
+import java.util.UUID;
+import com.comatching.common.auth.PushInstallations;
+import com.comatching.common.auth.InstallationCookie;
 
 import com.comatching.user.domain.auth.dto.TokenResponse;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,15 +31,34 @@ public class AuthCookieFactory {
 	private final boolean secure;
 	private final String domain;
 	private final String sameSite;
+	private final String installationSecret;
 
+	public AuthCookieFactory(boolean secure, String domain, String sameSite) {
+		this(secure, domain, sameSite, "");
+	}
+
+	@org.springframework.beans.factory.annotation.Autowired
 	public AuthCookieFactory(
 		@Value("${auth.cookie.secure:false}") boolean secure,
 		@Value("${auth.cookie.domain:}") String domain,
-		@Value("${auth.cookie.same-site:Lax}") String sameSite
+		@Value("${auth.cookie.same-site:Lax}") String sameSite,
+		@Value("${internal.service-token:}") String installationSecret
 	) {
 		this.secure = secure;
 		this.domain = domain;
 		this.sameSite = sameSite;
+		this.installationSecret = installationSecret;
+	}
+
+	public boolean canIssueInstallation() { return StringUtils.hasText(installationSecret); }
+
+	public UUID installationId(String existing) { return InstallationCookie.verify(existing, installationSecret); }
+
+	public ResponseCookie installation(UUID id) {
+		var cookie = ResponseCookie.from(PushInstallations.COOKIE, InstallationCookie.sign(id, installationSecret)).path("/")
+			.httpOnly(true).secure(secure).sameSite(sameSite).maxAge(PushInstallations.LIFETIME);
+		applyDomainIfPresent(cookie);
+		return cookie.build();
 	}
 
 	public void writeTokens(HttpServletResponse response, TokenResponse tokens) {

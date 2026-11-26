@@ -27,6 +27,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.comatching.common.domain.enums.ItemType;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
 import com.comatching.item.domain.item.repository.ItemRepository;
 import com.comatching.item.domain.order.config.PaymentOrderProperties;
 import com.comatching.item.domain.order.entity.Order;
@@ -48,6 +51,20 @@ import com.comatching.item.infra.client.UserOrderClient;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ShopServiceImpl 테스트")
 class ShopServiceImplTest {
+	@Mock private FeatureGate features;
+
+	@Test
+	void closedShopBlocksCatalogAndOrderBeforeAnyWrite() {
+		org.mockito.BDDMockito.willThrow(new BusinessException(GeneralErrorCode.FEATURE_CLOSED))
+			.given(features).requireOpen(Feature.SHOP_PAYMENT);
+		assertThatThrownBy(() -> shopService.getActiveProducts(100L, true)).isInstanceOf(BusinessException.class);
+		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, 1)).isInstanceOf(BusinessException.class);
+		then(productRepository).shouldHaveNoInteractions();
+		then(itemRepository).shouldHaveNoInteractions();
+		then(orderRepository).shouldHaveNoInteractions();
+		then(orderOutboxService).shouldHaveNoInteractions();
+		then(userOrderClient).shouldHaveNoInteractions();
+	}
 
 	@InjectMocks
 	private ShopServiceImpl shopService;
@@ -101,7 +118,7 @@ class ShopServiceImplTest {
 	void shouldRejectDiscountTicketAfterThreeApprovedPurchases() {
 		Product product = discountMatchingTicket();
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(3L);
 
 		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, 1))
@@ -118,10 +135,10 @@ class ShopServiceImplTest {
 	void shouldReturnDiscountTicketRemainingCount(long approvedCount, long pendingCount, long remainingCount) {
 		Product product = discountMatchingTicket();
 		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(product));
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET))
 			.willReturn(approvedCount);
-		given(orderRepository.sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumPendingDiscountUnits(
 			eq(100L), eq(product.getCode()), eq(ItemType.MATCHING_TICKET), any()))
 			.willReturn(pendingCount);
 
@@ -138,9 +155,9 @@ class ShopServiceImplTest {
 	void shouldRejectDiscountTicketWithTwoApprovedAndOnePendingPurchase() {
 		Product product = discountMatchingTicket();
 		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(product));
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(2L);
-		given(orderRepository.sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumPendingDiscountUnits(
 			eq(100L), eq(product.getCode()), eq(ItemType.MATCHING_TICKET), any()))
 			.willReturn(1L);
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
@@ -163,9 +180,9 @@ class ShopServiceImplTest {
 	void shouldRejectDiscountTicketWithNoApprovedAndThreePendingTickets() {
 		Product product = discountMatchingTicket();
 		given(productRepository.findActiveProductsWithRewards(true)).willReturn(List.of(product));
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(0L);
-		given(orderRepository.sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumPendingDiscountUnits(
 			eq(100L), eq(product.getCode()), eq(ItemType.MATCHING_TICKET), any()))
 			.willReturn(3L);
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
@@ -188,7 +205,7 @@ class ShopServiceImplTest {
 	void shouldRejectDiscountTicketsExceedingThreePerMember() {
 		Product product = discountMatchingTicket();
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(1L);
 
 		assertThatThrownBy(() -> shopService.requestPurchase(100L, 3L, 3))
@@ -388,8 +405,8 @@ class ShopServiceImplTest {
 		ReflectionTestUtils.setField(product, "purchaseLimitPerMember", 1);
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
-		given(orderRepository.countApprovedByMemberIdAndProductCode(eq(100L), eq(product.getCode()))).willReturn(1L);
-		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+		given(orderRepository.sumApprovedProductUnits(eq(100L), eq(product.getCode()))).willReturn(1L);
+		given(orderRepository.sumPendingProductUnits(eq(100L), eq(product.getCode()), any()))
 			.willReturn(0L);
 
 		// when & then
@@ -432,8 +449,8 @@ class ShopServiceImplTest {
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
 		given(orderRepository.existsApprovedOrActivePendingOrder(eq(100L), any())).willReturn(false);
-		given(orderRepository.countApprovedByMemberIdAndProductCode(eq(100L), eq(product.getCode()))).willReturn(0L);
-		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+		given(orderRepository.sumApprovedProductUnits(eq(100L), eq(product.getCode()))).willReturn(0L);
+		given(orderRepository.sumPendingProductUnits(eq(100L), eq(product.getCode()), any()))
 			.willReturn(0L);
 		given(userOrderClient.getOrdererInfo(100L)).willReturn(new OrdererInfoDto(100L, "홍길동", "길동이"));
 		given(paymentOrderProperties.expireMinutes()).willReturn(43200L);
@@ -453,8 +470,8 @@ class ShopServiceImplTest {
 		ReflectionTestUtils.setField(product, "id", 1L);
 		ReflectionTestUtils.setField(product, "purchaseLimitPerMember", 2);
 		given(productRepository.findActiveProductsWithRewards(null)).willReturn(List.of(product));
-		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode())).willReturn(1L);
-		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+		given(orderRepository.sumApprovedProductUnits(100L, product.getCode())).willReturn(1L);
+		given(orderRepository.sumPendingProductUnits(eq(100L), eq(product.getCode()), any()))
 			.willReturn(0L);
 
 		// when
@@ -476,8 +493,8 @@ class ShopServiceImplTest {
 		ReflectionTestUtils.setField(product, "id", 1L);
 		ReflectionTestUtils.setField(product, "purchaseLimitPerMember", 2);
 		given(productRepository.findActiveProductsWithRewards(null)).willReturn(List.of(product));
-		given(orderRepository.countApprovedByMemberIdAndProductCode(100L, product.getCode())).willReturn(2L);
-		given(orderRepository.countActivePendingByMemberIdAndProductCode(eq(100L), eq(product.getCode()), any()))
+		given(orderRepository.sumApprovedProductUnits(100L, product.getCode())).willReturn(2L);
+		given(orderRepository.sumPendingProductUnits(eq(100L), eq(product.getCode()), any()))
 			.willReturn(0L);
 
 		// when
@@ -593,6 +610,43 @@ class ShopServiceImplTest {
 		assertThat(response.limits().get(1).maxQuantity()).isEqualTo(90);
 		assertThat(response.limits().get(1).remainingQuantity()).isZero();
 		assertThat(response.limits().get(1).purchasable()).isFalse();
+	}
+
+	@Test
+	void twoMiniBundlesUseTwoProductUnitsAndSixRewardTickets() {
+		Product product = product("미니 번들", 500, true, true);
+		ReflectionTestUtils.setField(product, "purchaseLimitPerMember", 2);
+		product.addReward(ProductReward.builder().itemType(ItemType.OPTION_TICKET).quantity(3).build());
+		given(productRepository.findActiveProductsWithRewards(null)).willReturn(List.of(product));
+		given(productRepository.findById(1L)).willReturn(Optional.of(product));
+		given(userOrderClient.getOrdererInfo(7L)).willReturn(new OrdererInfoDto(7L, "회원", "테스트"));
+
+		assertThat(shopService.getActiveProducts(7L, null)).singleElement()
+			.satisfies(response -> assertThat(response.maxOrderQuantity()).isEqualTo(2));
+		shopService.requestPurchase(7L, 1L, 2);
+		var order = ArgumentCaptor.forClass(Order.class);
+		then(orderRepository).should().save(order.capture());
+		assertThat(order.getValue().getProductQuantity()).isEqualTo(2);
+		assertThat(order.getValue().getExpectedPrice()).isEqualTo(1000);
+		assertThat(order.getValue().getOrderItems()).singleElement().satisfies(item -> assertThat(item.getQuantity()).isEqualTo(6));
+
+		given(orderRepository.sumApprovedProductUnits(7L, product.getCode())).willReturn(1L);
+		assertThat(shopService.getActiveProducts(7L, null).get(0).maxOrderQuantity()).isEqualTo(1);
+		assertThatThrownBy(() -> shopService.requestPurchase(7L, 1L, 2)).isInstanceOf(BusinessException.class);
+	}
+
+	@Test
+	void unrepresentablePriceAndRewardCannotCreateOrderOrEvent() {
+		Product expensive = product("검증용", Integer.MAX_VALUE, true);
+		Product largeReward = product("검증용 묶음", 500, true);
+		largeReward.addReward(ProductReward.builder().itemType(ItemType.OPTION_TICKET).quantity(Integer.MAX_VALUE).build());
+		given(productRepository.findById(1L)).willReturn(Optional.of(expensive));
+		given(productRepository.findById(2L)).willReturn(Optional.of(largeReward));
+		assertThatThrownBy(() -> shopService.requestPurchase(7L, 1L, 2)).isInstanceOf(BusinessException.class);
+		assertThatThrownBy(() -> shopService.requestPurchase(7L, 2L, 2)).isInstanceOf(BusinessException.class);
+		then(orderRepository).should(never()).save(any());
+		then(orderOutboxService).shouldHaveNoInteractions();
+		then(userOrderClient).shouldHaveNoInteractions();
 	}
 
 	private Product product(String name, int price, boolean isActive) {

@@ -39,6 +39,14 @@ public class InternalUserController {
 		return memberService.socialLogin(request);
 	}
 
+	@GetMapping("/{memberId}/active-admin")
+	public boolean activeAdmin(@PathVariable Long memberId, @RequestParam long authVersion) {
+		Member member = memberService.getMemberById(memberId);
+		return member.getAuthVersion() == authVersion
+			&& member.getRole() == com.comatching.common.domain.enums.MemberRole.ROLE_ADMIN
+			&& member.getStatus() == com.comatching.common.domain.enums.MemberStatus.ACTIVE;
+	}
+
 	@GetMapping("/{memberId}")
 	public MemberLoginDto getMemberById(@PathVariable Long memberId) {
 		Member member = memberService.getMemberById(memberId);

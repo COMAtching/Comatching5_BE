@@ -18,6 +18,8 @@ import com.comatching.common.dto.auth.MemberLoginDto;
 import com.comatching.common.dto.member.OrdererInfoDto;
 import com.comatching.common.dto.auth.SocialLoginRequestDto;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.auth.service.LoginSessionStore;
 import com.comatching.user.domain.member.entity.Member;
@@ -36,6 +38,7 @@ public class MemberServiceImpl implements MemberService {
 	private static final String DEFAULT_PROFILE_IMAGE_FILENAME = "default.png";
 
 	private final MemberRepository memberRepository;
+	private final FeatureGate features;
 	private final LoginSessionStore sessions;
 	private final EntityManager entityManager;
 	private final UserEventPublisher eventPublisher;
@@ -160,6 +163,7 @@ public class MemberServiceImpl implements MemberService {
 	}
 
 	private Member registerSocialMember(SocialLoginRequestDto request) {
+		features.requireOpen(Feature.LOGIN);
 		Member newMember = Member.builder()
 			.email(request.email())
 			.password(null)

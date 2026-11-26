@@ -22,6 +22,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
 	Optional<Profile> findByMemberId(Long memberId);
 	boolean existsByNickname(String nickname);
+	boolean existsByMemberIdAndProfileImageUrlEndingWith(Long memberId, String objectPath);
 	boolean existsByNicknameAndMemberIdNot(String nickname, Long memberId);
 
 	@Query("SELECT DISTINCT p FROM Profile p " +

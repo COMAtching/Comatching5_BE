@@ -9,6 +9,7 @@ import lombok.Getter;
 @Getter
 public enum PaymentErrorCode implements ErrorCode {
 
+	DEPOSIT_SELECTION_REQUIRED("PAY-DEPOSIT", HttpStatus.CONFLICT, "입금 장부에서 미사용 입금을 선택해 승인하세요."),
 	REQUEST_NOT_FOUND("PAY-001", HttpStatus.BAD_REQUEST, "존재하지 않는 결제건"),
 	ALREADY_PROCESSED("PAY-002", HttpStatus.BAD_REQUEST, "이미 처리된 결제건"),
 	PENDING_REQUEST_ALREADY_EXISTS("PAY-003", HttpStatus.BAD_REQUEST, "이미 대기 중인 충전 요청이 있습니다."),

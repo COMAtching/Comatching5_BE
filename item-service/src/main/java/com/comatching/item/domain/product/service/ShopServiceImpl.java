@@ -1,5 +1,8 @@
 package com.comatching.item.domain.product.service;
 
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
+
 import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
@@ -30,12 +33,18 @@ import com.comatching.item.global.exception.ItemErrorCode;
 import com.comatching.item.global.exception.PaymentErrorCode;
 import com.comatching.item.infra.client.UserOrderClient;
 
+import com.comatching.item.infra.bankdeposit.BankApprovalGate;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ShopServiceImpl implements ShopService {
+	@Autowired(required = false)
+	private BankApprovalGate depositGate;
+
+	private final FeatureGate features;
 
 	private static final String DISCOUNT_MATCHING_TICKET_CODE = "DISCOUNT_MATCHING_TICKET_1";
 
@@ -58,11 +67,18 @@ public class ShopServiceImpl implements ShopService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<ProductResponse> getActiveProducts(Long memberId, Boolean isBundle) {
+		features.requireOpen(Feature.SHOP_PAYMENT);
 		List<Product> products = productRepository.findActiveProductsWithRewards(isBundle);
 		fetchBonusRewards(products);
 		LocalDateTime now = LocalDateTime.now();
+		Map<ItemType, Integer> capacity = inventoryCapacity(memberId, now);
+		boolean pendingOrder = orderRepository.existsActivePendingOrder(memberId, now);
 		return products.stream()
-			.map(product -> toMemberProductResponse(memberId, product, now))
+			.map(product -> {
+				PurchaseAllowance limits = allowance(memberId, product, now, capacity);
+				return ProductResponse.from(product, limits.used(), limits.remaining(), pendingOrder ? 0 : limits.maxQuantity(),
+					limits.reason() == PurchaseBlockReason.NONE, limits.reason());
+			})
 			.filter(product -> Boolean.TRUE.equals(product.purchaseCountPurchasable())
 				|| DISCOUNT_MATCHING_TICKET_CODE.equals(product.code()))
 			.toList();
@@ -71,6 +87,7 @@ public class ShopServiceImpl implements ShopService {
 	@Override
 	@DistributedLock(key = "order:pending", identifier = "#memberId")
 	public void requestPurchase(Long memberId, Long productId, int quantity) {
+		features.requireOpen(Feature.SHOP_PAYMENT);
 		Product product = productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(ItemErrorCode.PRODUCT_NOT_FOUND));
 
@@ -84,13 +101,27 @@ public class ShopServiceImpl implements ShopService {
 			throw new BusinessException(PaymentErrorCode.PENDING_REQUEST_ALREADY_EXISTS);
 		}
 
-		validatePurchaseLimit(memberId, product, now, quantity);
-		validatePurchaseCountLimit(memberId, product, now, quantity);
+		if (quantity < 1) throw new BusinessException(PaymentErrorCode.INVALID_ORDER_QUANTITY);
+		PurchaseAllowance limits = allowance(memberId, product, now, inventoryCapacity(memberId, now));
+		if (limits.reason() == PurchaseBlockReason.FIRST_PURCHASE_ONLY) {
+			throw new BusinessException(PaymentErrorCode.FIRST_PURCHASE_ONLY);
+		}
+		if (limits.remaining() != null && quantity > limits.remaining()) {
+			throw new BusinessException(PaymentErrorCode.PRODUCT_PURCHASE_LIMIT_EXCEEDED);
+		}
+		if (quantity > limits.maxQuantity()) throw new BusinessException(PaymentErrorCode.PURCHASE_LIMIT_EXCEEDED);
+		int totalPrice = Math.multiplyExact(product.getPrice(), quantity);
 
 		OrdererInfoDto ordererInfo = userOrderClient.getOrdererInfo(memberId);
 		String realName = normalizeRequiredText(ordererInfo.realName(), PaymentErrorCode.REAL_NAME_REQUIRED);
 		String username = normalizeRequiredText(ordererInfo.nickname(), PaymentErrorCode.USERNAME_REQUIRED);
 
+		// The bank matcher must see this order or a later creation timestamp.
+		// Take the lock after the user-service call so unrelated buyers can fetch their details concurrently.
+		if (depositGate != null) {
+			depositGate.lock();
+			now = LocalDateTime.now();
+		}
 		Order order = Order.builder()
 			.memberId(memberId)
 			.productId(product.getId())
@@ -98,8 +129,9 @@ public class ShopServiceImpl implements ShopService {
 			.requestedItemName(product.getName())
 			.requesterRealName(realName)
 			.requesterUsername(username)
-			.requestedPrice(product.getPrice() * quantity)
-			.expectedPrice(product.getPrice() *  quantity)
+			.productQuantity(quantity)
+			.requestedPrice(totalPrice)
+			.expectedPrice(totalPrice)
 			.requestedAt(now)
 			.expiresAt(now.plusMinutes(paymentOrderProperties.expireMinutes()))
 			.build();
@@ -107,7 +139,7 @@ public class ShopServiceImpl implements ShopService {
 		product.getRewards().forEach(reward -> order.addOrderItem(
 			OrderItem.builder()
 				.itemType(reward.getItemType())
-				.quantity(reward.getQuantity() * quantity)
+				.quantity(Math.multiplyExact(reward.getQuantity(), quantity))
 				.build()
 		));
 
@@ -115,64 +147,66 @@ public class ShopServiceImpl implements ShopService {
 		orderOutboxService.enqueueOrderCreated(order);
 	}
 
-	private ProductResponse toMemberProductResponse(Long memberId, Product product, LocalDateTime now) {
-		String productCode = resolveProductCode(product);
-		long usedPurchaseCount = usedPurchaseCount(memberId, productCode);
-		long activePendingOrderCount = activePendingPurchaseCount(memberId, productCode, now);
+	private record PurchaseAllowance(long used, Long remaining, int maxQuantity, PurchaseBlockReason reason) {}
 
-		Long remainingPurchaseCount = remainingCount(product.getPurchaseLimitPerMember(), usedPurchaseCount, activePendingOrderCount);
-		PurchaseBlockReason blockReason = purchaseBlockReason(
-			memberId,
-			product,
-			now,
-			remainingPurchaseCount
-		);
-
-		return ProductResponse.from(
-			product,
-			usedPurchaseCount,
-			remainingPurchaseCount,
-			blockReason == PurchaseBlockReason.NONE,
-			blockReason
-		);
+	private PurchaseAllowance allowance(Long memberId, Product product, LocalDateTime now, Map<ItemType, Integer> capacity) {
+		String code = resolveProductCode(product);
+		long used = usedPurchaseCount(memberId, code);
+		Long remaining = remainingCount(product.getPurchaseLimitPerMember(), used, activePendingPurchaseCount(memberId, code, now));
+		PurchaseBlockReason reason = purchaseBlockReason(memberId, product, now, remaining);
+		int maxQuantity = maximumOrderQuantity(product, capacity);
+		if (remaining != null) maxQuantity = (int)Math.min(maxQuantity, remaining);
+		if (reason != PurchaseBlockReason.NONE) maxQuantity = 0;
+		return new PurchaseAllowance(used, remaining, maxQuantity, reason);
 	}
 
-	private void validatePurchaseCountLimit(Long memberId, Product product, LocalDateTime now, int quantity) {
-		if (product.isFirstPurchaseOnly() && orderRepository.existsApprovedOrActivePendingOrder(memberId, now)) {
-			throw new BusinessException(PaymentErrorCode.FIRST_PURCHASE_ONLY);
+	private static int maximumOrderQuantity(Product product, Map<ItemType, Integer> capacity) {
+		int max = product.getPrice() > 0 ? Integer.MAX_VALUE / product.getPrice() : Integer.MAX_VALUE;
+		Map<ItemType, Long> unitsPerProduct = new EnumMap<>(ItemType.class);
+		for (ProductReward reward : product.getRewards()) {
+			if (reward.getQuantity() <= 0) return 0;
+			unitsPerProduct.merge(reward.getItemType(), (long)reward.getQuantity(), Long::sum);
 		}
+		for (var units : unitsPerProduct.entrySet()) {
+			long available = capacity.getOrDefault(units.getKey(), Integer.MAX_VALUE);
+			max = (int)Math.min(max, available / units.getValue());
+		}
+		return product.getPrice() >= 0 ? max : 0;
+	}
 
-		String productCode = resolveProductCode(product);
-		long usedPurchaseCount = usedPurchaseCount(memberId, productCode);
-		long activePendingOrderCount = activePendingPurchaseCount(memberId, productCode, now);
-		Long remainingPurchaseCount = remainingCount(product.getPurchaseLimitPerMember(), usedPurchaseCount, activePendingOrderCount);
-		int requestedPurchaseCount = DISCOUNT_MATCHING_TICKET_CODE.equals(productCode) ? quantity : 1;
-		if (remainingPurchaseCount != null && remainingPurchaseCount < requestedPurchaseCount) {
-			throw new BusinessException(PaymentErrorCode.PRODUCT_PURCHASE_LIMIT_EXCEEDED);
+	private Map<ItemType, Integer> inventoryCapacity(Long memberId, LocalDateTime now) {
+		var capacity = new EnumMap<ItemType, Integer>(ItemType.class);
+		for (ItemType type : LIMITED_ITEM_TYPES) {
+			long limit = PURCHASE_LIMITS.get(type);
+			long owned = itemRepository.sumUsableQuantityByMemberIdAndItemType(memberId, type);
+			long pending = orderRepository.sumActivePendingQuantityByMemberIdAndItemType(memberId, type, now);
+			long remaining = limit - Math.min(limit, Math.max(0, owned)) - Math.min(limit, Math.max(0, pending));
+			capacity.put(type, (int)Math.max(0, remaining));
 		}
+		return capacity;
 	}
 
 	private long usedPurchaseCount(Long memberId, String productCode) {
 		if (DISCOUNT_MATCHING_TICKET_CODE.equals(productCode)) {
-			return orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+			return orderRepository.sumApprovedDiscountUnits(
 				memberId,
 				productCode,
 				ItemType.MATCHING_TICKET
 			);
 		}
-		return orderRepository.countApprovedByMemberIdAndProductCode(memberId, productCode);
+		return orderRepository.sumApprovedProductUnits(memberId, productCode);
 	}
 
 	private long activePendingPurchaseCount(Long memberId, String productCode, LocalDateTime now) {
 		if (DISCOUNT_MATCHING_TICKET_CODE.equals(productCode)) {
-			return orderRepository.sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+			return orderRepository.sumPendingDiscountUnits(
 				memberId,
 				productCode,
 				ItemType.MATCHING_TICKET,
 				now
 			);
 		}
-		return orderRepository.countActivePendingByMemberIdAndProductCode(memberId, productCode, now);
+		return orderRepository.sumPendingProductUnits(memberId, productCode, now);
 	}
 
 	private PurchaseBlockReason purchaseBlockReason(
@@ -225,32 +259,6 @@ public class ShopServiceImpl implements ShopService {
 				))
 				.toList()
 		);
-	}
-
-	private void validatePurchaseLimit(Long memberId, Product product, LocalDateTime now, int quantity) {
-		Map<ItemType, Integer> requestedQuantityByType = getRequestedQuantityByType(product);
-
-		for (ItemType itemType : LIMITED_ITEM_TYPES) {
-			int requestedQuantity = requestedQuantityByType.getOrDefault(itemType, 0) * quantity;
-			if (requestedQuantity == 0) {
-				continue;
-			}
-
-			long ownedQuantity = itemRepository.sumUsableQuantityByMemberIdAndItemType(memberId, itemType);
-			long pendingQuantity = orderRepository.sumActivePendingQuantityByMemberIdAndItemType(memberId, itemType, now);
-			int maxQuantity = PURCHASE_LIMITS.get(itemType);
-			if (ownedQuantity + pendingQuantity + requestedQuantity > maxQuantity) {
-				throw new BusinessException(PaymentErrorCode.PURCHASE_LIMIT_EXCEEDED);
-			}
-		}
-	}
-
-	private Map<ItemType, Integer> getRequestedQuantityByType(Product product) {
-		Map<ItemType, Integer> requestedQuantityByType = new EnumMap<>(ItemType.class);
-		for (ProductReward reward : product.getRewards()) {
-			requestedQuantityByType.merge(reward.getItemType(), reward.getQuantity(), Integer::sum);
-		}
-		return requestedQuantityByType;
 	}
 
 	private String normalizeRequiredText(String value, PaymentErrorCode errorCode) {

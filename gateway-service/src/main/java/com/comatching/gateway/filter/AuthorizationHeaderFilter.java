@@ -3,7 +3,10 @@ package com.comatching.gateway.filter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+import com.comatching.common.auth.LoginSession;
+import com.comatching.common.auth.TrustedSession;
 import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
 
 import com.comatching.common.dto.response.ApiResponse;
 import com.comatching.common.exception.code.ErrorCode;
@@ -34,16 +37,19 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 	private final JwtUtil jwtUtil;
 	private final GatewaySessions sessions;
 	private final ObjectMapper objectMapper;
+	private final String gatewaySecret;
 
 	public AuthorizationHeaderFilter(
 		JwtUtil jwtUtil,
 		GatewaySessions sessions,
-		ObjectMapper objectMapper
+		ObjectMapper objectMapper,
+		@org.springframework.beans.factory.annotation.Value("${internal.service-token:${INTERNAL_SERVICE_TOKEN:}}") String gatewaySecret
 	) {
 		super(Config.class);
 		this.jwtUtil = jwtUtil;
 		this.sessions = sessions;
 		this.objectMapper = objectMapper;
+		this.gatewaySecret = gatewaySecret;
 	}
 
 	public static class Config {
@@ -66,6 +72,10 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 			} catch (BusinessException invalid) {
 				return onError(exchange, GatewayErrorCode.TOKEN_INVALID);
 			}
+			String expected = request.getHeaders().getFirst(LoginSession.EXPECTED_HEADER);
+			if (expected != null && !token.session().clientMarker().equals(expected)) {
+				return onError(exchange, GeneralErrorCode.FORBIDDEN);
+			}
 			Claims claims = token.claims();
 			return sessions.isActive(token.session())
 				.map(active -> active ? HttpStatus.OK : HttpStatus.UNAUTHORIZED)
@@ -85,6 +95,7 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<Auth
 						if (nickname != null && !nickname.isBlank()) {
 							headers.set("X-Member-Nickname", URLEncoder.encode(nickname, StandardCharsets.UTF_8));
 						}
+						new TrustedSession(token.session(), claims.getExpiration().toInstant()).write(headers, gatewaySecret);
 					});
 					return chain.filter(exchange.mutate().request(builder.build()).build());
 				});

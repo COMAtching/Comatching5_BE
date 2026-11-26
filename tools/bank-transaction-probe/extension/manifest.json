@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "코매칭 입금 장부",
+  "version": "0.5.4",
+  "description": "KB 거래내역을 읽고 설정한 코매칭 서버로 입금 관측 내역을 전송합니다.",
+  "minimum_chrome_version": "110",
+  "permissions": ["activeTab", "scripting", "alarms", "storage"],
+  "optional_host_permissions": ["http://127.0.0.1/*", "https://srv.comatching.site/*"],
+  "background": { "service_worker": "refresh-worker.mjs", "type": "module" },
+  "action": {
+    "default_title": "코매칭 입금 장부",
+    "default_popup": "popup.html"
+  }
+}

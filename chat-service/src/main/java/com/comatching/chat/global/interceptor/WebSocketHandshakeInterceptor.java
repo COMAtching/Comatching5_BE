@@ -16,21 +16,24 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
 
+	@org.springframework.beans.factory.annotation.Value("${internal.service-token:}") private String gatewaySecret;
+
 	@Override
 	public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
 		Map<String, Object> attributes) throws Exception {
 
-		String memberId = request.getHeaders().getFirst("X-Member-Id");
 		String role = request.getHeaders().getFirst("X-Member-Role");
 		String rawNickname = request.getHeaders().getFirst("X-Member-Nickname");
 
-		if (memberId == null) {
+		var identity = com.comatching.common.auth.TrustedSession.from(request.getHeaders(), gatewaySecret);
+		if (identity == null) {
 			log.error("WebSocket Handshake Failed: No Member ID");
 			return false;
 		}
 
 		// WebSocket 세션 속성(attributes)에 저장
-		attributes.put("memberId", Long.valueOf(memberId));
+		attributes.put(com.comatching.common.socket.SocketSessionGuard.ATTRIBUTE, identity);
+		attributes.put("memberId", identity.login().memberId());
 		attributes.put("role", role);
 		if (rawNickname != null) {
 			String decodedNickname = URLDecoder.decode(rawNickname, StandardCharsets.UTF_8);

@@ -207,12 +207,15 @@ services:
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic matching-success-topic
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic chat-message-sent
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic items-granted
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic kb-deposit-observed-v1 --config min.insync.replicas=2
+        $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic kb-deposit-scan-completed-v1 --config min.insync.replicas=2
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 1 --topic refund-completed
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic member-withdraw --config retention.ms=$$RETENTION_1D
         $$T --bootstrap-server $$BS --create --if-not-exists --replication-factor $$RF --partitions 3 --topic profile-updates --config retention.ms=$$RETENTION_1D
 
         # KafkaEventRoute의 원본 토픽·소비 그룹 조합마다 DLT와 replay를 한 쌍씩 만든다.
         routes=(
+          kb-deposit-scan-completed-v1.item-bank-approval
           member-withdraw.matching-candidate-sync-group
           profile-updates.matching-candidate-sync-group
           member-withdraw.notification-withdraw-group

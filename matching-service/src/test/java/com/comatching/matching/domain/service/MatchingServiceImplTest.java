@@ -39,6 +39,7 @@ import com.comatching.matching.domain.outbox.MatchingOutboxService;
 
 @ExtendWith(MockitoExtension.class)
 class MatchingServiceImplTest {
+	@Mock com.comatching.common.operations.FeatureGate features;
 
 	@InjectMocks
 	private MatchingServiceImpl matchingService;
@@ -60,6 +61,31 @@ class MatchingServiceImplTest {
 
 	@Mock
 	private MatchingProcessor matchingProcessor;
+
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"ENF", "EE", "EI", "NS", "PJ", "A", " E"})
+	void invalidPreferenceIsRejectedBeforeAnyProfileOrTicketAccess(String traits) {
+		var request = new MatchingRequest(null, traits, null, null, false, null);
+		assertThatThrownBy(() -> matchingService.match(1L, request)).isInstanceOfSatisfying(BusinessException.class,
+			e -> assertThat(e.getErrorCode()).isEqualTo(MatchingErrorCode.INVALID_MBTI_PREFERENCE));
+		verifyNoInteractions(memberClient, itemClient, matchingProcessor, historyRepository);
+	}
+
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.NullAndEmptySource
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"E", "EN", "NJ"})
+	void validPartialPreferencesArePreserved(String traits) {
+		new MatchingRequest(null, traits, null, null, false, null).validateMbtiPreference();
+	}
+
+	@Test
+	void stoppedMatchingDoesNotConsumeTickets() {
+		willThrow(new BusinessException(com.comatching.common.exception.code.GeneralErrorCode.FEATURE_CLOSED))
+			.given(features).requireOpen(com.comatching.common.operations.Feature.MATCHING);
+		assertThatThrownBy(() -> matchingService.match(1L, new MatchingRequest(null, null, null, null, false, null)))
+			.isInstanceOf(BusinessException.class);
+		verifyNoInteractions(memberClient, itemClient, matchingProcessor, historyRepository);
+	}
 
 	private ProfileResponse createProfile(Long memberId, Gender gender) {
 		return ProfileResponse.builder()

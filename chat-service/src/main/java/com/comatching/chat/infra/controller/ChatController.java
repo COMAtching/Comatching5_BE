@@ -1,11 +1,15 @@
 package com.comatching.chat.infra.controller;
 
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
+
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -36,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequiredArgsConstructor
 public class ChatController {
+	private final FeatureGate features;
 
 	private final RedisPublisher redisPublisher;
 	private final ChatService chatService;
@@ -50,9 +55,10 @@ public class ChatController {
 		@CurrentMember MemberInfo memberInfo,
 		@RequestBody FileUploadRequest request
 	) {
+		features.requireOpen(Feature.CHAT);
 		chatRoomService.validateRoomMember(roomId, memberInfo.memberId());
-		S3UploadResponseDto response = s3Service.getPresignedPutUrlForChat(roomId, request.filename());
-		return ResponseEntity.ok(ApiResponse.ok(response));
+		S3UploadResponseDto response = s3Service.issueChat(memberInfo.memberId(), roomId, request.filename());
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.ok(response));
 	}
 
 	@MessageMapping("/chat/message")

@@ -14,6 +14,21 @@ spring:
           # CORS 설정
           globalcors:
             cors-configurations:
+              "[/api/v1/collector/deposit-observations]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
+              "[/api/v1/collector/deposit-observations/scans]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
+              "[/api/v1/collector/deposit-observations/health]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
               "[/**]":
                 allowedOrigins:
                   - https://comatching.site
@@ -25,6 +40,7 @@ spring:
                   - DELETE
                   - OPTIONS
                 allowedHeaders: "*"
+                exposedHeaders: Retry-After
                 allowCredentials: true
           # Swagger는 SWAGGER_PATH_PREFIX 미설정 시 /__swagger-off__ 아래로 숨긴다.
           # 공개하려면 .env.prod에 SWAGGER_PATH_PREFIX= (빈 값)를 설정한다.
@@ -44,19 +60,19 @@ spring:
             - id: user-service-protected
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
+                - Path=/api/auth/session, /api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
               filters:
                 - AuthorizationHeaderFilter
             - id: admin-user-notice
               uri: http://user-service:9000
               predicates:
-                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**
+                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**, /api/v1/admin/operations, /api/v1/admin/operations/**
               filters:
                 - AuthorizationHeaderFilter
             - id: user-service-public
               uri: http://user-service:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /api/public/operations, /api/public/operations/**, /oauth2/**, /login/**, /default-ui.css
             - id: user-service-swagger
               uri: http://user-service:9000
               predicates:
@@ -90,6 +106,11 @@ spring:
               filters:
                 - AuthorizationHeaderFilter
                 - RewritePath=${SWAGGER_PATH_PREFIX:/__swagger-off__}/chat-doc/(?<segment>.*), /$\{segment}
+            - id: kb-deposit-ingest
+              uri: http://item-service:9006
+              predicates:
+                - Path=/api/v1/collector/deposit-observations,/api/v1/collector/deposit-observations/scans,/api/v1/collector/deposit-observations/health
+                - Method=POST,OPTIONS
             - id: item-service
               uri: http://item-service:9006
               predicates:
@@ -124,3 +145,6 @@ management:
     # 관리 엔드포인트를 8081 로 옮기고 호스트에 매핑하지 않는다 - 컴포즈
     # 네트워크 안(Prometheus 스크레이프, 헬스체크)에서만 닿는다.
     port: 8081
+
+user-service:
+  url: ${USER_SERVICE_URL:http://user-service:9000}

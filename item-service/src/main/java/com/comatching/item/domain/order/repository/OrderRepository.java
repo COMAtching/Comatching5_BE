@@ -45,59 +45,57 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     boolean existsApprovedOrActivePendingOrder(@Param("memberId") Long memberId, @Param("now") LocalDateTime now);
 
     @Query("""
-            SELECT COUNT(o)
+            SELECT COALESCE(SUM(COALESCE(o.productQuantity, 1)), 0)
             FROM Order o
             WHERE o.memberId = :memberId
             AND o.productCode = :productCode
             AND o.status = OrderStatus.APPROVED
             AND o.refundStatus <> RefundStatus.COMPLETED
             """)
-    long countApprovedByMemberIdAndProductCode(
+    long sumApprovedProductUnits(
             @Param("memberId") Long memberId,
             @Param("productCode") String productCode
     );
 
     @Query("""
-            SELECT COUNT(o)
+            SELECT COALESCE(SUM(COALESCE(o.productQuantity, 1)), 0)
             FROM Order o
             WHERE o.memberId = :memberId
             AND o.productCode = :productCode
             AND o.status = OrderStatus.PENDING
             AND o.expiresAt > :now
             """)
-    long countActivePendingByMemberIdAndProductCode(
+    long sumPendingProductUnits(
             @Param("memberId") Long memberId,
             @Param("productCode") String productCode,
             @Param("now") LocalDateTime now
     );
 
     @Query("""
-            SELECT COALESCE(SUM(oi.quantity), 0)
+            SELECT COALESCE(SUM(COALESCE(o.productQuantity, oi.quantity, 0)), 0)
             FROM Order o
-            JOIN o.orderItems oi
+            LEFT JOIN o.orderItems oi ON oi.itemType = :itemType AND o.productQuantity IS NULL
             WHERE o.memberId = :memberId
             AND o.productCode = :productCode
             AND o.status = OrderStatus.APPROVED
             AND o.refundStatus <> RefundStatus.COMPLETED
-            AND oi.itemType = :itemType
             """)
-    long sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+    long sumApprovedDiscountUnits(
             @Param("memberId") Long memberId,
             @Param("productCode") String productCode,
             @Param("itemType") ItemType itemType
     );
 
     @Query("""
-            SELECT COALESCE(SUM(oi.quantity), 0)
+            SELECT COALESCE(SUM(COALESCE(o.productQuantity, oi.quantity, 0)), 0)
             FROM Order o
-            JOIN o.orderItems oi
+            LEFT JOIN o.orderItems oi ON oi.itemType = :itemType AND o.productQuantity IS NULL
             WHERE o.memberId = :memberId
             AND o.productCode = :productCode
             AND o.status = OrderStatus.PENDING
             AND o.expiresAt > :now
-            AND oi.itemType = :itemType
             """)
-    long sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+    long sumPendingDiscountUnits(
             @Param("memberId") Long memberId,
             @Param("productCode") String productCode,
             @Param("itemType") ItemType itemType,

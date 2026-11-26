@@ -1,5 +1,10 @@
 package com.comatching.notification.infra.controller;
 
+import com.comatching.common.auth.InstallationCookie;
+import org.springframework.http.HttpHeaders;
+import com.comatching.common.auth.PushInstallations;
+import com.comatching.common.auth.TrustedSession;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,13 +24,15 @@ import lombok.RequiredArgsConstructor;
 public class FCMController {
 
 	private final FCMService fcmService;
+	@org.springframework.beans.factory.annotation.Value("${internal.service-token:}") private String gatewaySecret;
 
 	@PostMapping("/token")
 	public ResponseEntity<ApiResponse<Void>> registerToken(
-		@RequestHeader("X-Member-Id") Long memberId,
+		@RequestHeader HttpHeaders headers,
+		@CookieValue(value = PushInstallations.COOKIE, required = false) String installation,
 		@RequestBody FCMTokenRequest token
 	) {
-		fcmService.saveToken(memberId, token.token());
+		fcmService.register(InstallationCookie.verify(installation, gatewaySecret), TrustedSession.from(headers, gatewaySecret), token.token());
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 }

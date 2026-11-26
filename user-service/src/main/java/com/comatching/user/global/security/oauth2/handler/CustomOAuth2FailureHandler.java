@@ -13,7 +13,9 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationFa
 import org.springframework.stereotype.Component;
 
 import com.comatching.user.global.exception.UserErrorCode;
-import com.comatching.common.exception.code.ErrorCode;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.user.global.security.handler.LoginSessionWriter;
+import lombok.RequiredArgsConstructor;
 import com.comatching.common.exception.code.GeneralErrorCode;
 
 import jakarta.servlet.ServletException;
@@ -21,7 +23,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
+@RequiredArgsConstructor
 public class CustomOAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler {
+
+	private final LoginSessionWriter sessions;
 
 	@Value("${client.url:http://localhost:3000}")
 	private String clientUrl;
@@ -29,6 +34,11 @@ public class CustomOAuth2FailureHandler extends SimpleUrlAuthenticationFailureHa
 	@Override
 	public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
 		AuthenticationException exception) throws IOException, ServletException {
+
+		if (exception.getCause() instanceof BusinessException error) {
+			sessions.writeFailure(response, error);
+			return;
+		}
 
 		String errorCode = GeneralErrorCode.UNAUTHORIZED.name();
 

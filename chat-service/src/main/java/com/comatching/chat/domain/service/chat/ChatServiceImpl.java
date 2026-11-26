@@ -1,5 +1,8 @@
 package com.comatching.chat.domain.service.chat;
 
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
+
 import com.comatching.chat.domain.dto.ChatMessageRequest;
 import com.comatching.chat.domain.dto.ChatMessageResponse;
 import com.comatching.chat.domain.entity.ChatMessage;
@@ -30,6 +33,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class ChatServiceImpl implements ChatService {
+    private final FeatureGate features;
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -38,6 +42,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatMessageResponse markAsRead(String roomId, Long memberId) {
+        features.requireOpen(Feature.CHAT);
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.NOT_EXIST_CHATROOM));
         blockService.visibleAfter(memberId, room.otherMemberId(memberId));
@@ -63,6 +68,7 @@ public class ChatServiceImpl implements ChatService {
             return markAsRead(request.roomId(), request.senderId());
         }
 
+        features.requireOpen(Feature.CHAT);
         LocalDateTime sentAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
 
         ChatRoom chatRoom = chatRoomRepository.findById(request.roomId())
@@ -190,7 +196,9 @@ public class ChatServiceImpl implements ChatService {
 
     private String resolveContent(ChatMessageRequest request) {
         if (request.type() == MessageType.IMAGE) {
-            return s3Service.getFileUrl(request.content());
+            String imageUrl = s3Service.attachChat(request.senderId(), request.roomId(), request.content());
+            features.requireOpen(Feature.CHAT);
+            return imageUrl;
         }
         return request.content();
     }

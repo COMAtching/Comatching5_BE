@@ -541,6 +541,33 @@ class OrderGrantBoundaryIT {
 		return jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE member_id=?", Long.class, member);
 	}
 
+	@Test
+	void productUnitsRespectMixedLegacyOrdersRefundsExpiryAndBundledLines() {
+		long member = 93201L;
+		String code = "LIMITED_BUNDLE";
+		var now = LocalDateTime.now();
+		long legacy = unitsOrder(member, code, null, now.plusMinutes(1));
+		long recent = unitsOrder(member, code, 2, now.plusMinutes(1));
+		unitsOrder(member, code, 8, now.minusMinutes(1));
+		assertThat(orders.sumPendingProductUnits(member, code, now)).isEqualTo(3);
+		assertThat(orders.sumPendingDiscountUnits(member, code, ItemType.MATCHING_TICKET, now)).isEqualTo(5);
+		jdbc.update("UPDATE purchase_order SET status='APPROVED' WHERE id IN (?,?)", legacy, recent);
+		assertThat(orders.sumApprovedProductUnits(member, code)).isEqualTo(3);
+		assertThat(orders.sumApprovedDiscountUnits(member, code, ItemType.MATCHING_TICKET)).isEqualTo(5);
+		jdbc.update("UPDATE purchase_order SET refund_status='COMPLETED' WHERE id=?", recent);
+		assertThat(orders.sumApprovedProductUnits(member, code)).isEqualTo(1);
+		assertThat(orders.sumApprovedDiscountUnits(member, code, ItemType.MATCHING_TICKET)).isEqualTo(3);
+	}
+
+	private long unitsOrder(long member, String code, Integer units, LocalDateTime expiresAt) {
+		Order order = Order.builder().memberId(member).productCode(code).productQuantity(units)
+			.requestedItemName("구매 한도").requesterRealName("test").requesterUsername("test")
+			.requestedPrice(800).expectedPrice(800).requestedAt(LocalDateTime.now()).expiresAt(expiresAt).build();
+		order.addOrderItem(OrderItem.builder().itemType(ItemType.MATCHING_TICKET).quantity(3).build());
+		order.addOrderItem(OrderItem.builder().itemType(ItemType.OPTION_TICKET).quantity(2).build());
+		return orders.save(order).getId();
+	}
+
 	private long newOrder(long member) {
 		var now = LocalDateTime.now();
 		Order order = Order.builder().memberId(member).requestedItemName("묶음").requesterRealName("test")

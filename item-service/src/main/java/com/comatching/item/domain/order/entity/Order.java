@@ -59,6 +59,9 @@ public class Order {
 
 	private String productCode;
 
+	@Column(name = "product_quantity")
+	private Integer productQuantity;
+
 	@Column(nullable = false)
 	private String requestedItemName;
 
@@ -116,6 +119,7 @@ public class Order {
 			Long memberId,
 			Long productId,
 			String productCode,
+			Integer productQuantity,
 			String requestedItemName,
 			String requesterRealName,
 			String requesterUsername,
@@ -127,6 +131,7 @@ public class Order {
 		this.memberId = memberId;
 		this.productId = productId;
 		this.productCode = productCode;
+		this.productQuantity = productQuantity;
 		this.requestedItemName = requestedItemName;
 		this.requesterRealName = requesterRealName;
 		this.requesterUsername = requesterUsername;

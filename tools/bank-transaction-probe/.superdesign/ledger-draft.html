@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>코매칭 / 입금 장부</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&f[]=cabinet-grotesk@800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-ivory: #FDFBF7;
+      --color-forest: #1A362D;
+      --color-sand: #E8E3D9;
+    }
+    body {
+      background-color: var(--color-ivory);
+      font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #2C2C2C;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .display-font {
+      font-family: 'Cabinet Grotesk', sans-serif;
+    }
+    .receipt-edge {
+      background-image: radial-gradient(circle at 10px 0, transparent 10px, white 11px);
+      background-size: 20px 20px;
+      background-repeat: repeat-x;
+    }
+    .receipt-bottom {
+      background-image: radial-gradient(circle at 10px 10px, transparent 10px, white 11px);
+      background-size: 20px 20px;
+      background-repeat: repeat-x;
+      background-position: bottom;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen flex flex-col items-center py-12 px-6">
+    <div class="w-full max-w-[1000px]">
+      <!-- Masthead -->
+      <header class="flex items-center justify-between border-b border-[#E8E3D9] pb-6 mb-10">
+        <div class="flex items-center gap-4">
+          <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">코매칭 / 입금 장부</h1>
+          <span class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium uppercase tracking-wider">샘플 계좌</span>
+        </div>
+        <div class="text-sm text-gray-500 flex items-center gap-2">
+          <iconify-icon icon="lucide:shield-check"></iconify-icon>
+          로컬 전용
+        </div>
+      </header>
+
+      <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-8 mb-12">
+        <!-- Statement Card -->
+        <div class="bg-[#1A362D] rounded-3xl p-8 md:p-10 text-white relative overflow-hidden flex flex-col justify-between min-h-[280px] shadow-xl">
+          <div class="relative z-10">
+            <p class="text-[#A3B8B0] text-sm font-medium mb-2 uppercase tracking-widest">총 입금액</p>
+            <div class="display-font text-5xl md:text-6xl font-extrabold tracking-tight mb-8">
+              5,000<span class="text-3xl text-[#A3B8B0] ml-2">원</span>
+            </div>
+            <div class="flex items-center gap-8">
+              <div>
+                <p class="text-[#A3B8B0] text-xs mb-1">입금 (4건)</p>
+                <p class="text-xl font-bold">+5,000</p>
+              </div>
+              <div>
+                <p class="text-[#A3B8B0] text-xs mb-1">출금 (1건)</p>
+                <p class="text-xl font-bold">-1,000</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Abstract Receipt Illustration -->
+          <div class="absolute right-8 top-1/2 -translate-y-1/2 w-32 h-48 opacity-90 hidden md:block">
+            <div class="w-full h-full bg-[#FDFBF7] rounded-sm shadow-lg relative pt-4 receipt-edge receipt-bottom">
+              <div class="px-4 space-y-3">
+                <div class="h-1 bg-[#E8E3D9] w-3/4 rounded"></div>
+                <div class="h-1 bg-[#E8E3D9] w-1/2 rounded"></div>
+                <div class="h-1 bg-[#E8E3D9] w-full rounded mt-6"></div>
+                <div class="h-1 bg-[#E8E3D9] w-5/6 rounded"></div>
+                <div class="border-t border-dashed border-[#E8E3D9] my-4"></div>
+                <div class="h-2 bg-[#1A362D] w-1/2 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Panel -->
+        <div class="bg-white rounded-3xl p-8 border border-[#E8E3D9] shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-gray-900 mb-6">계좌 설정</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="text-xs text-gray-500 font-medium mb-1 block">은행</label>
+                <div class="text-sm font-semibold text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">토스뱅크</div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 font-medium mb-1 block">별칭</label>
+                <div class="text-sm font-semibold text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">행사입금</div>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 font-medium mb-1 block">범위</label>
+                <div class="text-sm text-gray-600">현재 페이지 (1-5행)</div>
+              </div>
+            </div>
+          </div>
+          <button class="w-full mt-6 bg-gray-900 hover:bg-gray-800 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+            <iconify-icon icon="lucide:refresh-cw" class="text-base"></iconify-icon>
+            새로 읽기
+          </button>
+        </div>
+      </div>
+
+      <!-- Ledger Section -->
+      <div class="bg-white rounded-3xl border border-[#E8E3D9] shadow-sm overflow-hidden">
+        <div class="p-6 md:p-8 border-b border-[#E8E3D9] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex space-x-1 bg-gray-50 p-1 rounded-xl w-fit">
+            <button class="px-4 py-2 text-sm font-bold bg-white text-gray-900 rounded-lg shadow-sm">전체</button>
+            <button class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 rounded-lg">입금</button>
+            <button class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 rounded-lg">출금</button>
+            <button class="px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg flex items-center gap-1">
+              확인 필요 <span class="bg-orange-200 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full ml-1">1</span>
+            </button>
+          </div>
+          <button class="bg-[#1A362D] hover:bg-[#12261f] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 w-full md:w-auto justify-center">
+            <iconify-icon icon="lucide:download"></iconify-icon>
+            JSON 저장
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="text-gray-500 border-b border-[#E8E3D9] bg-gray-50/50">
+                <th class="font-medium py-4 px-6 md:px-8">일자·시각</th>
+                <th class="font-medium py-4 px-6">구분</th>
+                <th class="font-medium py-4 px-6 text-right">금액</th>
+                <th class="font-medium py-4 px-6 md:px-8">통장 표시</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E8E3D9]">
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="py-4 px-6 md:px-8 text-gray-600 whitespace-nowrap">2023.10.24 14:01:03</td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-semibold">
+                    <iconify-icon icon="lucide:arrow-down-left"></iconify-icon>
+                    입금
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right font-bold text-gray-900">+1,250</td>
+                <td class="py-4 px-6 md:px-8 font-medium text-gray-900">CM7K2P</td>
+              </tr>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="py-4 px-6 md:px-8 text-gray-600 whitespace-nowrap">2023.10.24 14:01:03</td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-semibold">
+                    <iconify-icon icon="lucide:arrow-down-left"></iconify-icon>
+                    입금
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right font-bold text-gray-900">+1,250</td>
+                <td class="py-4 px-6 md:px-8 font-medium text-gray-900">
+                  CM7K2P
+                  <span class="ml-2 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">중복 의심</span>
+                </td>
+              </tr>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="py-4 px-6 md:px-8 text-gray-600 whitespace-nowrap">2023.10.24 11:42:15</td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-semibold">
+                    <iconify-icon icon="lucide:arrow-down-left"></iconify-icon>
+                    입금
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right font-bold text-gray-900">+2,500</td>
+                <td class="py-4 px-6 md:px-8 font-medium text-gray-900">김예시</td>
+              </tr>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="py-4 px-6 md:px-8 text-gray-600 whitespace-nowrap">2023.10.23 09:15:00</td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md text-xs font-semibold">
+                    <iconify-icon icon="lucide:arrow-up-right"></iconify-icon>
+                    출금
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right font-bold text-gray-900">-1,000</td>
+                <td class="py-4 px-6 md:px-8 font-medium text-gray-900">환불예시</td>
+              </tr>
+              <tr class="bg-orange-50/50 hover:bg-orange-50 transition-colors">
+                <td class="py-4 px-6 md:px-8 text-orange-800 whitespace-nowrap">2023.10.22</td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 text-orange-700 bg-orange-100 px-2.5 py-1 rounded-md text-xs font-semibold">
+                    <iconify-icon icon="lucide:alert-circle"></iconify-icon>
+                    오류
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right font-bold text-orange-800">-</td>
+                <td class="py-4 px-6 md:px-8 font-medium text-orange-800">날짜만있는예시</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Collapsed Settings -->
+      <details class="mt-8 group">
+        <summary class="cursor-pointer text-sm text-gray-500 font-medium flex items-center justify-center gap-2 hover:text-gray-900 transition-colors list-none">
+          고급 설정 및 매핑
+          <iconify-icon icon="lucide:chevron-down" class="group-open:rotate-180 transition-transform"></iconify-icon>
+        </summary>
+        <div class="mt-4 p-6 bg-white rounded-2xl border border-[#E8E3D9] text-sm text-gray-600">
+          <p>표 선택, 제목행 설정, 열 매핑 옵션이 여기에 표시됩니다.</p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</body>
+</html>

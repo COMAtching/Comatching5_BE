@@ -143,7 +143,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		String normalizedNickname = normalizeNicknameForUpdate(request.nickname(), profile.getNickname(), memberId);
 		Gender effectiveGender = request.gender() != null ? request.gender() : profile.getGender();
 		ProfileImageInput profileImageInput = resolveProfileImageInput(request);
-		String profileImageUrl = resolveProfileImageUrlForUpdate(profileImageInput.value(), effectiveGender);
+		String profileImageUrl = profileImageInput.value() == null ? null : resolveProfileImageUrl(memberId,
+			profileImageInput.value(), effectiveGender, profile.getProfileImageUrl());
 		if (profileImageInput.isPresent()) {
 			log.info(
 				"profile.image.update memberId={} inputSource={} inputValue={} resolvedUrl={}",
@@ -237,7 +238,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 
 		String finalNickname = normalizeNickname(request.nickname());
 		validateNicknameDuplicateOnCreate(finalNickname);
-		String finalProfileImageUrl = resolveProfileImageUrl(request.profileImageKey(), request.gender());
+		String finalProfileImageUrl = resolveProfileImageUrl(member.getId(), request.profileImageKey(), request.gender(), null);
 
 		Profile profile = Profile.builder()
 			.member(member)
@@ -288,14 +289,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 		}
 	}
 
-	private String resolveProfileImageUrlForUpdate(String profileImageValue, Gender effectiveGender) {
-		if (profileImageValue == null) {
-			return null;
-		}
-		return resolveProfileImageUrl(profileImageValue, effectiveGender);
-	}
-
-	private String resolveProfileImageUrl(String profileImageValue, Gender gender) {
+	private String resolveProfileImageUrl(Long memberId, String profileImageValue, Gender gender, String currentImageUrl) {
 		if (!StringUtils.hasText(profileImageValue)) {
 			return buildDefaultProfileImageUrl(resolveDefaultProfileImageFilename());
 		}
@@ -312,11 +306,8 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			return buildDefaultProfileImageUrl(resolveAnimalProfileImageFilename(animalName, gender));
 		}
 
-		if (normalizedValue.startsWith("http://") || normalizedValue.startsWith("https://")) {
-			return normalizedValue;
-		}
-
-		return s3Service.getFileUrl(normalizedValue);
+		if (normalizedValue.equals(currentImageUrl)) return normalizedValue;
+		return s3Service.attachProfile(memberId, normalizedValue);
 	}
 
 	private String buildDefaultProfileImageUrl(String filename) {

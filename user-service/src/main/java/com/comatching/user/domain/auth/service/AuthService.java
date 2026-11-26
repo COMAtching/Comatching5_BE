@@ -8,7 +8,11 @@ public interface AuthService {
 
 	TokenResponse reissue(String refreshToken);
 
-	void logout(String accessToken, String refreshToken);
+	boolean logout(String accessToken, String refreshToken, String expected);
+
+	default void logout(String accessToken, String refreshToken) {
+		logout(accessToken, refreshToken, null);
+	}
 
 	void resetPassword(ResetPasswordRequest request);
 

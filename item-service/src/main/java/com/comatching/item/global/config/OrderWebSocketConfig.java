@@ -1,5 +1,17 @@
 package com.comatching.item.global.config;
 
+import com.comatching.common.auth.SessionRedisScripts;
+import com.comatching.common.auth.TrustedSession;
+import com.comatching.common.socket.SocketSessionGuard;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -26,6 +38,27 @@ public class OrderWebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	private static final String ADMIN_ROLE = "ROLE_ADMIN";
 
 	private final PaymentWebSocketHandshakeInterceptor handshakeInterceptor;
+
+	@Bean
+	static RedisMessageListenerContainer orderSessionRevocations(RedisConnectionFactory connections) {
+		var listener = new RedisMessageListenerContainer();
+		listener.setConnectionFactory(connections);
+		return listener;
+	}
+
+	@Bean
+	static SocketSessionGuard orderSessionGuard(StringRedisTemplate redis, RedisMessageListenerContainer listener,
+		@Value("${user-service.url:http://localhost:9000}") String url, @Value("${internal.service-token:}") String serviceToken) {
+		var http = new SimpleClientHttpRequestFactory();
+		http.setConnectTimeout(Duration.ofSeconds(1));
+		http.setReadTimeout(Duration.ofSeconds(2));
+		var users = RestClient.builder().baseUrl(url).requestFactory(http).defaultHeader("X-Internal-Token", serviceToken).build();
+		var guard = new SocketSessionGuard(identity -> SessionRedisScripts.isActive(redis, identity.login())
+			&& Boolean.TRUE.equals(users.get().uri("/api/internal/users/{id}/active-admin?authVersion={version}",
+				identity.login().memberId(), identity.login().authVersion()).retrieve().body(Boolean.class)));
+		listener.addMessageListener(guard, new ChannelTopic(TrustedSession.REVOCATIONS));
+		return guard;
+	}
 
 	@Override
 	public void configureMessageBroker(MessageBrokerRegistry registry) {

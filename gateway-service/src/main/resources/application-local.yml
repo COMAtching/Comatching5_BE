@@ -7,6 +7,21 @@ spring:
           # 1. CORS 설정
           globalcors:
             cors-configurations:
+              "[/api/v1/collector/deposit-observations]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
+              "[/api/v1/collector/deposit-observations/scans]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
+              "[/api/v1/collector/deposit-observations/health]":
+                allowedOriginPatterns: ["chrome-extension://*"]
+                allowedMethods: [POST]
+                allowedHeaders: [Authorization, Content-Type]
+                allowCredentials: false
               "[/**]":
                 allowedOrigins:
                   - https://comatching.site
@@ -21,6 +36,7 @@ spring:
                   - DELETE
                   - OPTIONS
                 allowedHeaders: "*"
+                exposedHeaders: Retry-After
                 allowCredentials: true
           # 2. 라우팅 규칙
           routes:
@@ -37,11 +53,11 @@ spring:
             - id: user-service-public
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /oauth2/**, /login/**, /default-ui.css
+                - Path=/api/auth/login, /api/auth/signup, /api/auth/signup/nickname/availability, /api/auth/participants, /api/auth/participants/**, /api/auth/email/**, /api/auth/password/code, /api/auth/reissue, /api/auth/logout, /api/profile/tags, /api/hobbies/categories, /api/public/profile-images/**, /api/public/operations, /api/public/operations/**, /oauth2/**, /login/**, /default-ui.css
             - id: user-service-protected
               uri: http://localhost:9000
               predicates:
-                - Path=/api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
+                - Path=/api/auth/session, /api/auth/signup/profile, /api/auth/password/change, /api/auth/withdraw, /api/members/**, /api/notices/**, /api/v1/notices/**
               filters:
                 - AuthorizationHeaderFilter
             - id: user-service-swagger
@@ -74,6 +90,11 @@ spring:
                 - Path=/chat-doc/v3/api-docs, /chat-doc/v3/api-docs/**, /chat-doc/swagger-ui.html, /chat-doc/swagger-ui/**
               filters:
                 - RewritePath=/chat-doc/(?<segment>.*), /$\{segment}
+            - id: kb-deposit-ingest
+              uri: http://localhost:9006
+              predicates:
+                - Path=/api/v1/collector/deposit-observations,/api/v1/collector/deposit-observations/scans,/api/v1/collector/deposit-observations/health
+                - Method=POST,OPTIONS
             - id: item-service
               uri: http://localhost:9006
               predicates:
@@ -89,7 +110,7 @@ spring:
             - id: admin-user-notice
               uri: http://localhost:9000
               predicates:
-                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**
+                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**, /api/v1/admin/operations, /api/v1/admin/operations/**
               filters:
                 - AuthorizationHeaderFilter
             - id: admin-payment-product-items
@@ -110,3 +131,6 @@ management:
     health:
       # 상태 상세 노출 여부는 실행 환경별로 지정한다.
       show-details: always
+
+user-service:
+  url: ${USER_SERVICE_URL:http://localhost:9000}

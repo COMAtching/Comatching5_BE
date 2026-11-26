@@ -13,6 +13,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.TimeoutException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -66,6 +70,7 @@ import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.mail.enums.EmailType;
 import com.comatching.user.domain.mail.service.EmailService;
 import com.comatching.user.domain.mail.service.EmailServiceImpl;
+import com.comatching.user.domain.mail.service.VerificationMailStore;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.repository.MemberRepository;
 import com.comatching.user.domain.member.service.MemberServiceImpl;
@@ -74,10 +79,20 @@ import com.comatching.user.global.config.ProfileImageProperties;
 import com.comatching.user.global.security.cookie.AuthCookieFactory;
 import com.comatching.user.global.security.handler.LoginSessionWriter;
 import com.comatching.user.global.security.oauth2.handler.CustomOAuth2SuccessHandler;
+import com.comatching.user.global.security.oauth2.handler.CustomOAuth2FailureHandler;
+import com.comatching.user.global.security.oauth2.service.SocialLoginService;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import com.comatching.user.global.security.oauth2.provider.kakao.config.KakaoProperties;
 import com.comatching.user.global.security.oauth2.provider.kakao.unlink.KakaoAuthClient;
 import com.comatching.user.global.security.oauth2.user.CustomOAuth2User;
 import com.comatching.user.support.OutboxMySqlSupport;
+import com.comatching.user.domain.operations.FeatureOperation;
+import com.comatching.user.domain.operations.FeatureOperationRepository;
+import com.comatching.user.domain.operations.FeatureOperations;
+import com.comatching.user.domain.operations.MemberSessionShutdown;
+import com.comatching.common.operations.Feature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @DataJpaTest(showSql = false, properties = {
@@ -90,10 +105,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Tag("integration")
 class AccountSecurityIT extends OutboxMySqlSupport {
 	@Configuration
-	@EntityScan(basePackageClasses = Member.class)
-	@EnableJpaRepositories(basePackageClasses = MemberRepository.class)
-	@Import({MemberServiceImpl.class, LoginSessionStore.class, LoginSessionService.class, JwtUtil.class,
-		AuthServiceImpl.class, SignupServiceImpl.class, EmailServiceImpl.class, ProfileServiceImpl.class})
+	@EntityScan(basePackageClasses = {Member.class, FeatureOperation.class})
+	@EnableJpaRepositories(basePackageClasses = {MemberRepository.class, FeatureOperationRepository.class})
+	@Import({FeatureOperations.class, MemberSessionShutdown.class, MemberServiceImpl.class, LoginSessionStore.class, LoginSessionService.class, JwtUtil.class,
+		AuthServiceImpl.class, SignupServiceImpl.class, EmailServiceImpl.class, VerificationMailStore.class, ProfileServiceImpl.class})
 	static class Config {
 		@Bean(destroyMethod = "stop")
 		GenericContainer<?> redisServer() {
@@ -117,6 +132,7 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 	@Autowired AuthService auth;
 	@Autowired LoginSessionService sessions;
 	@Autowired MemberRepository members;
+	@Autowired com.comatching.user.domain.member.service.MemberService memberService;
 	@Autowired StringRedisTemplate redis;
 	@Autowired PasswordEncoder passwords;
 	@Autowired JdbcTemplate jdbc;
@@ -129,6 +145,16 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 	@MockitoBean S3Service s3;
 	@MockitoBean KakaoAuthClient kakao;
 	@MockitoBean KakaoProperties kakaoProperties;
+	@Autowired FeatureOperations features;
+	@Autowired PlatformTransactionManager transactions;
+
+	private void setService(boolean open) {
+		var current = features.state(Feature.LOGIN);
+		if (current.open() != open) features.change(Feature.LOGIN, open, "", current.version(), 1);
+	}
+
+	@org.junit.jupiter.api.AfterEach
+	void reopenService() { setService(true); }
 	@MockitoBean JavaMailSender mail;
 	@MockitoBean SpringTemplateEngine templates;
 
@@ -145,6 +171,86 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 	private static boolean isActive(StringRedisTemplate database, LoginSession session) {
 		return Long.valueOf(1).equals(database.execute(SessionRedisScripts.IS_ACTIVE,
 			List.of(LoginSession.versionKey(session.memberId()), session.sessionKey()), Long.toString(session.authVersion())));
+	}
+
+	@Test
+	void serviceClosureRevokesEveryOrdinaryLoginAndPreservesAdminAndIndividualSettings() {
+		Member customer = member(MemberStatus.ACTIVE);
+		var first = sessions.login(customer.getId(), 0);
+		var second = sessions.login(customer.getId(), 0);
+		var guest = members.saveAndFlush(Member.builder().role(MemberRole.ROLE_GUEST).status(MemberStatus.ACTIVE)
+			.email(UUID.randomUUID() + "@example.invalid").build());
+		var guestTokens = sessions.login(guest.getId(), 0);
+		// Existing deployments stored the numeric version and an unqualified session stamp.
+		var legacy = jwt.readAccess(guestTokens.accessToken()).session();
+		redis.execute(new DefaultRedisScript<>(SessionRedisScripts.SESSION_STAMP + """
+			redis.call('SET', KEYS[1], ARGV[1], 'PX', 60000)
+			redis.call('SET', KEYS[2], sessionStamp, 'PX', 60000)
+			return 1
+			""", Long.class), List.of(LoginSession.versionKey(guest.getId()), legacy.sessionKey()), "0");
+		assertThat(active(guestTokens.accessToken())).isTrue();
+		Member admin = members.saveAndFlush(Member.builder().role(MemberRole.ROLE_ADMIN).status(MemberStatus.ACTIVE)
+			.email(UUID.randomUUID() + "@example.invalid").build());
+		var adminTokens = sessions.login(admin.getId(), 0);
+		var chat = features.adminSnapshot().stream().filter(s -> s.feature() == Feature.CHAT).findFirst().orElseThrow();
+		features.change(Feature.CHAT, false, "", chat.version(), 1);
+		try {
+			setService(false);
+			assertThat(features.snapshot()).allMatch(s -> !s.open());
+			assertThat(active(first.accessToken())).isFalse();
+			assertThat(active(second.accessToken())).isFalse();
+			assertThat(active(guestTokens.accessToken())).isFalse();
+			assertThatThrownBy(() -> sessions.login(customer.getId(), 0)).isInstanceOf(BusinessException.class);
+			assertThatThrownBy(() -> auth.reissue(second.refreshToken())).isInstanceOf(BusinessException.class);
+			assertThat(active(auth.reissue(adminTokens.refreshToken()).accessToken())).isTrue();
+			assertThat(active(sessions.login(admin.getId(), 0).accessToken())).isTrue();
+			setService(true);
+			assertThat(features.state(Feature.CHAT).open()).isFalse();
+			assertThat(features.state(Feature.MATCHING).open()).isTrue();
+			assertThat(active(sessions.login(guest.getId(), 0).accessToken())).isTrue();
+			assertThat(active(guestTokens.accessToken())).isFalse();
+			assertThat(active(sessions.login(customer.getId(), 0).accessToken())).isTrue();
+			assertThat(active(first.accessToken())).isFalse();
+			assertThat(active(second.accessToken())).isFalse();
+			assertThatThrownBy(() -> auth.reissue(second.refreshToken())).isInstanceOf(BusinessException.class);
+		} finally {
+			features.change(Feature.CHAT, chat.open(), chat.message(), chat.version() + 1, 1);
+		}
+	}
+
+	@Test
+	void closingWaitsForAnAdmittedLoginAndRevokesItsSession() throws Exception {
+		Member customer = member(MemberStatus.ACTIVE);
+		var pool = Executors.newFixedThreadPool(2);
+		var admitted = new CountDownLatch(1);
+		var finishLogin = new CountDownLatch(1);
+		var closing = new CountDownLatch(1);
+		var seconds = TimeUnit.SECONDS;
+		try {
+			var login = pool.submit(() -> new TransactionTemplate(transactions).execute(tx -> {
+				var issued = sessions.login(customer.getId(), 0);
+				admitted.countDown();
+				try {
+					if (!finishLogin.await(10, seconds)) throw new AssertionError("Login did not finish");
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					throw new AssertionError(e);
+				}
+				return issued;
+			}));
+			assertThat(admitted.await(10, seconds)).isTrue();
+			var close = pool.submit(() -> { closing.countDown(); setService(false); });
+			assertThat(closing.await(10, seconds)).isTrue();
+			assertThatThrownBy(() -> close.get(200, TimeUnit.MILLISECONDS))
+				.isInstanceOf(TimeoutException.class);
+			finishLogin.countDown();
+			var issued = login.get(10, seconds);
+			close.get(10, seconds);
+			assertThat(active(issued.accessToken())).isFalse();
+		} finally {
+			finishLogin.countDown();
+			pool.shutdownNow();
+		}
 	}
 
 	@Test
@@ -230,18 +336,101 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 		var principal = new CustomOAuth2User(MemberLoginDto.builder().id(m.getId()).email(m.getEmail())
 			.authVersion(0).role("ROLE_USER").status("ACTIVE").build(), Map.of());
 		var handler = new CustomOAuth2SuccessHandler(new LoginSessionWriter(sessions,
-			new AuthCookieFactory(false, "", "Lax"), new ObjectMapper()));
+			new AuthCookieFactory(false, "", "Lax", "test-install-secret"), new ObjectMapper()));
 		ReflectionTestUtils.setField(handler, "clientUrl", "http://localhost");
 		var authentication = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 		var response = new MockHttpServletResponse();
 		handler.onAuthenticationSuccess(new MockHttpServletRequest(), response, authentication);
 		assertThat(response.getRedirectedUrl()).isEqualTo("http://localhost/main");
-		assertThat(response.getHeaders("Set-Cookie")).hasSize(2);
+		assertThat(response.getHeaders("Set-Cookie")).hasSize(3);
 		auth.changePassword(m.getId(), new ChangePasswordRequest("original", "replacement"));
 		var staleResponse = new MockHttpServletResponse();
 		handler.onAuthenticationSuccess(new MockHttpServletRequest(), staleResponse, authentication);
 		assertThat(staleResponse.getStatus()).isEqualTo(401);
 		assertThat(staleResponse.getHeaders("Set-Cookie")).isEmpty();
+	}
+
+	@Test
+	void closedKakaoCallbackReturnsConflictWithoutCreatingAGuestOrSession() throws Exception {
+		var registration = mock(ClientRegistration.class);
+		given(registration.getRegistrationId()).willReturn("kakao");
+		var kakaoUser = mock(OAuth2User.class);
+		String subject = UUID.randomUUID().toString();
+		given(kakaoUser.getAttributes()).willReturn(java.util.Map.of("sub", subject, "email", "new@example.invalid"));
+		setService(false);
+		var callback = new SocialLoginService(memberService);
+		var denied = org.junit.jupiter.api.Assertions.assertThrows(AuthenticationServiceException.class,
+			() -> callback.processUser(registration, kakaoUser));
+		var response = new MockHttpServletResponse();
+		new CustomOAuth2FailureHandler(new LoginSessionWriter(sessions, new AuthCookieFactory(false, "", "Lax"),
+			new ObjectMapper())).onAuthenticationFailure(new MockHttpServletRequest(), response, denied);
+		assertThat(response.getStatus()).isEqualTo(409);
+		assertThat(response.getContentAsString()).contains("FEATURE_CLOSED");
+		assertThat(response.getHeaders("Set-Cookie")).isEmpty();
+		assertThat(members.findBySocialTypeAndSocialId(com.comatching.common.domain.enums.SocialType.KAKAO, subject)).isEmpty();
+	}
+
+	@Test
+	void signedInstallationMovesOnLoginAndStaleLogoutCannotDetachItsNewOwner() throws Exception {
+		Member a = member(MemberStatus.ACTIVE), b = member(MemberStatus.ACTIVE);
+		var cookies = new AuthCookieFactory(false, "", "Lax", "test-install-secret");
+		UUID browser = UUID.randomUUID(), another = UUID.randomUUID();
+		var old = sessions.login(a.getId(), 0, browser);
+		var other = sessions.login(a.getId(), 0, another);
+		String signedCookie = cookies.installation(browser).getValue();
+		assertThat(cookies.installationId(signedCookie)).isEqualTo(browser);
+		assertThat(cookies.installationId(browser.toString())).isNull();
+		assertThat(cookies.installationId(another + signedCookie.substring(36))).isNull();
+		var installations = new com.comatching.common.auth.PushInstallations(redis);
+		assertThat(installations.register(browser, jwt.readAccess(old.accessToken()).session(), "a-test")).isTrue();
+		assertThat(installations.register(another, jwt.readAccess(other.accessToken()).session(), "a-other")).isTrue();
+		var writer = new LoginSessionWriter(sessions, cookies, new ObjectMapper());
+		var request = new MockHttpServletRequest();
+		request.setCookies(new jakarta.servlet.http.Cookie(com.comatching.common.auth.PushInstallations.COOKIE, signedCookie));
+		var response = new MockHttpServletResponse();
+		var principal = new com.comatching.user.global.security.UserPrincipal(MemberLoginDto.builder().id(b.getId())
+			.authVersion(0).email(b.getEmail()).role("ROLE_USER").status("ACTIVE").build());
+		assertThat(writer.establish(principal, request, response)).isTrue();
+		String access = response.getHeaders("Set-Cookie").stream().filter(c -> c.startsWith("accessToken="))
+			.findFirst().orElseThrow().split(";", 2)[0].substring("accessToken=".length());
+		var current = jwt.readAccess(access).session();
+		assertThat(active(old.accessToken())).isFalse();
+		assertThat(active(other.accessToken())).isTrue();
+		assertThat(active(access)).isTrue();
+		assertThat(sessions.prepareInstallation(UUID.randomUUID(), current)).isEqualTo(browser);
+		assertThat(installations.target(browser, a.getId())).isNull();
+		assertThat(installations.register(browser, current, "b-test")).isTrue();
+		assertThatThrownBy(() -> sessions.prepareInstallation(UUID.randomUUID(), jwt.readAccess(old.accessToken()).session()))
+			.isInstanceOf(BusinessException.class);
+		auth.logout(old.accessToken(), old.refreshToken());
+		assertThat(installations.target(browser, b.getId()).token()).isEqualTo("b-test");
+		assertThat(installations.target(another, a.getId()).token()).isEqualTo("a-other");
+		auth.withdraw(a.getId());
+		assertThat(installations.installations(a.getId())).isEmpty();
+		assertThat(installations.target(browser, b.getId())).isNotNull();
+		auth.logout(access, null);
+		assertThat(installations.target(browser, b.getId())).isNull();
+	}
+
+	@Test
+	void switchingAccountsWithOnlyPreMigrationCookiesEndsOnlyThePresentedSession() {
+		Member previous = member(MemberStatus.ACTIVE), next = member(MemberStatus.ACTIVE);
+		var browser = sessions.login(previous.getId(), 0);
+		var secondDevice = sessions.login(previous.getId(), 0);
+		var replacement = sessions.login(next.getId(), 0, UUID.randomUUID(), browser.accessToken(), null);
+		assertThat(active(browser.accessToken())).isFalse();
+		assertThat(active(secondDevice.accessToken())).isTrue();
+		auth.logout(browser.accessToken(), browser.refreshToken());
+		assertThat(active(replacement.accessToken())).isTrue();
+		var staleMarker = jwt.readAccess(browser.accessToken()).session().clientMarker();
+		assertThatThrownBy(() -> auth.logout(replacement.accessToken(), replacement.refreshToken(), staleMarker))
+			.isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode()).isEqualTo(GeneralErrorCode.FORBIDDEN));
+		assertThat(active(replacement.accessToken())).isTrue();
+		assertThat(auth.logout(browser.accessToken(), browser.refreshToken(), staleMarker)).isFalse();
+		assertThat(auth.logout(replacement.accessToken(), replacement.refreshToken(),
+			jwt.readAccess(replacement.accessToken()).session().clientMarker())).isTrue();
+		assertThat(active(replacement.accessToken())).isFalse();
+		assertThat(active(secondDevice.accessToken())).isTrue();
 	}
 
 	@Test
