@@ -17,6 +17,11 @@ public enum GeneralErrorCode implements ErrorCode {
 	FILE_EXPIRED("GEN-103", HttpStatus.BAD_REQUEST, "파일의 유효기간이 만료되었습니다."),
 	TOO_MANY_REQUEST("GEN-104", HttpStatus.BAD_REQUEST, "요청이 너무 많습니다."),
 
+	PUSH_TOKEN_IN_USE("PUSH_TOKEN_IN_USE", HttpStatus.CONFLICT, "이 설치에서 새 푸시 토큰을 발급해주세요."),
+	FEATURE_CLOSED("FEATURE_CLOSED", HttpStatus.CONFLICT, "현재 종료된 기능입니다."),
+	FEATURE_VERSION_CONFLICT("FEATURE_VERSION_CONFLICT", HttpStatus.CONFLICT, "운영 상태가 변경되었습니다. 새로고침해주세요."),
+	DELIVERY_RATE_LIMITED("DELIVERY_RATE_LIMITED", HttpStatus.TOO_MANY_REQUESTS, "잠시 후 다시 요청해주세요."),
+
 	// 404 Not Found
 	NOT_FOUND("GEN-007", HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
 

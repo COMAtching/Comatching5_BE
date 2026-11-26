@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "bank-transaction-probe/v1",
+  "captureId": "385ffa4c-db72-4751-a751-b1e69c805600",
+  "capturedAt": "2026-11-22T12:36:19.042Z",
+  "dataKind": "synthetic_demo",
+  "source": {
+    "kind": "rendered_html_table",
+    "url": "http://127.0.0.1:48765/fixtures/bank.html",
+    "frameId": 0,
+    "tableIndex": 0,
+    "headerEnd": 1,
+    "headers": [
+      "거래일시",
+      "적요",
+      "거래내용",
+      "찾으신 금액(원)",
+      "맡기신 금액(원)",
+      "거래후 잔액(원)",
+      "순번"
+    ],
+    "columnMapping": {
+      "date": 0,
+      "credit": 4,
+      "debit": 3,
+      "balance": 5,
+      "description": 2,
+      "summary": 1
+    }
+  },
+  "account": {
+    "alias": "행사입금",
+    "bank": "toss",
+    "verification": "user_supplied_unverified"
+  },
+  "coverage": "rendered_page_only",
+  "canAutoApprove": false,
+  "counts": {
+    "observedDataRows": 6,
+    "accepted": 5,
+    "rejected": 1,
+    "excluded": 0
+  },
+  "totals": {
+    "creditKrw": 5000,
+    "debitKrw": 1000
+  },
+  "warnings": [
+    "rendered_page_only",
+    "not_bank_verified",
+    "not_for_automatic_approval",
+    "observations_are_not_deduplicated",
+    "bank_transaction_id_missing",
+    "transaction_time_incomplete",
+    "rows_rejected"
+  ],
+  "transactions": [
+    {
+      "observationId": "385ffa4c-db72-4751-a751-b1e69c805600:0:0:2",
+      "bankTransactionId": null,
+      "transactionDate": "2026-11-22",
+      "transactionTime": "14:01:03",
+      "timePrecision": "second",
+      "occurredAt": "2026-11-22T14:01:03+09:00",
+      "direction": "CREDIT",
+      "amountKrw": 1000,
+      "balanceKrw": 11000,
+      "description": "CM7K2P",
+      "summary": "타행이체",
+      "sourceRow": 2
+    },
+    {
+      "observationId": "385ffa4c-db72-4751-a751-b1e69c805600:0:0:3",
+      "bankTransactionId": null,
+      "transactionDate": "2026-11-22",
+      "transactionTime": "14:01:03",
+      "timePrecision": "second",
+      "occurredAt": "2026-11-22T14:01:03+09:00",
+      "direction": "CREDIT",
+      "amountKrw": 1000,
+      "balanceKrw": 11000,
+      "description": "CM7K2P",
+      "summary": "타행이체",
+      "sourceRow": 3
+    },
+    {
+      "observationId": "385ffa4c-db72-4751-a751-b1e69c805600:0:0:4",
+      "bankTransactionId": null,
+      "transactionDate": "2026-11-22",
+      "transactionTime": "14:01:04",
+      "timePrecision": "second",
+      "occurredAt": "2026-11-22T14:01:04+09:00",
+      "direction": "CREDIT",
+      "amountKrw": 1000,
+      "balanceKrw": 12000,
+      "description": "김예시",
+      "summary": "타행이체",
+      "sourceRow": 4
+    },
+    {
+      "observationId": "385ffa4c-db72-4751-a751-b1e69c805600:0:0:5",
+      "bankTransactionId": null,
+      "transactionDate": "2026-11-22",
+      "transactionTime": "14:02",
+      "timePrecision": "minute",
+      "occurredAt": null,
+      "direction": "DEBIT",
+      "amountKrw": 1000,
+      "balanceKrw": 11000,
+      "description": "환불예시",
+      "summary": "계좌이체",
+      "sourceRow": 5
+    },
+    {
+      "observationId": "385ffa4c-db72-4751-a751-b1e69c805600:0:0:6",
+      "bankTransactionId": null,
+      "transactionDate": "2026-11-22",
+      "transactionTime": null,
+      "timePrecision": "day",
+      "occurredAt": null,
+      "direction": "CREDIT",
+      "amountKrw": 2000,
+      "balanceKrw": 13000,
+      "description": "날짜만있는예시",
+      "summary": "타행이체",
+      "sourceRow": 6
+    }
+  ],
+  "rejectedRows": [
+    {
+      "sourceRow": 7,
+      "reason": "invalid_money"
+    }
+  ],
+  "excludedRows": []
+}

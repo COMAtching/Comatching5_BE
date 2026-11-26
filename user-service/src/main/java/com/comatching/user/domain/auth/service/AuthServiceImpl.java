@@ -35,8 +35,8 @@ public class AuthServiceImpl implements AuthService {
 	}
 
 	@Override
-	public void logout(String accessToken, String refreshToken) {
-		sessions.logout(accessToken, refreshToken);
+	public boolean logout(String accessToken, String refreshToken, String expected) {
+		return sessions.logout(accessToken, refreshToken, expected);
 	}
 
 	@Override

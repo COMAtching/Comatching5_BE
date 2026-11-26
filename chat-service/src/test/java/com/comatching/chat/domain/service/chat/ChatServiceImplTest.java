@@ -35,6 +35,30 @@ import com.comatching.common.service.S3Service;
 
 @ExtendWith(MockitoExtension.class)
 class ChatServiceImplTest {
+	@Mock com.comatching.common.operations.FeatureGate features;
+
+	@Test
+	void readOnlyModeRejectsReceiptsBeforeRoomOrMessageChanges() {
+		org.mockito.Mockito.doThrow(new com.comatching.common.exception.BusinessException(
+			com.comatching.common.exception.code.GeneralErrorCode.FEATURE_CLOSED)).when(features)
+			.requireOpen(com.comatching.common.operations.Feature.CHAT);
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> chatService.markAsRead("room", 1L))
+			.isInstanceOf(com.comatching.common.exception.BusinessException.class);
+		org.mockito.Mockito.verifyNoInteractions(chatRoomRepository, chatMessageRepository);
+	}
+
+	@Test
+	void closingChatDuringImagePromotionPreventsMessageAndPushPersistence() {
+		var room = chatRoom(ROOM_ID, INITIATOR_ID, TARGET_ID);
+		given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
+		given(s3Service.attachChat(INITIATOR_ID, ROOM_ID, "pending-key")).willReturn("https://example.invalid/image.png");
+		willDoNothing().willThrow(new BusinessException(GeneralErrorCode.FEATURE_CLOSED)).given(features)
+			.requireOpen(com.comatching.common.operations.Feature.CHAT);
+		var request = new ChatMessageRequest(ROOM_ID, INITIATOR_ID, "sender", "pending-key", MessageType.IMAGE);
+		assertThatThrownBy(() -> chatService.processMessage(request)).isInstanceOfSatisfying(BusinessException.class,
+			e -> assertThat(e.getErrorCode()).isEqualTo(GeneralErrorCode.FEATURE_CLOSED));
+		then(chatMessageRepository).shouldHaveNoInteractions();
+	}
 
 	private static final String ROOM_ID = "room-1";
 	private static final Long INITIATOR_ID = 1L;

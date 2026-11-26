@@ -32,7 +32,7 @@ public class CustomOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
 		CustomOAuth2User userPrincipal = (CustomOAuth2User)authentication.getPrincipal();
 
 		String role = userPrincipal.getRole();
-		if (!sessions.establish(userPrincipal, response)) return;
+		if (!sessions.establish(userPrincipal, request, response)) return;
 
 		if (role.equals("ROLE_GUEST")) {
 			getRedirectStrategy().sendRedirect(request, response, clientUrl + "/onboarding");

@@ -17,6 +17,11 @@ class PaymentWebSocketHandshakeInterceptorTest {
 
 	private final PaymentWebSocketHandshakeInterceptor interceptor = new PaymentWebSocketHandshakeInterceptor();
 
+	@org.junit.jupiter.api.BeforeEach
+	void setup() {
+		org.springframework.test.util.ReflectionTestUtils.setField(interceptor, "gatewaySecret", "test-proof");
+	}
+
 	@Test
 	void shouldAllowAdminHandshake() {
 		Map<String, Object> attributes = new HashMap<>();
@@ -52,6 +57,8 @@ class PaymentWebSocketHandshakeInterceptorTest {
 		HttpHeaders headers = new HttpHeaders();
 		headers.add("X-Member-Id", memberId);
 		headers.add("X-Member-Role", role);
+		new com.comatching.common.auth.TrustedSession(new com.comatching.common.auth.LoginSession(Long.parseLong(memberId), 1,
+			java.util.UUID.randomUUID()), java.time.Instant.now().plusSeconds(60)).write(headers, "test-proof");
 		ServerHttpRequest request = mock(ServerHttpRequest.class);
 		given(request.getHeaders()).willReturn(headers);
 		return request;

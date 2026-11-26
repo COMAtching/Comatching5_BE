@@ -22,6 +22,12 @@ import com.comatching.common.domain.enums.ContactFrequency;
 import com.comatching.common.domain.enums.Gender;
 import com.comatching.common.domain.enums.MemberRole;
 import com.comatching.common.domain.enums.MemberStatus;
+import com.comatching.common.domain.enums.SocialType;
+import com.comatching.common.dto.auth.SocialLoginRequestDto;
+import com.comatching.common.exception.BusinessException;
+import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
 import com.comatching.user.domain.event.UserEventPublisher;
 import com.comatching.user.domain.member.entity.Member;
 import com.comatching.user.domain.member.entity.Profile;
@@ -37,6 +43,18 @@ class MemberServiceImplTest {
 
 	@Mock
 	private MemberRepository memberRepository;
+
+	@Mock
+	private FeatureGate features;
+
+	@Test
+	void firstKakaoLoginDoesNotCreateAnAccountWhenLoginIsClosed() {
+		var request = new SocialLoginRequestDto("guest@example.invalid", SocialType.KAKAO, "first-login");
+		org.mockito.BDDMockito.willThrow(new BusinessException(GeneralErrorCode.FEATURE_CLOSED))
+			.given(features).requireOpen(Feature.LOGIN);
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> memberService.socialLogin(request)).isInstanceOf(BusinessException.class);
+		then(memberRepository).should(org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+	}
 
 	@Mock
 	private UserEventPublisher eventPublisher;

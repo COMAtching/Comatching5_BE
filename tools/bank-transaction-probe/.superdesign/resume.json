@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/extension/popup.html": {
+      "targetKind": "existing-ui",
+      "projectId": "d7533026-a2cf-48bd-95f1-828115f36cda",
+      "baselineDraftId": "bc2da002-7ee8-41e5-813b-4d165709525f",
+      "activeDraftId": "9dc1025d-601b-452c-9736-e2f4705adf14",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [],
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "extension/popup.html",
+        "extension/popup.css"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "16c938ff35faca926b55a6a044f55e1c5602cfe094933b76bd7ae7274a49c81f",
+        "extension/popup.html": "18af3e084f419d09539e4c490b9f85cee5f976de14c89e67d52c044007ad960c",
+        "extension/popup.css": "7256ea0bdcd2b180e309992a06d9a902f81d63049449b83c832fb61263754be2"
+      },
+      "components": [],
+      "drafts": {
+        "bc2da002-7ee8-41e5-813b-4d165709525f": {
+          "title": "기존 표 추출 화면",
+          "visualDirection": "original utility form",
+          "currentVersion": 1
+        },
+        "9dc1025d-601b-452c-9736-e2f4705adf14": {
+          "title": "코매칭 입금 장부",
+          "parentDraftId": "bc2da002-7ee8-41e5-813b-4d165709525f",
+          "visualDirection": "forest statement and ivory ledger",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-11-23T08:03:38.068129+00:00"
+    }
+  }
+}

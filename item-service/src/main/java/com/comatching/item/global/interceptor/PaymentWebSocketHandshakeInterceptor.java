@@ -16,6 +16,8 @@ public class PaymentWebSocketHandshakeInterceptor implements HandshakeIntercepto
 
 	private static final String ADMIN_ROLE = "ROLE_ADMIN";
 
+	@org.springframework.beans.factory.annotation.Value("${internal.service-token:}") private String gatewaySecret;
+
 	@Override
 	public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
 		Map<String, Object> attributes) {
@@ -23,11 +25,13 @@ public class PaymentWebSocketHandshakeInterceptor implements HandshakeIntercepto
 		String memberId = request.getHeaders().getFirst("X-Member-Id");
 		String role = request.getHeaders().getFirst("X-Member-Role");
 
-		if (!ADMIN_ROLE.equals(role)) {
+		var identity = com.comatching.common.auth.TrustedSession.from(request.getHeaders(), gatewaySecret);
+		if (identity == null || !ADMIN_ROLE.equals(role)) {
 			log.warn("Payment WebSocket handshake rejected. memberId={}, role={}", memberId, role);
 			return false;
 		}
 
+		attributes.put(com.comatching.common.socket.SocketSessionGuard.ATTRIBUTE, identity);
 		attributes.put("memberId", memberId);
 		attributes.put("role", role);
 		return true;

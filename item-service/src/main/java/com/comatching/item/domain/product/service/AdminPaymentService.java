@@ -27,5 +27,7 @@ public interface AdminPaymentService {
 
 	void approvePurchase(Long requestId, Long adminId);
 
+	void approveMatchedPurchase(Long requestId, Long adminId, String reason);
+
 	void rejectPurchase(Long requestId, Long adminId);
 }

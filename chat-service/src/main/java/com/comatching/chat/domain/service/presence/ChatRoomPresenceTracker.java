@@ -23,6 +23,9 @@ import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
  */
 @Component
 public class ChatRoomPresenceTracker {
+	private final com.comatching.common.socket.SocketSessionGuard guard;
+
+	public ChatRoomPresenceTracker(com.comatching.common.socket.SocketSessionGuard guard) { this.guard = guard; }
 
 	public static final String CHAT_ROOM_DESTINATION = "/user/queue/chat.room.";
 
@@ -77,9 +80,9 @@ public class ChatRoomPresenceTracker {
 	}
 
 	public boolean isViewing(String roomId, Long memberId) {
-		return subscriptionsBySession.values().stream()
-			.flatMap(sessionSubscriptions -> sessionSubscriptions.values().stream())
-			.anyMatch(subscription ->
-				subscription.roomId().equals(roomId) && subscription.memberId().equals(memberId));
+		return subscriptionsBySession.entrySet().stream().anyMatch(entry ->
+			entry.getValue().values().stream().anyMatch(subscription ->
+				subscription.roomId().equals(roomId) && subscription.memberId().equals(memberId))
+				&& guard.isUsable(entry.getKey()));
 	}
 }

@@ -54,6 +54,9 @@ internal:
   service-token: ${INTERNAL_SERVICE_TOKEN:}
 
 comatching:
+  deposit-ingest:
+    enabled: ${BANK_DEPOSIT_INGEST_ENABLED:false}
+    token: ${BANK_DEPOSIT_INGEST_TOKEN:}
   outbox:
     cleanup-target: ORDER
     cleanup-cron: "0 20 3 * * *"  # Asia/Seoul
@@ -71,7 +74,7 @@ comatching:
   kafka:
     # 그룹별 DLT와 전용 replay 토픽을 기동 시 만든다.
     # KafkaEventRoute에 등록된 이 서비스의 처리 경로만 적는다.
-    dlt-routes: PRE_SIGNUP_ITEM
+    dlt-routes: PRE_SIGNUP_ITEM,BANK_SCAN
     # DLT 적재를 알릴 웹훅(Discord/Slack 겸용). 비우면 로그만 남는다.
     dlt-alert-webhook-url: ${DLT_ALERT_WEBHOOK_URL:}
 

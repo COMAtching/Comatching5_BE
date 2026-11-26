@@ -1,5 +1,8 @@
 package com.comatching.chat.infra.controller;
 
+import com.comatching.common.operations.Feature;
+import com.comatching.common.operations.FeatureGate;
+
 import com.comatching.chat.domain.repository.ChatMessageRepository;
 import com.comatching.chat.domain.repository.ChatRoomRepository;
 import com.comatching.chat.domain.repository.UserBlockRepository;
@@ -14,12 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/internal/chat/messages")
 public class InternalChatPushController {
+    private final FeatureGate features;
     private final ChatMessageRepository messages;
     private final ChatRoomRepository rooms;
     private final UserBlockRepository blocks;
 
     @GetMapping("/{messageId}/push-eligible")
     public boolean eligible(@PathVariable String messageId, @RequestParam Long targetUserId) {
+        if (!features.state(Feature.CHAT).open()) return false;
         var message = messages.findById(messageId).orElse(null);
         if (message == null || message.getPushOutbox() == null
                 || !targetUserId.equals(message.getPushOutbox().targetUserId())) return false;

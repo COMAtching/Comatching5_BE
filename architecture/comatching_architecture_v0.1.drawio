@@ -1,0 +1,1336 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-11-24T00:00:00.000Z" agent="Codex" version="24.7.17" type="device" compressed="false">
+  <diagram id="01_overview" name="01 전체 아키텍처">
+    <mxGraphModel dx="2000" dy="1480" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1480" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e4" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#CBD5E1;strokeWidth=1;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="60" y="143" as="sourcePoint" />
+            <mxPoint x="1940" y="143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v22" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FAFBFD;strokeColor=#8B98AC;strokeWidth=1.5;collapsible=0;container=1;dashed=1;dashPattern=7 5;" vertex="1" parent="1">
+          <mxGeometry x="440" y="212" width="400" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="v33" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFCF7;strokeColor=#E79A29;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="450" width="1490" height="865" as="geometry" />
+        </mxCell>
+        <mxCell id="v36" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#F4F8FF;strokeColor=#2563EB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="490" y="535" width="1080" height="748" as="geometry" />
+        </mxCell>
+        <mxCell id="v58" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#F7FCF8;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="860" width="1020" height="153" as="geometry" />
+        </mxCell>
+        <mxCell id="v134" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FAFBFD;strokeColor=#D3DBE8;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="570" width="330" height="710" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.5;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="60" y="178" as="sourcePoint" />
+            <mxPoint x="96" y="178" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.5;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="178" as="sourcePoint" />
+            <mxPoint x="286" y="178" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.5;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="440" y="178" as="sourcePoint" />
+            <mxPoint x="476" y="178" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.5;endArrow=none;endFill=1;dashed=1;dashPattern=7 5;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="178" as="sourcePoint" />
+            <mxPoint x="636" y="178" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#8B98AC;strokeWidth=2.5;endArrow=none;endFill=1;dashed=1;dashPattern=7 5;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="815" y="178" as="sourcePoint" />
+            <mxPoint x="851" y="178" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e30" value="" edge="1" parent="1" source="client" target="frontend" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.375;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.4523809523809524;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e49" value="" edge="1" parent="1" source="client" target="nginx" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.4230769230769231;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="480" />
+              <mxPoint x="400" y="480" />
+              <mxPoint x="400" y="697" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e52" value="" edge="1" parent="1" source="frontend" target="nginx" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.5714285714285714;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="300" />
+              <mxPoint x="880" y="425" />
+              <mxPoint x="400" y="425" />
+              <mxPoint x="400" y="697" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e55" value="" edge="1" parent="1" source="nginx" target="gateway" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.496;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e64" value="" edge="1" parent="1" source="gateway" target="user" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1015" y="812" />
+              <mxPoint x="629" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e69" value="" edge="1" parent="1" source="gateway" target="matching" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1015" y="812" />
+              <mxPoint x="827" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e74" value="" edge="1" parent="1" source="gateway" target="chat" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1015" y="812" />
+              <mxPoint x="1025" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e79" value="" edge="1" parent="1" source="gateway" target="item" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1015" y="812" />
+              <mxPoint x="1223" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e84" value="" edge="1" parent="1" source="gateway" target="notification" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1015" y="812" />
+              <mxPoint x="1421" y="812" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e102" value="" edge="1" parent="1" source="v58" target="redis" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.3;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=0.0;exitY=0.7058823529411765;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="505" y="968" />
+              <mxPoint x="505" y="1090" />
+              <mxPoint x="675" y="1090" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e105" value="" edge="1" parent="1" source="v58" target="kafka" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=0.5147058823529411;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e108" value="" edge="1" parent="1" source="v58" target="mongo" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.3;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=1.0;exitY=0.6928104575163399;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1556" y="966" />
+              <mxPoint x="1556" y="1192" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e119" value="" edge="1" parent="1" source="v58" target="rds" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.3;endArrow=block;endFill=1;startArrow=block;startFill=1;exitX=1.0;exitY=0.3790849673202614;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43829787234042555;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e128" value="" edge="1" parent="1" source="client" target="s3" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.8076923076923077;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="390" />
+              <mxPoint x="1770" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e131" value="" edge="1" parent="1" source="v58" target="s3" style="edgeStyle=none;rounded=0;html=0;strokeColor=#098B8D;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.16339869281045752;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1600" y="885" />
+              <mxPoint x="1600" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e151" value="" edge="1" parent="1" source="v58" target="kakao" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.0;exitY=0.35294117647058826;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.76;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="428" y="914" />
+              <mxPoint x="428" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e152" value="" edge="1" parent="1" source="v58" target="fcm" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.0;exitY=0.5751633986928104;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.504;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="416" y="948" />
+              <mxPoint x="416" y="918" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e153" value="" edge="1" parent="1" source="v58" target="smtp" style="edgeStyle=none;rounded=0;html=0;strokeColor=#2563EB;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.0;exitY=0.7973856209150327;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="405" y="982" />
+              <mxPoint x="405" y="1152" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e154" value="" edge="1" parent="1" source="fcm" target="client" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=0.0;exitY=0.504;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="35" y="918" />
+              <mxPoint x="35" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="client" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="240" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="v17" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#2563EB;strokeColor=#2563EB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="client">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="frontend" label="" tooltip="FE/package.json; FE/Dockerfile; FE/lib/server-api.ts; FE/lib/axios.ts">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="460" y="228" width="360" height="126" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v24" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#15253F;strokeColor=#15253F;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="frontend">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="nginx" label="" tooltip="BE/docker-compose.prod.yml gateway ports 주석; Nginx 설정 원문은 저장소 외부">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="540" y="635" width="240" height="125" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v39" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#238751;strokeColor=#238751;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="nginx">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="gateway" label="" tooltip="BE/gateway-service/src/main/resources/application-aws.yml; AuthorizationHeaderFilter.java">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="850" y="635" width="330" height="125" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v44" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#238751;strokeColor=#238751;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="gateway">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="user" label="" tooltip="BE/user-service/src/main/resources/application.yml">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="540" y="882" width="178" height="112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="matching" label="" tooltip="BE/matching-service/src/main/resources/application.yml">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="738" y="882" width="178" height="112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="chat" label="" tooltip="BE/chat-service/src/main/resources/application.yml">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="936" y="882" width="178" height="112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="item" label="" tooltip="BE/item-service/src/main/resources/application.yml">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="1134" y="882" width="178" height="112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="notification" label="" tooltip="BE/notification/src/main/resources/application.yml">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#A6CDB4;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="1332" y="882" width="178" height="112" as="geometry" />
+          </mxCell>
+        </object>
+        <object id="redis" label="" tooltip="BE/docker-compose.prod.yml; common auth; chat RedisPublisher / RedisSubscriber">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="540" y="1130" width="270" height="125" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v87" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#098B8D;strokeColor=#098B8D;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="redis">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="kafka" label="" tooltip="BE/docker-compose.prod.yml; common-module KafkaEventRoute.java">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="860" y="1130" width="370" height="125" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v92" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#D98312;strokeColor=#D98312;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="kafka">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="mongo" label="" tooltip="BE/chat-service/src/main/resources/application-aws.yml; ChatMessage.PushOutbox">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="1300" y="1130" width="230" height="125" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v97" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#098B8D;strokeColor=#098B8D;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="mongo">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="rds" label="" tooltip="BE/*/src/main/resources/application-aws.yml; RDS_ENDPOINT 공통 사용">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="1630" y="815" width="280" height="235" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v111" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#098B8D;strokeColor=#098B8D;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="rds">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <object id="s3" label="" tooltip="BE/common-module/S3Service.java, S3PostPolicy.java; FE/lib/image-upload.ts">
+          <mxCell style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+            <mxGeometry x="1630" y="570" width="280" height="160" as="geometry" />
+          </mxCell>
+        </object>
+        <mxCell id="v122" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#098B8D;strokeColor=#098B8D;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="s3">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="kakao" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="635" width="290" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="v136" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#15253F;strokeColor=#15253F;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="kakao">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="fcm" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="855" width="290" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="v141" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#D98312;strokeColor=#D98312;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="fcm">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="smtp" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1090" width="290" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="v146" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="smtp">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="v155" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFBF4;strokeColor=#F1D6AB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1320" width="1880" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="코매칭 5  /  전체 아키텍처" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=40;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="35" width="1600" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="Next.js · Spring Cloud Gateway · 5개 업무 서비스 · Kafka 이벤트 연동" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="96" width="1810" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="DRAFT 0.1  ·  01" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1720" y="39" width="220" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="2026-11-24  ·  로컬 코드·운영 설정 기준  ·  실행 중인 서버의 상태는 확인하지 않음" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="1433" width="1630" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="01 / 03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1770" y="1433" width="170" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="요청 / 응답" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="106" y="166" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t10" value="데이터 접근" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="296" y="166" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t12" value="이벤트" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="486" y="166" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t14" value="배포 / 관측" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="646" y="166" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t16" value="확인 필요" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="861" y="166" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t18" value="UI" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="client" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t19" value="Client" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="client" connectable="0">
+          <mxGeometry x="68" y="18" width="176" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t20" value="모바일 / 웹 브라우저" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="client" connectable="0">
+          <mxGeometry x="20" y="65" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t21" value="PWA · 쿠키 인증" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="client" connectable="0">
+          <mxGeometry x="20" y="91" width="220" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t23" value="" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#8B98AC;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="462" y="226" width="356" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t25" value="N" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="frontend" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t26" value="Next.js 16 / React 19" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="frontend" connectable="0">
+          <mxGeometry x="68" y="18" width="276" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t27" value="comatching.site · Docker :3000" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="frontend" connectable="0">
+          <mxGeometry x="20" y="65" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t28" value="SSR / Server Actions · Client API" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="frontend" connectable="0">
+          <mxGeometry x="20" y="91" width="320" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t29" value="프론트 호스팅 위치·CD는 확인 필요" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#8B98AC;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="455" y="359" width="365" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v31" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="346" y="249" width="118" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t32" value="HTTPS" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="350" y="250" width="110" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t34" value="AWS  /  운영 설정의 배포 경계" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#E79A29;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="472" y="464" width="1446" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t35" value="EC2 안의 서비스는 Docker Compose로 실행 · RDS와 S3는 호스트 외부" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="472" y="498" width="1446" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="t37" value="EC2  ·  단일 호스트 / t3.large" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="512" y="549" width="1036" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t38" value="Docker network: comatching · Spring Boot 3.5 / Java 17 · Nginx는 호스트 프로세스" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="512" y="583" width="1036" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="t40" value="N" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="nginx" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t41" value="Nginx" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="nginx" connectable="0">
+          <mxGeometry x="68" y="18" width="156" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t42" value="TLS 종료 · Reverse Proxy" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="nginx" connectable="0">
+          <mxGeometry x="20" y="65" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t43" value="srv.comatching.site · :443" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="nginx" connectable="0">
+          <mxGeometry x="20" y="91" width="200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t45" value="S" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="gateway" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t46" value="Spring Cloud Gateway" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="gateway" connectable="0">
+          <mxGeometry x="68" y="18" width="246" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t47" value="라우팅 · JWT / Redis 세션 검증" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="gateway" connectable="0">
+          <mxGeometry x="20" y="65" width="290" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t48" value="호스트 127.0.0.1:8080 → :8080" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="gateway" connectable="0">
+          <mxGeometry x="20" y="91" width="290" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v50" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="203" y="450" width="193" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t51" value="HTTPS / WSS" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="207" y="451" width="185" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v53" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="441" y="396" width="293" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t54" value="SSR / Server Actions → API" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="445" y="397" width="285" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v56" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="776" y="664" width="78" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t57" value="HTTP" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="780" y="665" width="70" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t59" value="" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="542" y="874" width="976" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t60" value="User" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=22;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="user" connectable="0">
+          <mxGeometry x="12" y="8" width="154" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t61" value="user-service" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="user" connectable="0">
+          <mxGeometry x="12" y="41" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t62" value="회원 · 인증 · 프로필" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="user" connectable="0">
+          <mxGeometry x="12" y="65" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t63" value=":9000" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=13;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="user" connectable="0">
+          <mxGeometry x="12" y="90" width="154" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="t65" value="Matching" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=22;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="matching" connectable="0">
+          <mxGeometry x="12" y="8" width="154" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t66" value="matching-service" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="matching" connectable="0">
+          <mxGeometry x="12" y="41" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t67" value="후보 · 매칭 · 이력" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="matching" connectable="0">
+          <mxGeometry x="12" y="65" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t68" value=":9001" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=13;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="matching" connectable="0">
+          <mxGeometry x="12" y="90" width="154" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="t70" value="Chat" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=22;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="chat" connectable="0">
+          <mxGeometry x="12" y="8" width="154" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t71" value="chat-service" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="chat" connectable="0">
+          <mxGeometry x="12" y="41" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t72" value="STOMP / SockJS" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="chat" connectable="0">
+          <mxGeometry x="12" y="65" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t73" value=":9003" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=13;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="chat" connectable="0">
+          <mxGeometry x="12" y="90" width="154" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="t75" value="Item" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=22;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="item" connectable="0">
+          <mxGeometry x="12" y="8" width="154" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t76" value="item-service" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="item" connectable="0">
+          <mxGeometry x="12" y="41" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t77" value="상점 · 주문 · 지급" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="item" connectable="0">
+          <mxGeometry x="12" y="65" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t78" value=":9006" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=13;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="item" connectable="0">
+          <mxGeometry x="12" y="90" width="154" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="t80" value="Notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=22;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="notification" connectable="0">
+          <mxGeometry x="12" y="8" width="154" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t81" value="notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="notification" connectable="0">
+          <mxGeometry x="12" y="41" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t82" value="메일 · FCM 알림" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="notification" connectable="0">
+          <mxGeometry x="12" y="65" width="154" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t83" value=":9005" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=13;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="notification" connectable="0">
+          <mxGeometry x="12" y="90" width="154" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="v85" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1161" y="781" width="348" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t86" value="REST / STOMP → 경로별 서비스" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#2563EB;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1165" y="782" width="340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t88" value="R" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="redis" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t89" value="Redis 7" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#098B8D;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="redis" connectable="0">
+          <mxGeometry x="68" y="18" width="186" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t90" value="세션 · 캐시 · 중복 제어" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="redis" connectable="0">
+          <mxGeometry x="20" y="65" width="230" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t91" value="채팅 Pub/Sub · :6379" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="redis" connectable="0">
+          <mxGeometry x="20" y="91" width="230" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t93" value="K" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="kafka" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t94" value="Kafka / KRaft" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="kafka" connectable="0">
+          <mxGeometry x="68" y="18" width="286" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t95" value="broker + controller × 3" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="kafka" connectable="0">
+          <mxGeometry x="20" y="65" width="330" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t96" value="서비스 이벤트 · DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="kafka" connectable="0">
+          <mxGeometry x="20" y="91" width="330" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t98" value="M" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="mongo" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t99" value="MongoDB 7" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#098B8D;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="mongo" connectable="0">
+          <mxGeometry x="68" y="18" width="146" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t100" value="채팅방 · 메시지 · Outbox" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="mongo" connectable="0">
+          <mxGeometry x="20" y="65" width="190" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t101" value="comatching_chat · :27017" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="mongo" connectable="0">
+          <mxGeometry x="20" y="91" width="190" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v103" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="514" y="1051" width="278" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t104" value="Gateway / 업무 서비스 공용" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#098B8D;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="518" y="1052" width="270" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v106" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="858" y="1051" width="378" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t107" value="발행 / 구독  ·  서비스별 방향은 02 탭" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#D98312;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="862" y="1052" width="370" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v109" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1296" y="1051" width="238" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t110" value="Chat 전용 저장소" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#098B8D;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1300" y="1052" width="230" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t112" value="DB" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t113" value="RDS / MySQL" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#098B8D;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="68" y="18" width="196" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t114" value="업무별 스키마 4개 · :3306" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="20" y="65" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t115" value="comatching_user" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="20" y="91" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t116" value="comatching_matching" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="20" y="117" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t117" value="comatching_item" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="20" y="143" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t118" value="comatching_notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="rds" connectable="0">
+          <mxGeometry x="20" y="169" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v120" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1536" y="878" width="98" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t121" value="SQL" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#098B8D;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1540" y="879" width="90" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t123" value="S3" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="s3" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t124" value="Amazon S3" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#098B8D;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="s3" connectable="0">
+          <mxGeometry x="68" y="18" width="196" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t125" value="프로필 / 채팅 이미지" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="s3" connectable="0">
+          <mxGeometry x="20" y="65" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t126" value="User · Chat: 업로드 정책 발급" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="s3" connectable="0">
+          <mxGeometry x="20" y="91" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t127" value="Client: Presigned POST" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="s3" connectable="0">
+          <mxGeometry x="20" y="117" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v129" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="996" y="355" width="448" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t130" value="이미지 파일은 브라우저 → S3 직접 업로드" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#098B8D;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1000" y="356" width="440" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v132" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1636" y="762" width="268" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t133" value="User / Chat: 객체 확정·관리" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#098B8D;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1640" y="763" width="260" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t135" value="외부 연동" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="82" y="584" width="286" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t137" value="K" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="kakao" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t138" value="Kakao OAuth2" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="kakao" connectable="0">
+          <mxGeometry x="68" y="18" width="206" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t139" value="user-service 연동" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="kakao" connectable="0">
+          <mxGeometry x="20" y="65" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t140" value="카카오 로그인" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="kakao" connectable="0">
+          <mxGeometry x="20" y="91" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t142" value="F" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="fcm" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t143" value="Firebase FCM" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="fcm" connectable="0">
+          <mxGeometry x="68" y="18" width="206" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t144" value="notification → FCM" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="fcm" connectable="0">
+          <mxGeometry x="20" y="65" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t145" value="Web Push → 브라우저" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="fcm" connectable="0">
+          <mxGeometry x="20" y="91" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t147" value="@" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="smtp" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t148" value="Gmail SMTP" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="smtp" connectable="0">
+          <mxGeometry x="68" y="18" width="206" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t149" value="User / Notification 연동" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="smtp" connectable="0">
+          <mxGeometry x="20" y="65" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t150" value="인증·가입·거래 메일 · :587" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="smtp" connectable="0">
+          <mxGeometry x="20" y="91" width="250" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t156" value="초안에서 구분한 범위" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1334" width="1840" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t157" value="프론트 호스팅·배포, 인증서 발급/갱신, VPC·서브넷은 확인 필요. Kafka 3개와 Redis·MongoDB는 현재 Compose상 같은 EC2에 배치됩니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1371" width="1840" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="02_event_flow" name="02 이벤트와 서비스 통신">
+    <mxGraphModel dx="2000" dy="1480" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1480" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e4" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#CBD5E1;strokeWidth=1;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="60" y="143" as="sourcePoint" />
+            <mxPoint x="1940" y="143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v11" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFBF4;strokeColor=#D98312;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="222" width="540" height="951" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="" edge="1" parent="1" source="producer0" target="topic0" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="" edge="1" parent="1" source="topic0" target="consumer0" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="" edge="1" parent="1" source="consumer0" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="354" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e29" value="" edge="1" parent="1" source="producer1" target="topic1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" value="" edge="1" parent="1" source="topic1" target="consumer1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" value="" edge="1" parent="1" source="consumer1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="476" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e39" value="" edge="1" parent="1" source="producer2" target="topic2" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e40" value="" edge="1" parent="1" source="topic2" target="consumer2" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e41" value="" edge="1" parent="1" source="consumer2" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="598" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e48" value="" edge="1" parent="1" source="producer3" target="topic3" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e49" value="" edge="1" parent="1" source="topic3" target="consumer3" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e50" value="" edge="1" parent="1" source="consumer3" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e57" value="" edge="1" parent="1" source="producer4" target="topic4" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e58" value="" edge="1" parent="1" source="topic4" target="consumer4" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e59" value="" edge="1" parent="1" source="consumer4" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="842" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e66" value="" edge="1" parent="1" source="producer5" target="topic5" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e67" value="" edge="1" parent="1" source="topic5" target="consumer5" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e68" value="" edge="1" parent="1" source="consumer5" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="964" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e75" value="" edge="1" parent="1" source="producer6" target="topic6" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e76" value="" edge="1" parent="1" source="topic6" target="consumer6" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.43137254901960786;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e77" value="" edge="1" parent="1" source="consumer6" style="edgeStyle=none;rounded=0;html=0;strokeColor=#D98312;strokeWidth=2.3;endArrow=block;endFill=1;exitX=1.0;exitY=0.43137254901960786;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1530" y="1086" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="producer0" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="310" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic0" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="310" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer0" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="310" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer1" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="432" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic1" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="432" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer1" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="432" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer2" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="554" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic2" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="554" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer2" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="554" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer3" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="676" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic3" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="676" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer3" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="676" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer4" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="798" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic4" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="798" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer4" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="798" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer5" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="920" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic5" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="920" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer5" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="920" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="producer6" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1042" width="300" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="topic6" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="545" y="1042" width="450" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer6" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="1042" width="340" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="v79" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFBF4;strokeColor=#F1D6AB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1210" width="900" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="v84" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFBF4;strokeColor=#F1D6AB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="1210" width="940" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="코매칭 5  /  이벤트와 서비스 통신" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=40;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="35" width="1600" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="Kafka의 발행자·토픽·소비자를 구분하고, 실시간 채팅과 동기 호출을 별도로 정리" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="96" width="1810" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="DRAFT 0.1  ·  02" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1720" y="39" width="220" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="2026-11-24  ·  로컬 코드·운영 설정 기준  ·  실행 중인 서버의 상태는 확인하지 않음" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="1433" width="1630" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="02 / 03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1770" y="1433" width="170" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="발행 서비스" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=19;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="180" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="Kafka 원본 토픽" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=19;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="580" y="180" width="440" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" value="소비 서비스" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=19;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1160" y="180" width="340" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t10" value="처리 결과" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=19;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="180" width="370" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t12" value="KRaft 3 brokers" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="522" y="236" width="496" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t13" value="RF = 3  ·  min ISR = 2  ·  운영 설정 기준" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="522" y="270" width="496" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="t14" value="User" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer0" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t15" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer0" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t16" value="member-signup" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic0" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t17" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic0" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t18" value="Notification + Item" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer0" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t22" value="가입 메일" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="327" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t23" value="사전 가입 조건 충족 시 매칭권 지급" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="356" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t24" value="User" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer1" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t25" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer1" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t26" value="member-withdraw" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic1" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t27" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic1" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t28" value="Matching + Notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer1" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t32" value="매칭 후보 제거" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="449" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t33" value="탈퇴 메일" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="478" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t34" value="User" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer2" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t35" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer2" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t36" value="profile-updates" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic2" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t37" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic2" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t38" value="Matching" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer2" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t42" value="회원 프로필 변경 → 후보 동기화" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="571" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t43" value="Matching" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer3" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t44" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer3" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t45" value="matching-success-topic" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic3" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t46" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic3" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t47" value="Chat" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer3" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t51" value="매칭 성공 → 채팅방 생성" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="693" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t52" value="Chat" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer4" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t53" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer4" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t54" value="chat-message-sent" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic4" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t55" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic4" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t56" value="Notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer4" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t60" value="푸시 대상 재확인 → FCM 발송" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="815" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t61" value="Item" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer5" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t62" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer5" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t63" value="items-granted" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic5" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t64" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic5" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t65" value="Notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer5" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t69" value="상품 지급 → 메일 / 푸시" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="937" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t70" value="Item" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="producer6" connectable="0">
+          <mxGeometry x="20" y="18" width="260" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t71" value="DB Outbox → Dispatcher" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="producer6" connectable="0">
+          <mxGeometry x="20" y="65" width="260" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t72" value="refund-completed" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=21;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="topic6" connectable="0">
+          <mxGeometry x="20" y="18" width="410" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t73" value="원본 토픽 + 소비 그룹별 DLT / replay" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="topic6" connectable="0">
+          <mxGeometry x="20" y="65" width="410" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t74" value="Notification" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="consumer6" connectable="0">
+          <mxGeometry x="20" y="18" width="300" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t78" value="환불 완료 → 메일" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1550" y="1059" width="365" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t80" value="동기 HTTP / OpenFeign" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1224" width="860" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t81" value="Matching → User · Item · Chat   /   Chat → User · Matching" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1261" width="860" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t82" value="User ↔ Item   /   Notification → User · Chat (RestClient)" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1286" width="860" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t83" value="업무 처리 중 조회·검증 호출. Kafka의 비동기 소비와 구분합니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1311" width="860" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t85" value="실시간 채팅 / 이벤트 보관" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#098B8D;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1020" y="1224" width="900" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t86" value="STOMP / SockJS → Chat → MongoDB 저장 → Redis Pub/Sub → 접속자" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1020" y="1261" width="900" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t87" value="채팅 푸시 Outbox는 MongoDB 메시지 문서에 포함됩니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1020" y="1286" width="900" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t88" value="User · Matching · Item은 MySQL Outbox → Kafka로 발행합니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1020" y="1311" width="900" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="03_delivery_operations" name="03 배포와 운영">
+    <mxGraphModel dx="2000" dy="1480" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1480" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="e4" value="" edge="1" parent="1" style="edgeStyle=none;rounded=0;html=0;strokeColor=#CBD5E1;strokeWidth=1;endArrow=none;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="60" y="143" as="sourcePoint" />
+            <mxPoint x="1940" y="143" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v7" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FAF8FF;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="184" width="1880" height="432" as="geometry" />
+        </mxCell>
+        <mxCell id="v39" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FAFBFD;strokeColor=#8B98AC;strokeWidth=1.5;collapsible=0;container=1;dashed=1;dashPattern=7 5;" vertex="1" parent="1">
+          <mxGeometry x="60" y="652" width="1880" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="v44" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FAF8FF;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="858" width="1140" height="407" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" value="" edge="1" parent="1" source="github" target="build" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=1.0;exitY=0.4962962962962963;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" value="" edge="1" parent="1" source="build" target="ghcr" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=1.0;exitY=0.4962962962962963;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e32" value="" edge="1" parent="1" source="ghcr" target="ec2deploy" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=1.0;exitY=0.4962962962962963;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.4962962962962963;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e65" value="" edge="1" parent="1" source="prom" target="appsmetrics" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=0.0;exitY=0.2814814814814815;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="1056" />
+              <mxPoint x="390" y="984" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e66" value="" edge="1" parent="1" source="prom" target="nodeexporter" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=0.0;exitY=0.7185185185185186;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="1115" />
+              <mxPoint x="390" y="1151" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e69" value="" edge="1" parent="1" source="grafana" target="prom" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=0.0;exitY=0.496;exitDx=0;exitDy=0;exitPerimeter=0;entryX=1.0;entryY=0.3111111111111111;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="990" />
+              <mxPoint x="790" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e72" value="" edge="1" parent="1" source="prom" target="alertmanager" style="edgeStyle=none;rounded=0;html=0;strokeColor=#7552C7;strokeWidth=2.3;endArrow=block;endFill=1;dashed=1;dashPattern=7 5;exitX=1.0;exitY=0.725925925925926;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.496;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="1116" />
+              <mxPoint x="780" y="1162" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="github" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="285" width="320" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="v10" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#15253F;strokeColor=#15253F;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="github">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="build" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="285" width="380" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="v15" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="build">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="ghcr" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="285" width="380" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="v20" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="ghcr">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="ec2deploy" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="285" width="470" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="v25" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#2563EB;strokeColor=#2563EB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="ec2deploy">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="v35" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#DED4F0;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="465" width="1790" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="appsmetrics" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="933" width="250" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="nodeexporter" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="1100" width="250" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="prom" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1018" width="280" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="v50" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="prom">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="850" y="928" width="310" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="v55" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="grafana">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="alertmanager" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1100" width="310" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="v60" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#7552C7;strokeColor=#7552C7;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="alertmanager">
+          <mxGeometry x="16" y="16" width="38" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="v75" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFBF4;strokeColor=#F1D6AB;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="858" width="700" height="407" as="geometry" />
+        </mxCell>
+        <mxCell id="v87" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#F8FAFD;strokeColor=#DFE5EE;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1300" width="1880" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="코매칭 5  /  배포와 운영" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=40;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="35" width="1600" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="백엔드 CI/CD, 관측 흐름, 확인 근거와 아직 확정하지 않은 배포 항목" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="96" width="1810" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="DRAFT 0.1  ·  03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1720" y="39" width="220" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="2026-11-24  ·  로컬 코드·운영 설정 기준  ·  실행 중인 서버의 상태는 확인하지 않음" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="60" y="1433" width="1630" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="03 / 03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1770" y="1433" width="170" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="BACKEND  /  GitHub Actions → GHCR → EC2" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="82" y="198" width="1836" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" value="BE: .github/workflows/deploy.yml · test.yml" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="82" y="232" width="1836" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="t11" value="Git" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="github" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t12" value="GitHub / main" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="github" connectable="0">
+          <mxGeometry x="68" y="18" width="236" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t13" value="개발자 push / merge" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="github" connectable="0">
+          <mxGeometry x="20" y="65" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t14" value="main push 또는 수동 실행" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="github" connectable="0">
+          <mxGeometry x="20" y="91" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t16" value="CI" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="build" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t17" value="GitHub Actions" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="build" connectable="0">
+          <mxGeometry x="68" y="18" width="296" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t18" value="Java 17 · Gradle bootJar" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="build" connectable="0">
+          <mxGeometry x="20" y="65" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t19" value="6개 서비스 이미지 병렬 빌드" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="build" connectable="0">
+          <mxGeometry x="20" y="91" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t21" value="REG" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="ghcr" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t22" value="GHCR" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="ghcr" connectable="0">
+          <mxGeometry x="68" y="18" width="296" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t23" value="gateway + 5개 업무 서비스" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="ghcr" connectable="0">
+          <mxGeometry x="20" y="65" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t24" value="latest / commit SHA 태그" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="ghcr" connectable="0">
+          <mxGeometry x="20" y="91" width="340" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t26" value="EC2" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="ec2deploy" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t27" value="EC2 / Docker Compose" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="ec2deploy" connectable="0">
+          <mxGeometry x="68" y="18" width="386" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t28" value="SSH → 이미지 pull → up -d --no-build" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="ec2deploy" connectable="0">
+          <mxGeometry x="20" y="65" width="430" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t29" value="IMAGE_TAG = 배포 커밋 SHA" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="ec2deploy" connectable="0">
+          <mxGeometry x="20" y="91" width="430" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v33" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="1336" y="316" width="88" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t34" value="pull" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#7552C7;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1340" y="317" width="80" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t36" value="PR 검증 (test.yml)" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="120" y="481" width="350" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t37" value="단위 테스트  +  통합 테스트  ·  EmbeddedKafka / Testcontainers" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#15253F;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="490" y="481" width="1330" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t38" value="두 검증 작업은 병렬 실행. main 배포 작업은 bootJar부터 시작하며, PR 필수 통과 여부는 저장소 브랜치 보호 설정에 달려 있습니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="120" y="527" width="1710" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t40" value="FRONTEND  /  저장소에서 확인된 범위" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#8B98AC;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="82" y="666" width="1836" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t41" value="PR: pnpm build · pnpm lint" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="90" y="710" width="590" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t42" value="Dockerfile: Next.js standalone · :3000" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="720" y="710" width="590" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t43" value="프론트 운영 서버, 이미지 레지스트리, 자동 배포 경로는 해당 저장소 설정만으로 확정할 수 없습니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#8B98AC;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="90" y="756" width="1770" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t45" value="OBSERVABILITY  /  EC2 내부" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=20;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="82" y="872" width="1096" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="t46" value="Spring Actuator" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#238751;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="appsmetrics" connectable="0">
+          <mxGeometry x="20" y="18" width="210" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t47" value="/actuator/prometheus" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="appsmetrics" connectable="0">
+          <mxGeometry x="20" y="65" width="210" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t48" value="Node Exporter" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#2563EB;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="nodeexporter" connectable="0">
+          <mxGeometry x="20" y="18" width="210" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t49" value="CPU · 메모리 · 디스크" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="nodeexporter" connectable="0">
+          <mxGeometry x="20" y="65" width="210" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t51" value="P" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="prom" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t52" value="Prometheus" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="prom" connectable="0">
+          <mxGeometry x="68" y="18" width="196" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t53" value="15초 간격 수집 · 알림 규칙" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="prom" connectable="0">
+          <mxGeometry x="20" y="65" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t54" value="보관: 15일 또는 2GB" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="prom" connectable="0">
+          <mxGeometry x="20" y="91" width="240" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t56" value="G" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="grafana" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t57" value="Grafana" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="grafana" connectable="0">
+          <mxGeometry x="68" y="18" width="226" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t58" value="PromQL 조회 / 대시보드" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="grafana" connectable="0">
+          <mxGeometry x="20" y="65" width="270" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t59" value="127.0.0.1:3001 · SSH 터널" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="grafana" connectable="0">
+          <mxGeometry x="20" y="91" width="270" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t61" value="A" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#FFFFFF;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="alertmanager" connectable="0">
+          <mxGeometry x="17" y="17" width="36" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t62" value="Alertmanager" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=23;fontColor=#7552C7;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="alertmanager" connectable="0">
+          <mxGeometry x="68" y="18" width="226" height="33" as="geometry" />
+        </mxCell>
+        <mxCell id="t63" value="알림 집계 / 발송" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="alertmanager" connectable="0">
+          <mxGeometry x="20" y="65" width="270" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="t64" value="실제 수신 채널 확인 필요" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="alertmanager" connectable="0">
+          <mxGeometry x="20" y="91" width="270" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="v67" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="344" y="939" width="98" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t68" value="scrape" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#7552C7;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="348" y="940" width="90" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v70" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="721" y="1007" width="121" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t71" value="query" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#7552C7;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="725" y="1008" width="113" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="v73" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#FFFFFF;strokeWidth=1.5;collapsible=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="722" y="1165" width="123" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t74" value="alerts" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=14;fontColor=#7552C7;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="726" y="1166" width="115" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t76" value="확인 필요 / 설계 범위" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=18;fontColor=#D98312;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="872" width="660" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="t77" value="01  Nginx 설정 원문·인증서 발급/갱신 방식" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="909" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t78" value="02  프론트 호스팅 서버와 CI 이후 배포 과정" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="934" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t79" value="03  VPC·서브넷·보안그룹·RDS 복제/백업 구성" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="959" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t80" value="04  Alertmanager의 실제 수신 채널과 활성 상태" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="984" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t81" value="05  로컬 변경분의 운영 반영 여부" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1009" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t82" value="" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1034" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t83" value="Kafka 3개는 같은 EC2에 배치됩니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1059" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t84" value="브로커 프로세스 복제와 호스트 장애 분산은 다릅니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1084" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t85" value="운영 테스트 서버·LB·Jenkins·AI 서버 여부는 미확인." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1109" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t86" value="로컬 개발 스택은 별도 Compose로 관리합니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=16;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="1260" y="1134" width="660" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t88" value="작성 근거  ·  주요 구성 요소의 tooltip에도 관련 파일 경로를 기록했습니다." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=17;fontColor=#15253F;fontStyle=1;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1310" width="1810" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="t89" value="BE/docker-compose.prod.yml  ·  */application-aws.yml  ·  common-module/.../KafkaEventRoute.java  ·  monitoring/prometheus/prometheus.prod.yml" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1341" width="1810" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="t90" value="BE/.github/workflows/{deploy,test}.yml  ·  FE/package.json  ·  FE/Dockerfile  ·  FE/lib/{server-api,image-upload}.ts  ·  FE/.github/workflows/" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Apple SD Gothic Neo;fontSize=15;fontColor=#607089;fontStyle=0;spacing=0;connectable=0;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="80" y="1368" width="1810" height="22" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

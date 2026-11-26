@@ -1,5 +1,6 @@
 package com.comatching.user.infra.controller;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +27,7 @@ public class S3Controller {
 		@CurrentMember MemberInfo memberInfo,
 		@RequestParam String filename) {
 
-		S3UploadResponseDto response = s3Service.getPresignedPutUrl(memberInfo.memberId(), "profiles", filename);
-		return ResponseEntity.ok(ApiResponse.ok(response));
+		S3UploadResponseDto response = s3Service.issueProfile(memberInfo.memberId(), filename);
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.ok(response));
 	}
 }

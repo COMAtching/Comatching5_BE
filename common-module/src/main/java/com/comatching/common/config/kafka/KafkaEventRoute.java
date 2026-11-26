@@ -8,6 +8,7 @@ import com.comatching.common.dto.event.order.RefundCompleted;
  * 원본 토픽과 실제 소비 그룹의 조합마다 DLT·replay 목적지를 고정한다.
  */
 public enum KafkaEventRoute {
+    BANK_SCAN("kb-deposit-scan-completed-v1", "item-bank-approval", ReplayTopics.BANK_SCAN),
     CANDIDATE_WITHDRAW("member-withdraw", "matching-candidate-sync-group", ReplayTopics.CANDIDATE_WITHDRAW),
     CANDIDATE_PROFILE("profile-updates", "matching-candidate-sync-group", ReplayTopics.CANDIDATE_PROFILE),
     WITHDRAW_MAIL("member-withdraw", "notification-withdraw-group", ReplayTopics.WITHDRAW_MAIL),
@@ -73,6 +74,7 @@ public enum KafkaEventRoute {
         private ReplayTopics() {
         }
 
+        public static final String BANK_SCAN = "kb-deposit-scan-completed-v1.item-bank-approval.replay";
         public static final String CANDIDATE_WITHDRAW = "member-withdraw.matching-candidate-sync-group.replay";
         public static final String CANDIDATE_PROFILE = "profile-updates.matching-candidate-sync-group.replay";
         public static final String WITHDRAW_MAIL = "member-withdraw.notification-withdraw-group.replay";

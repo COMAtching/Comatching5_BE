@@ -3,132 +3,72 @@ package com.comatching.notification.domain.service.fcm;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
-
-import java.util.concurrent.TimeUnit;
-import java.util.List;
+import java.time.Instant;
 import java.util.Map;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.RedisConnectionFailureException;
-
+import org.springframework.test.util.ReflectionTestUtils;
+import com.comatching.common.auth.LoginSession;
+import com.comatching.common.auth.PushInstallations;
+import com.comatching.common.auth.TrustedSession;
 import com.comatching.common.dto.event.chat.ChatMessageEvent;
-import com.comatching.notification.domain.delivery.DeliveryNotSentException;
 import com.comatching.common.exception.BusinessException;
-import com.google.firebase.messaging.FirebaseMessagingException;
-import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.MessagingErrorCode;
+import com.comatching.notification.domain.delivery.DeliveryNotSentException;
+import com.comatching.notification.domain.delivery.NotificationDeliveryService;
 import com.google.firebase.IncomingHttpResponse;
+import com.google.firebase.messaging.*;
 
-@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
+@ExtendWith(MockitoExtension.class)
 class FCMServiceTest {
+    @Mock private PushInstallations installations;
+    @Mock private FirebaseMessageSender firebaseMessageSender;
+    @Mock private NotificationDeliveryService deliveries;
+    private final UUID device = UUID.randomUUID();
+    private final LoginSession session = new LoginSession(2, 0, UUID.randomUUID());
+    private final PushInstallations.Target target = new PushInstallations.Target(device, session, "firebase-token");
 
-	@Mock
-	private StringRedisTemplate redisTemplate;
+    @Test void registrationRequiresTheAuthenticatedInstallation() {
+        var owner = new TrustedSession(session, Instant.now().plusSeconds(60));
+        given(installations.register(device, session, "token")).willReturn(true);
+        service().register(device, owner, " token ");
+        assertThatThrownBy(() -> service().register(UUID.randomUUID(), owner, "token")).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service().register(device, owner, " ")).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service().register(device, null, "token")).isInstanceOf(BusinessException.class);
+    }
 
-	@Mock
-	private ValueOperations<String, String> valueOperations;
+    @Test void missingInstallationSkipsExternalDelivery() {
+        given(installations.installations(2)).willReturn(Set.of());
+        service().sendNotification(event());
+        verifyNoInteractions(deliveries, firebaseMessageSender);
+    }
 
-	@Mock
-	private FirebaseMessageSender firebaseMessageSender;
+    @Test void payloadContainsOnlyGenericTextAndKind() throws Exception {
+        prepareToken();
+        service().sendNotification(event());
+        var message = ArgumentCaptor.forClass(Message.class);
+        verify(firebaseMessageSender).send(message.capture());
+        assertThat(ReflectionTestUtils.getField(message.getValue(), "notification")).isNull();
+        assertThat(ReflectionTestUtils.getField(message.getValue(), "data")).isEqualTo(
+                Map.of("type", "CHAT", "title", "코매칭", "body", "새 메시지가 있습니다."));
+    }
 
-	@Test
-	@DisplayName("FCM 토큰을 저장한다")
-	void saveToken_storesTrimmedToken() {
-		// given
-		FCMService fcmService = service();
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-
-		// when
-		fcmService.saveToken(1L, " token ");
-
-		// then
-		then(valueOperations).should().set("fcm:token:1", "token", 60L, TimeUnit.DAYS);
-	}
-
-	@Test
-	@DisplayName("빈 FCM 토큰은 저장하지 않는다")
-	void saveToken_rejectsBlankToken() {
-		// given
-		FCMService fcmService = service();
-
-		// when & then
-		assertThatThrownBy(() -> fcmService.saveToken(1L, " "))
-			.isInstanceOf(BusinessException.class);
-		then(redisTemplate).shouldHaveNoInteractions();
-	}
-
-	@Test
-	@DisplayName("FCM 토큰이 없으면 알림을 보내지 않고 missing 로그를 남긴다")
-	void sendNotification_skipsWhenTokenMissing(CapturedOutput output) {
-		// given
-		FCMService fcmService = service();
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-		given(valueOperations.get("fcm:token:2")).willReturn(null);
-
-		// when
-		fcmService.sendNotification(event());
-
-		// then
-		assertThat(output).contains("fcm.token.missing targetUserId=2");
-		then(firebaseMessageSender).shouldHaveNoInteractions();
-	}
-
-	@Test
-	@DisplayName("FCM 알림 전송 성공 로그를 남긴다")
-	void sendNotification_sendsMessage(CapturedOutput output) throws Exception {
-		// given
-		FCMService fcmService = service();
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-		given(valueOperations.get("fcm:token:2")).willReturn("token");
-		given(firebaseMessageSender.send(any(Message.class))).willReturn("firebase-message-id");
-
-		// when
-		fcmService.sendNotification(event());
-
-		// then
-		assertThat(output).contains("fcm.send.success targetUserId=2 roomId=room-1 firebaseMessageId=firebase-message-id");
-		then(firebaseMessageSender).should().send(any(Message.class));
-	}
-
-	@Test
-	@DisplayName("UNREGISTERED는 전송에 사용한 토큰의 조건부 삭제를 요청하고 정상 종료한다")
-	void sendNotification_deletesOnlyTheFailedToken(CapturedOutput output) throws Exception {
-		// given
-		FCMService fcmService = service();
-		FirebaseMessagingException exception = mock(FirebaseMessagingException.class);
-		given(exception.getMessagingErrorCode()).willReturn(MessagingErrorCode.UNREGISTERED);
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-		given(valueOperations.get("fcm:token:2")).willReturn("token");
-		willThrow(exception).given(firebaseMessageSender).send(any(Message.class));
-		given(redisTemplate.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-			eq(List.of("fcm:token:2")), eq("token"))).willReturn(1L);
-
-		// when
-		fcmService.sendNotification(event());
-
-		// then
-		assertThat(output)
-			.contains("fcm.send.skipped targetUserId=2 roomId=room-1 reason=unregistered")
-			.contains("fcm.token.cleanup targetUserId=2 deleted=true");
-		then(redisTemplate).should().execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-			eq(List.of("fcm:token:2")), eq("token"));
-		then(redisTemplate).should(never()).delete(anyString());
-	}
+    @Test void invalidFirebaseTokenIsConditionallyCleared() throws Exception {
+        failsWith(MessagingErrorCode.UNREGISTERED);
+        service().sendNotification(event());
+        verify(installations).invalidate(target);
+    }
 
 	@ParameterizedTest
 	@EnumSource(value = MessagingErrorCode.class,
@@ -195,47 +135,35 @@ class FCMServiceTest {
 		assertTokenUntouched();
 	}
 
-	@Test
-	@DisplayName("Redis 조회 장애를 토큰 없음으로 간주하지 않고 전파한다")
-	void redisFailurePropagates() {
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-		RuntimeException failure = new RedisConnectionFailureException("Redis unavailable");
-		given(valueOperations.get("fcm:token:2")).willThrow(failure);
-		assertThatThrownBy(() -> service().sendNotification(event())).isInstanceOf(DeliveryNotSentException.class).hasCause(failure);
-		then(firebaseMessageSender).shouldHaveNoInteractions();
-	}
 
-	private FirebaseMessagingException failsWith(MessagingErrorCode code) throws Exception {
-		prepareToken();
-		FirebaseMessagingException failure = mock(FirebaseMessagingException.class);
-		given(failure.getMessagingErrorCode()).willReturn(code);
-		willThrow(failure).given(firebaseMessageSender).send(any(Message.class));
-		return failure;
-	}
+    @Test void redisFailureIsRetried() {
+        var failure = new RedisConnectionFailureException("Redis unavailable");
+        given(installations.installations(2L)).willThrow(failure);
+        assertThatThrownBy(() -> service().sendNotification(event())).isInstanceOf(DeliveryNotSentException.class).hasCause(failure);
+        then(firebaseMessageSender).shouldHaveNoInteractions();
+    }
 
-	private void prepareToken() {
-		given(redisTemplate.opsForValue()).willReturn(valueOperations);
-		given(valueOperations.get("fcm:token:2")).willReturn("token");
-	}
+    private FirebaseMessagingException failsWith(MessagingErrorCode code) throws Exception {
+        prepareToken();
+        var failure = mock(FirebaseMessagingException.class);
+        given(failure.getMessagingErrorCode()).willReturn(code);
+        willThrow(failure).given(firebaseMessageSender).send(any(Message.class));
+        return failure;
+    }
 
-	private void assertTokenUntouched() {
-		then(redisTemplate).should(never()).delete(anyString());
-		then(redisTemplate).should(never()).execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-			anyList(), any(Object[].class));
-	}
+    private void prepareToken() {
+        given(installations.installations(2L)).willReturn(Set.of(device.toString()));
+        given(installations.target(device, 2L)).willReturn(target);
+        doAnswer(invocation -> invocation.getArgument(2, Supplier.class).get()).when(deliveries).deliver(anyString(), anyString(), any());
+    }
 
-	private FCMService service() {
-		return new FCMService(redisTemplate, firebaseMessageSender);
-	}
+    private void assertTokenUntouched() {
+        then(installations).should(never()).invalidate(any());
+    }
 
-	private ChatMessageEvent event() {
-		return new ChatMessageEvent(
-			2L,
-			"sender",
-			"room-1",
-			"hello",
-			"2026-05-18T00:00:00",
-			"CHAT", "message-1"
-		);
-	}
+    private FCMService service() { return new FCMService(installations, firebaseMessageSender, deliveries); }
+
+    private ChatMessageEvent event() {
+        return new ChatMessageEvent(2L, "sender", "room-1", "hello", "2026-05-18T00:00:00", "CHAT", "message-1");
+    }
 }

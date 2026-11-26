@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ShopController 할인 뽑기권 API 테스트")
 class ShopControllerTest {
+	@Mock com.comatching.common.operations.FeatureGate features;
 
 	private MockMvc mockMvc;
 
@@ -53,6 +54,7 @@ class ShopControllerTest {
 	@BeforeEach
 	void setUp() {
 		ShopServiceImpl shopService = new ShopServiceImpl(
+			features,
 			productRepository,
 			orderRepository,
 			itemRepository,
@@ -110,7 +112,7 @@ class ShopControllerTest {
 		Product product = discountMatchingTicket();
 		given(productRepository.findById(3L)).willReturn(Optional.of(product));
 		given(orderRepository.existsActivePendingOrder(eq(100L), any())).willReturn(false);
-		given(orderRepository.sumApprovedQuantityByMemberIdAndProductCodeAndItemType(
+		given(orderRepository.sumApprovedDiscountUnits(
 			100L, product.getCode(), ItemType.MATCHING_TICKET)).willReturn(3L);
 
 		mockMvc.perform(post("/api/v1/shop/purchase/3")
@@ -119,7 +121,7 @@ class ShopControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("PAY-012"));
 
-		then(orderRepository).should().sumActivePendingQuantityByMemberIdAndProductCodeAndItemType(
+		then(orderRepository).should().sumPendingDiscountUnits(
 			eq(100L), eq(product.getCode()), eq(ItemType.MATCHING_TICKET), any());
 		then(orderRepository).should(never()).save(any());
 	}

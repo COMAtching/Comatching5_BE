@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MatchingController 탈퇴 회원 API 테스트")
 class MatchingControllerTest {
+	@Mock com.comatching.common.operations.FeatureGate features;
 
 	private MockMvc mockMvc;
 
@@ -54,6 +55,7 @@ class MatchingControllerTest {
 	@BeforeEach
 	void setUp() {
 		MatchingServiceImpl matchingService = new MatchingServiceImpl(
+			features,
 			historyRepository,
 			memberClient,
 			itemClient,

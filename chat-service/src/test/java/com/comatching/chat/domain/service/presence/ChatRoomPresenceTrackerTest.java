@@ -25,7 +25,9 @@ class ChatRoomPresenceTrackerTest {
 
 	@BeforeEach
 	void setUp() {
-		tracker = new ChatRoomPresenceTracker();
+		var guard = org.mockito.Mockito.mock(com.comatching.common.socket.SocketSessionGuard.class);
+		org.mockito.Mockito.when(guard.isUsable(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+		tracker = new ChatRoomPresenceTracker(guard);
 	}
 
 	@Test

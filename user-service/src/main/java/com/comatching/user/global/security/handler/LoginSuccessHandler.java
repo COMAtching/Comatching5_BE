@@ -32,7 +32,7 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
 		UserPrincipal principal = (UserPrincipal)authentication.getPrincipal();
 		String role = principal.getRole();
 
-		if (!sessions.establish(principal, response)) return;
+		if (!sessions.establish(principal, request, response)) return;
 
 		if (role.equals("ROLE_ADMIN")) {
 			response.setStatus(HttpServletResponse.SC_OK);

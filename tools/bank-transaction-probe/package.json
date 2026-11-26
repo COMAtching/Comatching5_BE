@@ -1,0 +1,13 @@
+{
+  "name": "bank-transaction-probe",
+  "version": "0.5.4",
+  "private": true,
+  "type": "module",
+  "description": "Local, read-only KB transaction table to JSON proof of concept",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "demo": "node scripts/serve-demo.mjs",
+    "sync": "node scripts/synthetic-sync.mjs"
+  }
+}

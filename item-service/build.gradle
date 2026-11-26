@@ -27,6 +27,58 @@ dependencies {
 
 tasks.named('processTestResources') {
 	from(rootProject.file('database/init/04-create-order-grant-outbox.sql'))
+	from(rootProject.file('db/migrations/20261124_01_bank_deposit_observation.sql'))
+	from(rootProject.file('db/migrations/20261125_01_bank_approval.sql'))
+}
+
+tasks.named('integrationTest') {
+    inputs.file('src/test/js/deposit-observation-sender.mjs')
+    inputs.files(rootProject.files(
+        'item-service/src/test/js/deposit-scan-sender.mjs',
+        'tools/bank-transaction-probe/extension/scan-pages.mjs',
+        'tools/bank-transaction-probe/extension/deposit-delivery.mjs',
+        'tools/bank-transaction-probe/extension/parser.mjs',
+        'tools/bank-transaction-probe/fixtures/data.mjs'
+    ))
+}
+
+tasks.register('bankProbeServer', JavaExec) {
+    group = 'verification'
+    description = 'Run the synthetic deposit receiver on loopback with a dedicated H2 file database.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'probe.BankProbeDemoServer'
+}
+
+// A separately named unpacked extension keeps live rehearsal data on loopback.
+def bankRehearsalExtension = tasks.register('bankRehearsalExtension', Sync) {
+    from(rootProject.file('tools/bank-transaction-probe/extension'))
+    into(layout.buildDirectory.dir('bank-local-rehearsal/extension'))
+    filesMatching('manifest.json') {
+        filter { it.replace('코매칭 입금 장부','코매칭 로컬 리허설').replace(', "https://srv.comatching.site/*"','') }
+    }
+    filesMatching('deposit-delivery.mjs') {
+        filter { it.replace("'http://127.0.0.1:9006', 'https://srv.comatching.site'", "'http://127.0.0.1:48767'") }
+    }
+    filesMatching('popup.html') {
+        filter { it.replace('127.0.0.1:9006','127.0.0.1:48767').replace('로컬 item-service','이 Mac의 리허설 서버')
+            .replace('<option value="https://srv.comatching.site">코매칭 운영 서버</option>','') }
+    }
+}
+
+tasks.register('bankLocalRehearsal', JavaExec) {
+    group = 'verification'
+    description = 'Run a loopback KB ledger with an isolated H2 database and Kafka broker.'
+    dependsOn bankRehearsalExtension
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'probe.BankLocalRehearsal'
+}
+
+tasks.register('verifyBankProbeSync', JavaExec) {
+    group = 'verification'
+    description = 'Verify the 30-second collector against the item-service receiver with an isolated database.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'probe.BankProbeDemoServer'
+    args 'verify'
 }
 
 dependencyManagement {

@@ -8,8 +8,6 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -31,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
+	private final VerificationMailStore mailStore;
 	private final JavaMailSender mailSender;
 	private final StringRedisTemplate redisTemplate;
 	private final SpringTemplateEngine templateEngine;
@@ -38,7 +37,6 @@ public class EmailServiceImpl implements EmailService {
 
 	private static final String CHARACTERS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 	private static final int CODE_LENGTH = 6;
-	private static final long CODE_EXPIRATION = Duration.ofMinutes(5).toSeconds();
 	private static final DefaultRedisScript<Long> CONSUME_IF_MATCHED = new DefaultRedisScript<>("""
 		if redis.call('GET', KEYS[1]) == ARGV[1] then
 			return redis.call('DEL', KEYS[1])
@@ -47,8 +45,8 @@ public class EmailServiceImpl implements EmailService {
 		""", Long.class);
 
 	@Override
-	public void sendAuthCode(String email) {
-		sendEmailProcess(email, EmailType.SIGNUP);
+	public void sendAuthCode(String email, String source) {
+		sendEmailProcess(email, EmailType.SIGNUP, source);
 	}
 
 	@Override
@@ -82,8 +80,8 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	@Override
-	public void sendPasswordResetCode(String email) {
-		sendEmailProcess(email, EmailType.PASSWORD_RESET);
+	public void sendPasswordResetCode(String email, String source) {
+		sendEmailProcess(email, EmailType.PASSWORD_RESET, source);
 	}
 
 	@Override
@@ -103,27 +101,25 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	private void verifyCodeProcess(String email, String code, EmailType type) {
-		String key = type.getPrefix() + email;
-		if (code == null || !consume(key, code.toUpperCase(Locale.ROOT))) {
+		if (code == null || !mailStore.consume(type, email, code.toUpperCase(Locale.ROOT))) {
 			throw new BusinessException(UserErrorCode.INVALID_AUTH_CODE);
 		}
 	}
 
-	private void sendEmailProcess(String email, EmailType type) {
-		String code = createCode();
-
-		redisTemplate.opsForValue().set(
-			type.getPrefix() + email,
-			code,
-			CODE_EXPIRATION,
-			TimeUnit.SECONDS
-		);
-
+	private void sendEmailProcess(String email, EmailType type, String source) {
+		var reservation = mailStore.reserve(type, email, source);
+		String previous = mailStore.previousCode(reservation, type, email);
+		String code;
+		do {
+			code = createCode();
+		} while (code.equals(previous));
 		try {
 			sendHtmlEmail(email, type, code);
-		} catch (MessagingException e) {
+		} catch (MessagingException | RuntimeException e) {
+			mailStore.release(reservation);
 			throw new BusinessException(UserErrorCode.SEND_EMAIL_FAILED);
 		}
+		mailStore.publish(reservation, email, code);
 	}
 
 	private void sendHtmlEmail(String to, EmailType type, String authCode) throws MessagingException {

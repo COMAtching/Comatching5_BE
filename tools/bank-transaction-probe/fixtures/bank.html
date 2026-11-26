@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>합성 거래내역 · 실제 은행 아님</title>
+<style>body{font:13px/1.5 sans-serif;padding:8px;color:#18202d}table{border-collapse:collapse;font-size:12px}td,th{padding:5px;border:1px solid #b9c1cf}input{max-width:100px}.hidden{display:none}#test-result{white-space:pre-wrap}</style>
+</head><body>
+<h2>합성 거래내역</h2><p>은행 화면 모양을 검증한 자료가 아닌 테스트용 표입니다. 첫 두 행은 의도적으로 동일합니다.</p>
+<table id="transactions"><caption>거래내역 테스트</caption><thead></thead><tbody></tbody></table>
+<table class="hidden"><tr><th>비표시</th></tr><tr><td>HIDDEN_TABLE_SENTINEL</td></tr></table>
+<div id="sensitive-fixture" hidden><table><tr><th>거래일자</th><th>입금액</th></tr><tr><td>2026.11.22</td><td>999999</td></tr></table></div>
+<div aria-hidden="true"><table><tr><th>ARIA_HIDDEN_TABLE_SENTINEL</th></tr><tr><td>제외할 접근성 숨김 표</td></tr></table></div>
+<button id="selftest" type="button">DOM 검증 실행</button><p id="test-result" role="status"></p>
+<script type="module">
+import { headers, rows } from './data.mjs';
+import { extractRenderedTables } from '../extension/extractor.mjs';
+import { buildSnapshot } from '../extension/parser.mjs';
+const table = document.getElementById('transactions');
+const header = table.tHead.insertRow();
+headers.forEach(text => { const cell = document.createElement('th'); cell.textContent = text; header.append(cell); });
+rows.forEach(values => { const row = table.tBodies[0].insertRow(); values.forEach(text => { row.insertCell().textContent = text; }); });
+const cell = table.tBodies[0].rows[0].cells[2];
+const input = document.createElement('input'); input.type = 'password'; input.value = 'PASSWORD_SENTINEL'; cell.append(input);
+const textInput = document.createElement('input'); textInput.value = 'INPUT_SENTINEL'; cell.append(textInput);
+const hidden = document.createElement('span'); hidden.hidden = true; hidden.textContent = 'HIDDEN_SENTINEL'; cell.append(hidden);
+const ariaHidden = document.createElement('span'); ariaHidden.setAttribute('aria-hidden', 'true'); ariaHidden.textContent = 'ARIA_SENTINEL'; cell.append(ariaHidden);
+window.captureFixture = extractRenderedTables;
+document.getElementById('selftest').addEventListener('click', () => {
+  try {
+    const capture = extractRenderedTables();
+    const text = JSON.stringify(capture);
+    if (capture.tables.length !== 1) throw new Error('숨긴 표가 포함되었거나 보이는 표가 누락되었습니다.');
+    if (/SENTINEL/.test(text)) throw new Error('입력값 또는 숨긴 텍스트가 추출되었습니다.');
+    const snapshot = buildSnapshot({ table: capture.tables[0], sourceUrl: location.href,
+      accountAlias: '합성계좌', bank: 'toss', captureId: 'browser-fixture', capturedAt: new Date().toISOString() });
+    if (snapshot.counts.accepted !== 5 || snapshot.counts.rejected !== 1 || snapshot.totals.creditKrw !== 5000 || snapshot.totals.debitKrw !== 1000) throw new Error('집계가 다릅니다.');
+    if (snapshot.transactions[0].description !== 'CM7K2P') throw new Error('거래내용이 오염되었습니다.');
+    document.getElementById('test-result').textContent = 'PASS: 보이는 표 1개, 입력값·숨긴 텍스트 제외, 정상 5건/오류 1건, 동일 거래 2건 보존, 입금 5,000원/출금 1,000원';
+  } catch (error) { document.getElementById('test-result').textContent = `FAIL: ${error.message}`; }
+});
+</script></body></html>

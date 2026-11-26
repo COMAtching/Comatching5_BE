@@ -28,6 +28,7 @@ import com.comatching.common.service.S3Service;
 
 @ExtendWith(MockitoExtension.class)
 class ChatControllerTest {
+	@Mock com.comatching.common.operations.FeatureGate features;
 
 	private static final String ROOM_ID = "room-1";
 	private static final Long MEMBER_ID = 1L;

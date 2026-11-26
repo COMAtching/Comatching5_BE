@@ -36,20 +36,23 @@ public record ProductResponse(
 	@Schema(description = "번들 상품 여부. isBundle 필터 조회에 사용됩니다.", example = "true")
 	boolean isBundle,
 
-	@Schema(description = "계정당 이 상품 구매 가능 횟수. null이면 무제한입니다.")
+	@Schema(description = "계정당 이 상품 구매 가능 묶음 수량. null이면 무제한입니다.")
 	Integer purchaseLimitPerMember,
 
 	@Schema(description = "진짜 첫 구매 전용 상품 여부")
 	boolean firstPurchaseOnly,
 
-	@Schema(description = "현재 사용자 기준 승인 구매 횟수")
+	@Schema(description = "현재 사용자 기준 승인 구매 묶음 수량")
 	Long usedPurchaseCount,
 
-	@Schema(description = "현재 사용자 기준 상품별 남은 구매 횟수. 무제한이면 null입니다.")
+	@Schema(description = "현재 사용자 기준 상품별 남은 구매 묶음 수량. 무제한이면 null입니다.")
 	Long remainingPurchaseCount,
 
 	@Schema(description = "현재 사용자 기준 구매 횟수 정책상 구매 가능 여부")
 	Boolean purchaseCountPurchasable,
+
+	@Schema(description = "현재 한 주문에 담을 수 있는 상품 묶음 수량")
+	Integer maxOrderQuantity,
 
 	@Schema(description = "구매 횟수 정책상 차단 사유")
 	PurchaseBlockReason purchaseBlockReason,
@@ -76,6 +79,7 @@ public record ProductResponse(
 			null,
 			null,
 			null,
+			null,
 			product.getRewards().stream()
 				.map(ProductRewardDto::from)
 				.toList(),
@@ -89,6 +93,7 @@ public record ProductResponse(
 		Product product,
 		long usedPurchaseCount,
 		Long remainingPurchaseCount,
+		int maxOrderQuantity,
 		boolean purchaseCountPurchasable,
 		PurchaseBlockReason purchaseBlockReason
 	) {
@@ -106,6 +111,7 @@ public record ProductResponse(
 			usedPurchaseCount,
 			remainingPurchaseCount,
 			purchaseCountPurchasable,
+			maxOrderQuantity,
 			purchaseBlockReason,
 			product.getRewards().stream()
 				.map(ProductRewardDto::from)

@@ -6,9 +6,9 @@ public interface EmailService {
 
 	Duration SIGNUP_PROOF_TTL = Duration.ofMinutes(30);
 
-	void sendAuthCode(String email);
+	void sendAuthCode(String email, String source);
 
-	void sendPasswordResetCode(String email);
+	void sendPasswordResetCode(String email, String source);
 
 	String verifySignupCode(String email, String code);
 

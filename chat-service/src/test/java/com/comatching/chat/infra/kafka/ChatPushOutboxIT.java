@@ -79,6 +79,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DirtiesContext
 @Tag("integration")
 class ChatPushOutboxIT {
+    @MockitoBean com.comatching.common.operations.FeatureGate features;
     static final String TOPIC = "chat-message-sent";
 
     @Configuration
@@ -114,6 +115,8 @@ class ChatPushOutboxIT {
 
     @BeforeEach
     void prepareRoom() {
+        var feature = com.comatching.common.operations.Feature.CHAT;
+        when(features.state(feature)).thenReturn(new com.comatching.common.operations.FeatureState(feature, true, "", 1));
         messages.deleteAll();
         rooms.deleteAll();
         blocks.deleteAll();
@@ -124,7 +127,7 @@ class ChatPushOutboxIT {
 
     @Test
     void persistedImageSurvivesBrokerFailureAndLostAckAndKeepsItsKeyAndId() throws Exception {
-        when(s3.getFileUrl("photo")).thenReturn("https://example.invalid/photo");
+        when(s3.attachChat(10L, roomId, "photo")).thenReturn("https://example.invalid/photo");
         doReturn(CompletableFuture.failedFuture(new IllegalStateException("broker unavailable")))
                 .doAnswer(call -> {
                     ChatMessageEvent event = call.getArgument(0);

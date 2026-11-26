@@ -14,6 +14,11 @@ auth:
     same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
 
 comatching:
+  mail:
+    trusted-proxies: ${COMATCHING_MAIL_TRUSTED_PROXIES:}
+    recipient-limit: ${COMATCHING_MAIL_RECIPIENT_LIMIT:6}
+    source-limit: ${COMATCHING_MAIL_SOURCE_LIMIT:120}
+    global-limit: ${COMATCHING_MAIL_GLOBAL_LIMIT:120}
   outbox:
     cleanup-target: MEMBER
     cleanup-cron: "0 0 3 * * *"  # Asia/Seoul
@@ -27,6 +32,10 @@ comatching:
         - animal_dinosaur1.png
 
 spring:
+  task:
+    scheduling:
+      pool:
+        size: 4  # 운영 상태 알림이 아웃박스 발행·이미지 정리를 기다리지 않도록 한다.
   application:
     name: user-service
   datasource:
@@ -69,6 +78,9 @@ spring:
     properties:
       mail:
         smtp:
+          connectiontimeout: 10000
+          timeout: 15000
+          writetimeout: 15000
           auth: true
           starttls:
             enable: true

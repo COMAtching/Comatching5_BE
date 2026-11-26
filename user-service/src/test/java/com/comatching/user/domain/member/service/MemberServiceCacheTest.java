@@ -60,6 +60,11 @@ class MemberServiceCacheTest {
 	static class TestConfig {
 
 		@Bean
+		com.comatching.common.operations.FeatureGate features() {
+			return mock(com.comatching.common.operations.FeatureGate.class);
+		}
+
+		@Bean
 		LoginSessionStore sessions() {
 			return mock(LoginSessionStore.class);
 		}

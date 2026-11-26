@@ -218,7 +218,7 @@ class ProfileServiceImplTest {
 			// given
 			Long memberId = 1L;
 			Member member = createMember(memberId);
-			String imageKey = "profiles/1/test.png";
+			String imageKey = "pending-uploads/profiles/1/f45c09d1-d044-4a08-be9c-52a06eb72efe.png";
 			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/test.png";
 			ProfileCreateRequest request = ProfileCreateRequest.builder()
 				.nickname("테스트유저")
@@ -237,7 +237,7 @@ class ProfileServiceImplTest {
 				.build();
 
 			given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
-			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			given(s3Service.attachProfile(memberId, imageKey)).willReturn(imageUrl);
 			given(profileRepository.save(any(Profile.class))).willAnswer(invocation -> invocation.getArgument(0));
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
@@ -413,6 +413,19 @@ class ProfileServiceImplTest {
 		}
 
 		@Test
+		void editingAnUnchangedLegacyImageKeepsItsExistingUrlWithoutPromotingAnUpload() {
+			Long memberId = 1L;
+			String oldUrl = "https://old-images.example.invalid/custom/previous.png";
+			Profile profile = createProfileWithTags(memberId);
+			ReflectionTestUtils.setField(profile, "profileImageUrl", oldUrl);
+			var request = new ProfileUpdateRequest();
+			request.setProfileImageUrl(oldUrl);
+			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
+			assertThat(profileService.updateProfile(memberId, request).profileImageUrl()).isEqualTo(oldUrl);
+			then(s3Service).shouldHaveNoInteractions();
+		}
+
+		@Test
 		@DisplayName("프로필 이미지 값이 default면 기본 프로필 이미지로 변경된다")
 		void shouldSetDefaultProfileImageOnUpdateWhenDefaultValueProvided() {
 			// given
@@ -484,7 +497,7 @@ class ProfileServiceImplTest {
 			// given
 			Long memberId = 1L;
 			Profile profile = createProfileWithTags(memberId);
-			String imageKey = "profiles/1/custom.png";
+			String imageKey = "pending-uploads/profiles/1/f45c09d1-d044-4a08-be9c-52a06eb72efe.png";
 			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/custom.png";
 			ProfileUpdateRequest request = new ProfileUpdateRequest(
 				null, null, null, null, imageKey, null, null, null,
@@ -492,7 +505,7 @@ class ProfileServiceImplTest {
 			);
 
 			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
-			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			given(s3Service.attachProfile(memberId, imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when
@@ -508,7 +521,7 @@ class ProfileServiceImplTest {
 			// given
 			Long memberId = 1L;
 			Profile profile = createProfileWithTags(memberId);
-			String imageKey = "profiles/1/custom.png";
+			String imageKey = "pending-uploads/profiles/1/f45c09d1-d044-4a08-be9c-52a06eb72efe.png";
 			String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/profiles/1/custom.png";
 			ProfileUpdateRequest request = new ProfileUpdateRequest(
 				null, null, null, "https://img.com/defaults/profile/animal_dinosaur1.png", imageKey, null, null, null,
@@ -516,7 +529,7 @@ class ProfileServiceImplTest {
 			);
 
 			given(profileRepository.findForUpdateByMemberId(memberId)).willReturn(Optional.of(profile));
-			given(s3Service.getFileUrl(imageKey)).willReturn(imageUrl);
+			given(s3Service.attachProfile(memberId, imageKey)).willReturn(imageUrl);
 			willDoNothing().given(eventPublisher).sendProfileUpdatedMatchingEvent(any());
 
 			// when

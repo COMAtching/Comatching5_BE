@@ -1,151 +1,128 @@
 package com.comatching.notification.domain.service.fcm;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import com.comatching.common.auth.PushInstallations;
+import com.comatching.common.auth.TrustedSession;
 import com.comatching.common.dto.event.chat.ChatMessageEvent;
 import com.comatching.common.dto.event.order.ItemsGranted;
-import com.comatching.notification.domain.delivery.DeliveryNotSentException;
-import com.comatching.notification.domain.delivery.DeliveryOutcome;
 import com.comatching.common.exception.BusinessException;
 import com.comatching.common.exception.code.GeneralErrorCode;
+import com.comatching.notification.domain.delivery.DeliveryNotSentException;
+import com.comatching.notification.domain.delivery.DeliveryOutcome;
+import com.comatching.notification.domain.delivery.NotificationDeliveryService;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
-import com.google.firebase.messaging.Notification;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FCMService {
+    private final PushInstallations installations;
+    private final FirebaseMessageSender firebase;
+    private final NotificationDeliveryService deliveries;
 
-    private static final long TOKEN_EXPIRATION_DAYS = 60;
-    private static final String FCM_TOKEN_KEY_PREFIX = "fcm:token:";
-    // GET과 DEL을 Redis 안에서 원자적으로 실행해 새로 등록된 토큰을 보존한다.
-    private static final DefaultRedisScript<Long> DELETE_IF_UNCHANGED = new DefaultRedisScript<>("""
-            if redis.call('GET', KEYS[1]) == ARGV[1] then
-                return redis.call('DEL', KEYS[1])
-            end
-            return 0
-            """, Long.class);
-
-    private final StringRedisTemplate redisTemplate;
-    private final FirebaseMessageSender firebaseMessageSender;
-
-    // 유저의 FCM 토큰 저장
-    public void saveToken(Long memberId, String token) {
-        if (!StringUtils.hasText(token)) {
-            throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE, "FCM 토큰은 필수입니다.");
-        }
-
-        redisTemplate.opsForValue().set(
-                getTokenKey(memberId),
-                token.trim(),
-                TOKEN_EXPIRATION_DAYS,
-                TimeUnit.DAYS
-        );
+    @Autowired
+    public FCMService(StringRedisTemplate redis, FirebaseMessageSender firebase, NotificationDeliveryService deliveries) {
+        this(new PushInstallations(redis), firebase, deliveries);
     }
 
-    // 유저의 FCM 토큰 조회
-    public String getToken(Long memberId) {
-        return redisTemplate.opsForValue().get(getTokenKey(memberId));
+    FCMService(PushInstallations installations, FirebaseMessageSender firebase, NotificationDeliveryService deliveries) {
+        this.installations = installations;
+        this.firebase = firebase;
+        this.deliveries = deliveries;
     }
 
-    // 알림 전송
-    public DeliveryOutcome sendNotification(ChatMessageEvent dto) {
-        String token = tokenForDelivery(dto.targetUserId());
-
-        if (!StringUtils.hasText(token)) {
-            log.warn("fcm.token.missing targetUserId={}", dto.targetUserId());
-            return DeliveryOutcome.SKIPPED;
+    public void register(UUID installation, TrustedSession owner, String token) {
+        if (owner == null || !owner.expiresAt().isAfter(Instant.now())) throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+        if (installation == null || !StringUtils.hasText(token) || token.length() > 4096) {
+            throw new BusinessException(GeneralErrorCode.INVALID_INPUT_VALUE);
         }
-
-        Message message;
         try {
-            Notification notification = Notification.builder()
-                    .setTitle(safeValue(dto.senderNickname()))
-                    .setBody(safeValue(dto.content()))
-                    .build();
-
-            message = Message.builder()
-                    .setToken(token)
-                    .setNotification(notification)
-                    .putData("roomId", safeValue(dto.roomId()))
-                    .putData("senderNickname", safeValue(dto.senderNickname()))
-                    .putData("content", safeValue(dto.content()))
-                    .putData("timestamp", safeValue(dto.timestamp()))
-                    .putData("type", safeValue(dto.type()))
-                    .putData("eventId", dto.eventId())
-                    .build();
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new FcmDltException("FCM 메시지 구성 오류", e);
+            if (!installations.register(installation, owner.login(), token.trim())) {
+                throw new BusinessException(GeneralErrorCode.UNAUTHORIZED);
+            }
+        } catch (DataAccessException unavailable) {
+            throw new BusinessException(GeneralErrorCode.INTERNAL_SERVICE_UNAVAILABLE);
         }
+    }
 
-        try {
-            String firebaseMessageId = firebaseMessageSender.send(message);
-            log.info(
-                    "fcm.send.success targetUserId={} roomId={} firebaseMessageId={}",
-                    dto.targetUserId(),
-                    dto.roomId(),
-                    firebaseMessageId
-            );
-            return DeliveryOutcome.SENT;
-        } catch (FirebaseMessagingException e) {
-            var outcome = handleSendFailure(dto.targetUserId(), token, e);
-            log.info("fcm.send.skipped targetUserId={} roomId={} reason={}",
-                    dto.targetUserId(), dto.roomId(), e.getMessagingErrorCode().name().toLowerCase(java.util.Locale.ROOT));
-            return outcome;
-        }
+    public DeliveryOutcome sendNotification(ChatMessageEvent event) {
+        return dispatch(event.targetUserId(), event.eventId(), true);
     }
 
     public DeliveryOutcome sendItemsGranted(ItemsGranted event) {
-        String token = tokenForDelivery(event.memberId());
-        if (!StringUtils.hasText(token)) return DeliveryOutcome.SKIPPED;
-
-        Message message = Message.builder().setToken(token)
-                .setNotification(Notification.builder().setTitle("아이템 지급 완료")
-                        .setBody("구매한 아이템을 지금 사용할 수 있어요.").build())
-                .putData("type", "ITEMS_GRANTED")
-                .putData("orderId", Long.toString(event.orderId()))
-                .putData("eventId", event.eventId())
-                .build();
-        try {
-            firebaseMessageSender.send(message);
-            return DeliveryOutcome.SENT;
-        } catch (FirebaseMessagingException e) {
-            return handleSendFailure(event.memberId(), token, e);
-        }
+        return dispatch(event.memberId(), event.eventId(), false);
     }
 
-    private String tokenForDelivery(Long memberId) {
+    private DeliveryOutcome dispatch(long member, String eventId, boolean chat) {
+        Set<String> devices;
         try {
-            return getToken(memberId);
-        } catch (RuntimeException e) {
-            throw new DeliveryNotSentException("FCM 토큰 조회 실패", e);
+            devices = installations.installations(member);
+        } catch (DataAccessException unavailable) {
+            throw new DeliveryNotSentException("FCM 설치 목록 조회 실패", unavailable);
         }
-    }
-
-    private DeliveryOutcome handleSendFailure(Long memberId, String token, FirebaseMessagingException e) {
-        if (e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
-            try {
-                deleteTokenIfUnchanged(memberId, token);
-            } catch (RuntimeException cleanupFailure) {
-                throw new DeliveryNotSentException("FCM 무효 토큰 정리 실패", cleanupFailure);
-            }
+        if (devices.isEmpty()) {
+            log.info("fcm.token.missing targetUserId={}", member);
             return DeliveryOutcome.SKIPPED;
         }
-        parkRejectedRequest(e);
-        if (e.getMessagingErrorCode() == MessagingErrorCode.UNAVAILABLE && e.getHttpResponse() != null
-                && e.getHttpResponse().getStatusCode() == 503) {
-            throw new DeliveryNotSentException("FCM 서비스 사용 불가", e);
+        RuntimeException pending = null;
+        for (String device : devices) {
+            try {
+                // Fits the existing 40-character handler key. Keep the outer event ledger for old replays.
+                deliveries.deliver(eventId, (chat ? "C:" : "G:") + device,
+                        () -> send(member, UUID.fromString(device), chat));
+            } catch (RuntimeException failure) {
+                // An uncertain or rejected installation must not prevent attempts to independent recipients.
+                if (pending == null || failure instanceof DeliveryNotSentException) pending = failure;
+            }
         }
-        throw new IllegalStateException("FCM 수락 여부 확인 불가", e);
+        if (pending != null) throw pending;
+        return DeliveryOutcome.SENT;
+    }
+
+    private DeliveryOutcome send(long member, UUID device, boolean chat) {
+        PushInstallations.Target target;
+        try {
+            target = installations.target(device, member);
+        } catch (DataAccessException unavailable) {
+            throw new DeliveryNotSentException("FCM 설치 소유권 조회 실패", unavailable);
+        }
+        if (target == null) return DeliveryOutcome.SKIPPED;
+        // FCM may deliver after an account switch. The entire payload must be safe on a shared lock screen.
+        Message message = Message.builder().setToken(target.token())
+                .putData("type", chat ? "CHAT" : "ITEMS_GRANTED")
+                .putData("title", "코매칭")
+                .putData("body", chat ? "새 메시지가 있습니다." : "아이템 지급이 완료되었습니다.")
+                .build();
+        try {
+            firebase.send(message);
+            return DeliveryOutcome.SENT;
+        } catch (FirebaseMessagingException failure) {
+            if (failure.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                try {
+                    installations.invalidate(target);
+                } catch (DataAccessException cleanupFailure) {
+                    throw new DeliveryNotSentException("FCM 토큰 정리 실패", cleanupFailure);
+                }
+                return DeliveryOutcome.SKIPPED;
+            }
+            parkRejectedRequest(failure);
+            if (failure.getMessagingErrorCode() == MessagingErrorCode.UNAVAILABLE && failure.getHttpResponse() != null
+                    && failure.getHttpResponse().getStatusCode() == 503) {
+                throw new DeliveryNotSentException("FCM 서비스 사용 불가", failure);
+            }
+            throw new IllegalStateException("FCM 수락 여부 확인 불가", failure);
+        }
     }
 
     private void parkRejectedRequest(FirebaseMessagingException e) {
@@ -179,16 +156,4 @@ public class FCMService {
         return null;
     }
 
-    private void deleteTokenIfUnchanged(Long memberId, String failedToken) {
-        Long deleted = redisTemplate.execute(DELETE_IF_UNCHANGED, List.of(getTokenKey(memberId)), failedToken);
-        log.info("fcm.token.cleanup targetUserId={} deleted={}", memberId, Long.valueOf(1).equals(deleted));
-    }
-
-    private String getTokenKey(Long memberId) {
-        return FCM_TOKEN_KEY_PREFIX + memberId;
-    }
-
-    private String safeValue(String value) {
-        return value != null ? value : "";
-    }
 }

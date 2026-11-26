@@ -22,11 +22,13 @@ import lombok.RequiredArgsConstructor;
 public class EmailController {
 
 	private final EmailService emailService;
+	private final MailRequestSource mailSource;
 	private final AuthCookieFactory cookies;
 
 	@PostMapping("/send")
-	public ResponseEntity<ApiResponse<Void>> sendEmail(@RequestBody @Valid EmailRequest request) {
-		emailService.sendAuthCode(request.email());
+	public ResponseEntity<ApiResponse<Void>> sendEmail(@RequestBody @Valid EmailRequest request,
+		jakarta.servlet.http.HttpServletRequest servletRequest) {
+		emailService.sendAuthCode(request.email(), mailSource.of(servletRequest));
 		return ResponseEntity.ok(ApiResponse.ok());
 	}
 
