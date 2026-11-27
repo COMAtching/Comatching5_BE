@@ -1,0 +1,190 @@
+package com.comatching.user.domain.report;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.time.LocalDate;
+import java.util.UUID;
+import java.util.concurrent.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Tag;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.test.context.jdbc.Sql;
+import com.comatching.user.support.OutboxMySqlSupport;
+import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.comatching.common.aop.RoleCheckAspect;
+import com.comatching.common.domain.enums.*;
+import com.comatching.common.exception.handler.GlobalExceptionHandler;
+import com.comatching.common.resolver.MemberInfoArgumentResolver;
+import com.comatching.common.service.S3Service;
+import com.comatching.user.domain.auth.service.LoginSessionStore;
+import com.comatching.user.domain.event.UserEventPublisher;
+import com.comatching.user.domain.member.entity.*;
+import com.comatching.user.domain.member.repository.*;
+import com.comatching.user.domain.member.service.*;
+import com.comatching.user.global.config.ProfileImageProperties;
+import com.comatching.user.infra.client.ReportMatchClient;
+import com.comatching.user.infra.controller.ReportController;
+import com.comatching.common.operations.FeatureGate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Sql(statements = "DROP TABLE member_report", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "/20261128_01_member_report.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Tag("integration")
+@DirtiesContext
+@ContextConfiguration(classes = ReportWorkflowIT.Config.class)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+class ReportWorkflowIT extends OutboxMySqlSupport {
+    @Configuration
+    @EntityScan(basePackageClasses = {Member.class, MemberReport.class})
+    @EnableJpaRepositories(basePackageClasses = {MemberRepository.class, ReportRepository.class})
+    @Import({ReportService.class, MemberServiceImpl.class, ProfileServiceImpl.class})
+    static class Config {}
+
+    @Autowired ReportService reports;
+    @Autowired MemberRepository members;
+    @Autowired ProfileRepository profiles;
+    @MockitoBean ReportMatchClient matches;
+    @MockitoBean LoginSessionStore sessions;
+    @MockitoBean UserEventPublisher events;
+    @MockitoBean ProfileImageProperties images;
+    @MockitoBean S3Service s3;
+    @MockitoBean FeatureGate features;
+    MockMvc mvc;
+    long target;
+    final long reporter = 7001;
+    final long admin = 9001;
+
+    @BeforeEach void setup() {
+        var proxy = new AspectJProxyFactory(new ReportController(reports));
+        proxy.addAspect(new RoleCheckAspect());
+        mvc = MockMvcBuilders.standaloneSetup((ReportController)proxy.getProxy())
+            .setCustomArgumentResolvers(new MemberInfoArgumentResolver())
+            .setControllerAdvice(new GlobalExceptionHandler(new ObjectMapper())).build();
+        var member = members.save(Member.builder().email(UUID.randomUUID()+"@example.test")
+            .role(MemberRole.ROLE_USER).status(MemberStatus.ACTIVE).build());
+        target = member.getId();
+        profiles.save(Profile.builder().member(member).nickname("봄꽃").gender(Gender.FEMALE)
+            .birthDate(LocalDate.of(2000,1,1)).mbti("ISTJ").contactFrequency(ContactFrequency.NORMAL)
+            .university("대학교").major("국문과").intro("소개글").build());
+        when(matches.arePartners(reporter,target)).thenReturn(true);
+    }
+
+    long submit(UUID key) throws Exception {
+        var res = mvc.perform(post("/api/members/reports").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER")
+            .contentType(MediaType.APPLICATION_JSON).content("""
+                {"targetId":%d,"requestId":"%s","source":"CHAT","reason":"모욕적인 메시지"}
+                """.formatted(target,key)))
+            .andExpect(status().isOk()).andReturn().getResponse();
+        return new ObjectMapper().readTree(res.getContentAsByteArray()).get("data").longValue();
+    }
+
+    @Test void receiptReviewWarningAndPrivateAcknowledgement() throws Exception {
+        var key = UUID.randomUUID();
+        long id = submit(key);
+        assertThat(submit(key)).isEqualTo(id);
+        mvc.perform(get("/api/v1/admin/reports").param("status","OPEN").header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[?(@.id == " + id + ")]").isNotEmpty());
+        mvc.perform(get("/api/v1/admin/reports/"+id).header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN"))
+            .andExpect(jsonPath("$.data.reason").value("모욕적인 메시지")).andExpect(jsonPath("$.data.intro").value("소개글"));
+        mvc.perform(get("/api/v1/admin/reports/"+id).header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER"))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/admin/reports/"+id+"/decision").header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN")
+            .contentType(MediaType.APPLICATION_JSON).content("""
+                {"action":"WARN","note":"상대방을 존중해 주세요."}
+                """)).andExpect(status().isOk());
+        assertThat(reports.warnings(reporter)).isEmpty();
+        reports.acknowledge(reporter,id);
+        assertThat(reports.warnings(target)).extracting(ReportService.Warning::message).containsExactly("상대방을 존중해 주세요.");
+        reports.acknowledge(target,id);
+        assertThat(reports.warnings(target)).isEmpty();
+        assertThatThrownBy(()->reports.decide(id,admin,new ReportService.Decision(ReportService.Action.SUSPEND,"중복"))).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        verifyNoInteractions(sessions);
+    }
+
+    @Test void suspensionRevokesCurrentSessionsAndChangesMatchingAvailability() throws Exception {
+        long id = submit(UUID.randomUUID());
+        reports.decide(id, admin, new ReportService.Decision(ReportService.Action.SUSPEND, "반복 위반"));
+        verify(sessions).endAll(target);
+        var suspended = members.findById(target).orElseThrow();
+        assertThat(suspended.getStatus()).isEqualTo(MemberStatus.SUSPENDED);
+        assertThat(suspended.getAuthVersion()).isEqualTo(1);
+        verify(events).sendProfileUpdatedMatchingEvent(argThat(e -> !e.isMatchable()));
+        reports.lift(id,admin);
+        assertThat(members.findById(target).orElseThrow().getStatus()).isEqualTo(MemberStatus.ACTIVE);
+        verify(events).sendProfileUpdatedMatchingEvent(argThat(e -> e.isMatchable() && e.profileVersion() == 2));
+        assertThat(reports.detail(id).liftedBy()).isEqualTo(admin);
+    }
+
+    @Test void concurrentRetriesReuseOneReceiptAndOnlyOneReviewWins() throws Exception {
+        var request = new ReportService.Submission(UUID.randomUUID(), target, MemberReport.Source.CHAT, "동일 요청");
+        var pool = Executors.newFixedThreadPool(2);
+        try {
+            var ready = new CyclicBarrier(2);
+            Callable<Long> submit = () -> {
+                ready.await(5, TimeUnit.SECONDS);
+                return reports.submit(reporter, request);
+            };
+            var first = pool.submit(submit);
+            var second = pool.submit(submit);
+            long id = first.get(10, TimeUnit.SECONDS);
+            assertThat(second.get(10, TimeUnit.SECONDS)).isEqualTo(id);
+            Callable<Boolean> review = () -> {
+                ready.await(5, TimeUnit.SECONDS);
+                try {
+                    reports.decide(id, admin, new ReportService.Decision(ReportService.Action.WARN, "경고"));
+                    return true;
+                } catch (com.comatching.common.exception.BusinessException alreadyReviewed) {
+                    return false;
+                }
+            };
+            var left = pool.submit(review);
+            var right = pool.submit(review);
+            assertThat(java.util.List.of(left.get(10, TimeUnit.SECONDS), right.get(10, TimeUnit.SECONDS)))
+                .containsExactlyInAnyOrder(true, false);
+            assertThat(reports.warnings(target)).hasSize(1);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test void cannotModerateWithMemberRoleAndDismissalLeavesAccountActive() throws Exception {
+        long id = submit(UUID.randomUUID());
+        var endpoint = "/api/v1/admin/reports/" + id + "/decision";
+        mvc.perform(post(endpoint).header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER")
+            .contentType(MediaType.APPLICATION_JSON).content("""
+                {"action":"SUSPEND","note":"권한 없음"}
+                """)).andExpect(status().isForbidden());
+        reports.decide(id, admin, new ReportService.Decision(ReportService.Action.DISMISS, "위반 확인 안 됨"));
+        assertThat(reports.detail(id).report().status()).isEqualTo(MemberReport.Status.DISMISSED);
+        assertThat(members.findById(target).orElseThrow().getStatus()).isEqualTo(MemberStatus.ACTIVE);
+        assertThat(reports.warnings(target)).isEmpty();
+        verifyNoInteractions(sessions);
+    }
+
+    @Test void unrelatedAndSelfReportsAreRejected() {
+        var form = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,"사유");
+        assertThatThrownBy(() -> reports.submit(8800,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        assertThatThrownBy(() -> reports.submit(target,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+    }
+}

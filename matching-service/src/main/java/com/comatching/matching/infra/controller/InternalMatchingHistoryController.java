@@ -17,6 +17,11 @@ public class InternalMatchingHistoryController {
 
 	private final MatchingHistoryService matchingHistoryService;
 
+	@GetMapping("/partners")
+	public boolean arePartners(@RequestParam long memberId, @RequestParam long partnerId) {
+		return matchingHistoryService.arePartners(memberId, partnerId);
+	}
+
 	@GetMapping("/reference")
 	public MatchingHistoryReferenceResponse getHistoryReference(
 		@RequestParam Long memberId,

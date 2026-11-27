@@ -110,7 +110,7 @@ spring:
             - id: admin-user-notice
               uri: http://localhost:9000
               predicates:
-                - Path=/api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**, /api/v1/admin/operations, /api/v1/admin/operations/**
+                - Path=/api/v1/admin/reports, /api/v1/admin/reports/**, /api/v1/admin/users, /api/v1/admin/users/**, /api/v1/admin/notices, /api/v1/admin/notices/**, /api/v1/admin/operations, /api/v1/admin/operations/**
               filters:
                 - AuthorizationHeaderFilter
             - id: admin-payment-product-items

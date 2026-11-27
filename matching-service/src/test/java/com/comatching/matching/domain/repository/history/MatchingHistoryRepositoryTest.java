@@ -47,6 +47,8 @@ class MatchingHistoryRepositoryTest {
 
 		// when
 		List<Long> matchedMemberIds = matchingHistoryRepository.findMatchedMemberIdsByMemberId(1L);
+		assertThat(matchingHistoryRepository.existsByPairKey(MatchingHistory.pairKeyOf(2L, 1L))).isTrue();
+		assertThat(matchingHistoryRepository.existsByPairKey(MatchingHistory.pairKeyOf(1L, 4L))).isFalse();
 
 		// then
 		assertThat(matchedMemberIds).containsExactlyInAnyOrder(2L, 3L);

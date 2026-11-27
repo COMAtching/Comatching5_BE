@@ -53,3 +53,7 @@ dependencyManagement {
 		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
 	}
 }
+
+tasks.named('processTestResources') {
+    from(rootProject.file('db/migrations/20261128_01_member_report.sql'))
+}

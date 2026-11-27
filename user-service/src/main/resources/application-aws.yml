@@ -8,6 +8,9 @@ server:
 client:
   url: ${CLIENT_URL:https://comatching.site}
 
+matching-service:
+  url: ${MATCHING_SERVICE_URL:http://matching-service:9001}
+
 item-service:
   url: http://item-service:9006
 

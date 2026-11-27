@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS comatching_user.member_report (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    reporter_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    request_key VARCHAR(36) NOT NULL,
+    source VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    reason VARCHAR(1000) NOT NULL,
+    nickname VARCHAR(255),
+    major VARCHAR(255),
+    intro VARCHAR(2000),
+    image_url VARCHAR(2048),
+    created_at DATETIME(6) NOT NULL,
+    reviewed_by BIGINT,
+    reviewed_at DATETIME(6),
+    decision_note VARCHAR(500),
+    acknowledged_at DATETIME(6),
+    lifted_at DATETIME(6),
+    lifted_by BIGINT,
+    UNIQUE KEY uk_member_report_request (reporter_id, request_key),
+    INDEX idx_report_review (status, id),
+    INDEX idx_report_warning (target_id, status, acknowledged_at, id)
+);

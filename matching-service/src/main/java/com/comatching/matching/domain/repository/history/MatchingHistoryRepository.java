@@ -25,6 +25,8 @@ public interface MatchingHistoryRepository extends JpaRepository<MatchingHistory
 
     Page<MatchingHistory> findByMemberIdOrderByMatchedAtDesc(Long memberId, Pageable pageable);
 
+    boolean existsByPairKey(String pairKey);
+
     Optional<MatchingHistory> findByMemberIdAndPartnerId(Long memberId, Long partnerId);
 
     @Query("SELECT m FROM MatchingHistory m " +

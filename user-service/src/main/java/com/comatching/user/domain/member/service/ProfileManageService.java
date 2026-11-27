@@ -8,6 +8,8 @@ import com.comatching.user.domain.member.dto.ProfileUpdateRequest;
 
 public interface ProfileManageService {
 
+	void publishMatchingAvailability(Long memberId);
+
 	MatchingProfileSnapshot getMatchingSnapshot(Long memberId);
 
 	ProfileResponse getProfile(Long memberId);
