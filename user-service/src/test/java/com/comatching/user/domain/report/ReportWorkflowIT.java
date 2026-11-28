@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.UUID;
+import com.comatching.common.dto.chat.ReportChatEvidence;
+import com.comatching.user.infra.client.ReportChatClient;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,8 +50,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Sql(statements = "DROP TABLE member_report", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = {"/20261128_01_member_report.sql", "/20261128_02_report_inbox.sql", "/20261128_03_report_category.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(statements = {"DROP TABLE IF EXISTS member_report_evidence", "DROP TABLE member_report"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = {"/20261128_01_member_report.sql", "/20261128_02_report_inbox.sql", "/20261128_03_report_category.sql", "/20261128_04_report_evidence.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 @Tag("integration")
 @DirtiesContext
 @ContextConfiguration(classes = ReportWorkflowIT.Config.class)
@@ -66,6 +68,8 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     @Autowired MemberRepository members;
     @Autowired ProfileRepository profiles;
     @MockitoBean ReportMatchClient matches;
+    @MockitoBean ReportChatClient chat;
+    final ReportChatEvidence.Range range = new ReportChatEvidence.Range("room","mid","mid");
     @MockitoBean LoginSessionStore sessions;
     @MockitoBean UserEventPublisher events;
     @MockitoBean ProfileImageProperties images;
@@ -89,15 +93,50 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
             .birthDate(LocalDate.of(2000,1,1)).mbti("ISTJ").contactFrequency(ContactFrequency.NORMAL)
             .university("대학교").major("국문과").intro("소개글").build());
         when(matches.arePartners(reporter,target)).thenReturn(true);
+        when(chat.capture(reporter,target,range)).thenReturn(new ReportChatEvidence(range,java.util.List.of(
+            new ReportChatEvidence.Message("mid",target,"TALK","첨부 원문","2026-11-28T12:00:00",ReportChatEvidence.Part.SELECTED))));
     }
 
     long submit(UUID key) throws Exception {
         var res = mvc.perform(post("/api/members/reports").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER")
             .contentType(MediaType.APPLICATION_JSON).content("""
-                {"targetId":%d,"requestId":"%s","source":"CHAT","category":"ABUSE","reason":"모욕적인 메시지"}
+                {"targetId":%d,"requestId":"%s","source":"CHAT","chatRange":{"roomId":"room","firstMessageId":"mid","lastMessageId":"mid"},"category":"ABUSE","reason":"모욕적인 메시지"}
                 """.formatted(target,key)))
             .andExpect(status().isOk()).andReturn().getResponse();
         return new ObjectMapper().readTree(res.getContentAsByteArray()).get("data").longValue();
+    }
+
+    @Test void onlyChatSubmissionsCanAttachEvidenceAndRetriesKeepTheOriginalCopy() throws Exception {
+        UUID key = UUID.randomUUID();
+        long id = submit(key);
+        reset(chat);
+        assertThat(submit(key)).isEqualTo(id);
+        verifyNoInteractions(chat);
+        mvc.perform(get("/api/v1/admin/reports/" + id).header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.chatEvidence.messages[0].content").value("첨부 원문"));
+        var different = new ReportService.Submission(key,target,MemberReport.Source.CHAT,MemberReport.Category.ABUSE,
+            "모욕적인 메시지",new ReportChatEvidence.Range("room","mid","later"));
+        assertThatThrownBy(() -> reports.submit(reporter,different)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        for (var invalid : java.util.List.of(
+            new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.CHAT,MemberReport.Category.OTHER,"사유",null),
+            new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,MemberReport.Category.OTHER,"사유",range))) {
+            assertThatThrownBy(() -> reports.submit(reporter,invalid)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        }
+        mvc.perform(get("/api/members/me/inbox").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER"))
+            .andExpect(jsonPath("$.data.content[0].chatEvidence").doesNotExist());
+    }
+
+    @Test void failedCaptureDoesNotCreateAReportAndOldChatReportHasNoEvidence() {
+        var input = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.CHAT,MemberReport.Category.ABUSE,"사유",range);
+        when(chat.capture(reporter,target,range)).thenThrow(new IllegalStateException("chat unavailable"));
+        assertThatThrownBy(() -> reports.submit(reporter,input)).isInstanceOf(IllegalStateException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM member_report WHERE request_key=?", Long.class,
+            input.requestId().toString())).isZero();
+
+        jdbc.update("INSERT INTO member_report(reporter_id,target_id,request_key,source,status,reason,created_at) VALUES (?,?,?,'CHAT','OPEN','기존 신고',CURRENT_TIMESTAMP)",
+            reporter,target,input.requestId().toString());
+        Long legacyId = jdbc.queryForObject("SELECT id FROM member_report WHERE request_key=?", Long.class, input.requestId().toString());
+        assertThat(reports.detail(legacyId).chatEvidence()).isNull();
     }
 
     @Test void submissionRequiresARecognizedCategory() throws Exception {
@@ -113,7 +152,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     @Test void changingOnlyCategoryCannotReplayAReceiptAndLegacyReportsStayUnclassified() throws Exception {
         UUID key = UUID.randomUUID();
         long id = submit(key);
-        var changed = new ReportService.Submission(key, target, MemberReport.Source.CHAT, MemberReport.Category.OTHER, "모욕적인 메시지");
+        var changed = new ReportService.Submission(key, target, MemberReport.Source.CHAT, MemberReport.Category.OTHER, "모욕적인 메시지", range);
         assertThatThrownBy(() -> reports.submit(reporter, changed)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
         assertThat(reports.detail(id).report().category()).isEqualTo(MemberReport.Category.ABUSE);
         jdbc.update("UPDATE member_report SET category=NULL WHERE id=?", id);
@@ -159,7 +198,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     }
 
     @Test void concurrentRetriesReuseOneReceiptAndOnlyOneReviewWins() throws Exception {
-        var request = new ReportService.Submission(UUID.randomUUID(), target, MemberReport.Source.CHAT, MemberReport.Category.ABUSE, "동일 요청");
+        var request = new ReportService.Submission(UUID.randomUUID(), target, MemberReport.Source.CHAT, MemberReport.Category.ABUSE, "동일 요청", range);
         var pool = Executors.newFixedThreadPool(2);
         try {
             var ready = new CyclicBarrier(2);
@@ -249,7 +288,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     }
 
     @Test void unrelatedAndSelfReportsAreRejected() {
-        var form = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,MemberReport.Category.OTHER,"사유");
+        var form = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,MemberReport.Category.OTHER,"사유",null);
         assertThatThrownBy(() -> reports.submit(8800,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
         assertThatThrownBy(() -> reports.submit(target,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
     }

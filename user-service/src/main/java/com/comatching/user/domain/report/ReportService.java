@@ -2,6 +2,10 @@ package com.comatching.user.domain.report;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import jakarta.validation.Valid;
+import com.comatching.common.dto.chat.ReportChatEvidence;
+import com.comatching.user.infra.client.ReportChatClient;
 import java.util.UUID;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
@@ -25,13 +29,16 @@ import com.comatching.user.infra.client.ReportMatchClient;
 @Transactional(readOnly = true)
 public class ReportService {
     private final ReportRepository reports;
+    private final ReportEvidenceRepository evidence;
+    private final ReportChatClient chat;
     private final ReportMatchClient matches;
     private final MemberService members;
     private final LoginSessionStore sessions;
     private final ProfileManageService profiles;
 
     public record Submission(@NotNull UUID requestId, @Positive long targetId, @NotNull MemberReport.Source source,
-                             @NotNull MemberReport.Category category, @NotBlank @Size(max = 1000) String reason) {}
+                             @NotNull MemberReport.Category category, @NotBlank @Size(max = 1000) String reason,
+                             @Valid ReportChatEvidence.Range chatRange) {}
     public enum Action { WARN, SUSPEND, DISMISS }
     public record Decision(@NotNull Action action, @NotBlank @Size(max = 500) String note) {}
     public record Summary(long id, long targetId, String nickname, MemberReport.Source source,
@@ -41,25 +48,43 @@ public class ReportService {
         }
     }
     public record Detail(Summary report, long reporterId, String reason, String major, String intro, String imageUrl,
-                         String decisionNote, Long reviewedBy, LocalDateTime reviewedAt, LocalDateTime liftedAt, Long liftedBy) {}
+                         String decisionNote, Long reviewedBy, LocalDateTime reviewedAt, LocalDateTime liftedAt, Long liftedBy,
+                         ReportChatEvidence chatEvidence) {}
     public record Warning(long id, String message, LocalDateTime issuedAt) {}
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public long submit(long reporter, Submission input) {
         if (reporter == input.targetId() || !matches.arePartners(reporter, input.targetId()))
             throw new BusinessException(GeneralErrorCode.FORBIDDEN);
+        var key = input.requestId().toString();
+        var existing = reports.findByReporterIdAndRequestKey(reporter, key);
+        if (existing.isPresent()) return existingReceipt(existing.get(), input);
+
+        boolean isChat = input.source() == MemberReport.Source.CHAT;
+        if (isChat != (input.chatRange() != null)) throw new BusinessException(GeneralErrorCode.BAD_REQUEST);
+        var snapshot = isChat ? chat.capture(reporter, input.targetId(), input.chatRange()) : null;
+        if (isChat && (snapshot == null || !input.chatRange().equals(snapshot.range()) || snapshot.messages().isEmpty()))
+            throw new BusinessException(GeneralErrorCode.INTERNAL_SERVICE_UNAVAILABLE);
+
+        // A remote read may take time. Lock the target only when ready to commit both records.
         var member = members.getMemberByIdForUpdate(input.targetId());
-        var existing = reports.findByReporterIdAndRequestKey(reporter, input.requestId().toString());
-        if (existing.isPresent()) {
-            var r = existing.get();
-            if (r.getTargetId() != input.targetId() || r.getSource() != input.source()
-                || r.getCategory() != input.category() || !r.getReason().equals(input.reason().strip()))
-                throw conflict();
-            return r.getId();
-        }
+        existing = reports.findByReporterIdAndRequestKey(reporter, key);
+        if (existing.isPresent()) return existingReceipt(existing.get(), input);
         if (member.getProfile() == null || member.getRole() != MemberRole.ROLE_USER || member.getStatus() == MemberStatus.WITHDRAWN)
             throw new BusinessException(GeneralErrorCode.NOT_FOUND);
-        return reports.save(MemberReport.open(reporter, member.getProfile(), input)).getId();
+        long id = reports.save(MemberReport.open(reporter, member.getProfile(), input)).getId();
+        if (snapshot != null) evidence.save(new ReportEvidence(id, snapshot));
+        return id;
+    }
+
+    private long existingReceipt(MemberReport report, Submission input) {
+        if (report.getTargetId() != input.targetId() || report.getSource() != input.source()
+            || report.getCategory() != input.category() || !report.getReason().equals(input.reason().strip()))
+            throw conflict();
+        var saved = report.getSource() == MemberReport.Source.CHAT
+            ? evidence.findById(report.getId()).map(e -> e.getSnapshot().range()).orElse(null) : null;
+        if (!Objects.equals(saved, input.chatRange())) throw conflict();
+        return report.getId();
     }
 
     public PagingResponse<Summary> list(MemberReport.Status status, int page) {
@@ -72,7 +97,8 @@ public class ReportService {
     public Detail detail(long id) {
         var r = reports.findById(id).orElseThrow(() -> new BusinessException(GeneralErrorCode.NOT_FOUND));
         return new Detail(Summary.of(r), r.getReporterId(), r.getReason(), r.getMajor(), r.getIntro(), r.getImageUrl(),
-            r.getDecisionNote(), r.getReviewedBy(), r.getReviewedAt(), r.getLiftedAt(), r.getLiftedBy());
+            r.getDecisionNote(), r.getReviewedBy(), r.getReviewedAt(), r.getLiftedAt(), r.getLiftedBy(),
+            r.getSource() == MemberReport.Source.CHAT ? evidence.findById(id).map(ReportEvidence::getSnapshot).orElse(null) : null);
     }
 
     @Transactional

@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 @Document(collection = "chat_messages")
 @CompoundIndexes({
         @CompoundIndex(name = "room_created_idx", def = "{'roomId': 1, 'createdAt': -1}"),
+        @CompoundIndex(name = "room_message_order", def = "{'roomId': 1, 'createdAt': -1, '_id': -1}"),
         @CompoundIndex(
                 name = "chat_push_due_idx",
                 def = "{'pushOutbox.availableAt': 1}",

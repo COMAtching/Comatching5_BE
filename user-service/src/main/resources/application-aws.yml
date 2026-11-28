@@ -8,6 +8,9 @@ server:
 client:
   url: ${CLIENT_URL:https://comatching.site}
 
+chat-service:
+  url: ${CHAT_SERVICE_URL:http://chat-service:9003}
+
 matching-service:
   url: ${MATCHING_SERVICE_URL:http://matching-service:9001}
 
