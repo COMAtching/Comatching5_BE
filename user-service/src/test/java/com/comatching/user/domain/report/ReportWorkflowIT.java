@@ -49,7 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(statements = "DROP TABLE member_report", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = {"/20261128_01_member_report.sql", "/20261128_02_report_inbox.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = {"/20261128_01_member_report.sql", "/20261128_02_report_inbox.sql", "/20261128_03_report_category.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 @Tag("integration")
 @DirtiesContext
 @ContextConfiguration(classes = ReportWorkflowIT.Config.class)
@@ -61,6 +61,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     @Import({ReportService.class, MemberServiceImpl.class, ProfileServiceImpl.class})
     static class Config {}
 
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired ReportService reports;
     @Autowired MemberRepository members;
     @Autowired ProfileRepository profiles;
@@ -93,10 +94,30 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     long submit(UUID key) throws Exception {
         var res = mvc.perform(post("/api/members/reports").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER")
             .contentType(MediaType.APPLICATION_JSON).content("""
-                {"targetId":%d,"requestId":"%s","source":"CHAT","reason":"모욕적인 메시지"}
+                {"targetId":%d,"requestId":"%s","source":"CHAT","category":"ABUSE","reason":"모욕적인 메시지"}
                 """.formatted(target,key)))
             .andExpect(status().isOk()).andReturn().getResponse();
         return new ObjectMapper().readTree(res.getContentAsByteArray()).get("data").longValue();
+    }
+
+    @Test void submissionRequiresARecognizedCategory() throws Exception {
+        for (String field : java.util.List.of("", "\"category\":\"UNKNOWN\",")) {
+            mvc.perform(post("/api/members/reports").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER")
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"targetId":%d,"requestId":"%s","source":"PROFILE",%s"reason":"신고 사유"}
+                    """.formatted(target,UUID.randomUUID(),field)))
+                .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test void changingOnlyCategoryCannotReplayAReceiptAndLegacyReportsStayUnclassified() throws Exception {
+        UUID key = UUID.randomUUID();
+        long id = submit(key);
+        var changed = new ReportService.Submission(key, target, MemberReport.Source.CHAT, MemberReport.Category.OTHER, "모욕적인 메시지");
+        assertThatThrownBy(() -> reports.submit(reporter, changed)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
+        assertThat(reports.detail(id).report().category()).isEqualTo(MemberReport.Category.ABUSE);
+        jdbc.update("UPDATE member_report SET category=NULL WHERE id=?", id);
+        assertThat(reports.detail(id).report().category()).isNull();
     }
 
     @Test void receiptReviewWarningAndPrivateAcknowledgement() throws Exception {
@@ -106,6 +127,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
         mvc.perform(get("/api/v1/admin/reports").param("status","OPEN").header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[?(@.id == " + id + ")]").isNotEmpty());
         mvc.perform(get("/api/v1/admin/reports/"+id).header("X-Member-Id",admin).header("X-Member-Role","ROLE_ADMIN"))
+            .andExpect(jsonPath("$.data.report.category").value("ABUSE"))
             .andExpect(jsonPath("$.data.reason").value("모욕적인 메시지")).andExpect(jsonPath("$.data.intro").value("소개글"));
         mvc.perform(get("/api/v1/admin/reports/"+id).header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER"))
             .andExpect(status().isForbidden());
@@ -137,7 +159,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     }
 
     @Test void concurrentRetriesReuseOneReceiptAndOnlyOneReviewWins() throws Exception {
-        var request = new ReportService.Submission(UUID.randomUUID(), target, MemberReport.Source.CHAT, "동일 요청");
+        var request = new ReportService.Submission(UUID.randomUUID(), target, MemberReport.Source.CHAT, MemberReport.Category.ABUSE, "동일 요청");
         var pool = Executors.newFixedThreadPool(2);
         try {
             var ready = new CyclicBarrier(2);
@@ -227,7 +249,7 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
     }
 
     @Test void unrelatedAndSelfReportsAreRejected() {
-        var form = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,"사유");
+        var form = new ReportService.Submission(UUID.randomUUID(),target,MemberReport.Source.PROFILE,MemberReport.Category.OTHER,"사유");
         assertThatThrownBy(() -> reports.submit(8800,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
         assertThatThrownBy(() -> reports.submit(target,form)).isInstanceOf(com.comatching.common.exception.BusinessException.class);
     }

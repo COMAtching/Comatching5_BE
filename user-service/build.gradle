@@ -57,4 +57,5 @@ dependencyManagement {
 tasks.named('processTestResources') {
     from(rootProject.file('db/migrations/20261128_01_member_report.sql'))
     from(rootProject.file('db/migrations/20261128_02_report_inbox.sql'))
+    from(rootProject.file('db/migrations/20261128_03_report_category.sql'))
 }

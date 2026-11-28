@@ -18,6 +18,7 @@ import com.comatching.user.domain.member.entity.Profile;
 public class MemberReport {
     public enum Status { OPEN, WARNED, SUSPENDED, DISMISSED }
     public enum Source { PROFILE, CHAT }
+    public enum Category { ABUSE, SEXUAL_HARASSMENT, IMPERSONATION, SPAM_FRAUD, PRIVACY, OTHER }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(name = "reporter_id", nullable = false)
@@ -30,6 +31,10 @@ public class MemberReport {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private Source source;
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private Category category;
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -59,6 +64,7 @@ public class MemberReport {
         report.targetId = form.targetId();
         report.requestKey = form.requestId().toString();
         report.source = form.source();
+        report.category = form.category();
         report.reason = form.reason().strip();
         report.status = Status.OPEN;
         report.nickname = profile.getNickname();

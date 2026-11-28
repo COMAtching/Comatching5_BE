@@ -31,13 +31,13 @@ public class ReportService {
     private final ProfileManageService profiles;
 
     public record Submission(@NotNull UUID requestId, @Positive long targetId, @NotNull MemberReport.Source source,
-                             @NotBlank @Size(max = 1000) String reason) {}
+                             @NotNull MemberReport.Category category, @NotBlank @Size(max = 1000) String reason) {}
     public enum Action { WARN, SUSPEND, DISMISS }
     public record Decision(@NotNull Action action, @NotBlank @Size(max = 500) String note) {}
     public record Summary(long id, long targetId, String nickname, MemberReport.Source source,
-                          MemberReport.Status status, LocalDateTime createdAt) {
+                          MemberReport.Category category, MemberReport.Status status, LocalDateTime createdAt) {
         static Summary of(MemberReport r) {
-            return new Summary(r.getId(), r.getTargetId(), r.getNickname(), r.getSource(), r.getStatus(), r.getCreatedAt());
+            return new Summary(r.getId(), r.getTargetId(), r.getNickname(), r.getSource(), r.getCategory(), r.getStatus(), r.getCreatedAt());
         }
     }
     public record Detail(Summary report, long reporterId, String reason, String major, String intro, String imageUrl,
@@ -52,7 +52,8 @@ public class ReportService {
         var existing = reports.findByReporterIdAndRequestKey(reporter, input.requestId().toString());
         if (existing.isPresent()) {
             var r = existing.get();
-            if (r.getTargetId() != input.targetId() || r.getSource() != input.source() || !r.getReason().equals(input.reason().strip()))
+            if (r.getTargetId() != input.targetId() || r.getSource() != input.source()
+                || r.getCategory() != input.category() || !r.getReason().equals(input.reason().strip()))
                 throw conflict();
             return r.getId();
         }

@@ -317,7 +317,7 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 		var first = sessions.login(id, 0);
 		var second = sessions.login(id, 0);
 		given(reportMatches.arePartners(800L, id)).willReturn(true);
-		long report = reports.submit(800L, new ReportService.Submission(UUID.randomUUID(), id, MemberReport.Source.CHAT, "반복 위반"));
+		long report = reports.submit(800L, new ReportService.Submission(UUID.randomUUID(), id, MemberReport.Source.CHAT, MemberReport.Category.ABUSE, "반복 위반"));
 		reports.decide(report, 90L, new ReportService.Decision(ReportService.Action.SUSPEND, "검토 후 정지"));
 
 		assertThat(active(first.accessToken())).isFalse();
