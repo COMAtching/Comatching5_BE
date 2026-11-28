@@ -39,6 +39,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -88,6 +89,12 @@ import com.comatching.user.global.security.oauth2.provider.kakao.config.KakaoPro
 import com.comatching.user.global.security.oauth2.provider.kakao.unlink.KakaoAuthClient;
 import com.comatching.user.global.security.oauth2.user.CustomOAuth2User;
 import com.comatching.user.support.OutboxMySqlSupport;
+import com.comatching.user.domain.report.MemberReport;
+import com.comatching.user.domain.report.ReportRepository;
+import com.comatching.user.domain.report.ReportService;
+import com.comatching.user.infra.client.ReportMatchClient;
+import com.comatching.user.domain.member.entity.Profile;
+import com.comatching.user.domain.member.repository.ProfileRepository;
 import com.comatching.user.domain.operations.FeatureOperation;
 import com.comatching.user.domain.operations.FeatureOperationRepository;
 import com.comatching.user.domain.operations.FeatureOperations;
@@ -103,11 +110,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ContextConfiguration(classes = AccountSecurityIT.Config.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Tag("integration")
+@DirtiesContext
 class AccountSecurityIT extends OutboxMySqlSupport {
 	@Configuration
-	@EntityScan(basePackageClasses = {Member.class, FeatureOperation.class})
-	@EnableJpaRepositories(basePackageClasses = {MemberRepository.class, FeatureOperationRepository.class})
-	@Import({FeatureOperations.class, MemberSessionShutdown.class, MemberServiceImpl.class, LoginSessionStore.class, LoginSessionService.class, JwtUtil.class,
+	@EntityScan(basePackageClasses = {Member.class, FeatureOperation.class, MemberReport.class})
+	@EnableJpaRepositories(basePackageClasses = {MemberRepository.class, FeatureOperationRepository.class, ReportRepository.class})
+	@Import({ReportService.class, FeatureOperations.class, MemberSessionShutdown.class, MemberServiceImpl.class, LoginSessionStore.class, LoginSessionService.class, JwtUtil.class,
 		AuthServiceImpl.class, SignupServiceImpl.class, EmailServiceImpl.class, VerificationMailStore.class, ProfileServiceImpl.class})
 	static class Config {
 		@Bean(destroyMethod = "stop")
@@ -129,6 +137,10 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 		PasswordEncoder passwords() { return new BCryptPasswordEncoder(4); }
 	}
 
+	@Autowired ReportService reports;
+	@MockitoBean com.comatching.user.infra.client.ReportChatClient reportChat;
+	@Autowired ProfileRepository profiles;
+	@MockitoBean ReportMatchClient reportMatches;
 	@Autowired AuthService auth;
 	@Autowired LoginSessionService sessions;
 	@Autowired MemberRepository members;
@@ -294,6 +306,28 @@ class AccountSecurityIT extends OutboxMySqlSupport {
 			assertThat(active(old.accessToken())).isFalse();
 			assertThatThrownBy(() -> auth.reissue(old.refreshToken())).isInstanceOf(BusinessException.class);
 		}
+	}
+
+	@Test
+	void reviewedSuspensionInvalidatesSessionsUntilLifted() {
+		Member target = member(MemberStatus.ACTIVE);
+		long id = target.getId();
+		profiles.save(Profile.builder().member(target).nickname("매칭상대").gender(Gender.MALE)
+			.birthDate(LocalDate.of(2000, 1, 1)).mbti("ISTJ").university("대학").major("전공")
+			.contactFrequency(ContactFrequency.NORMAL).build());
+		var first = sessions.login(id, 0);
+		var second = sessions.login(id, 0);
+		given(reportMatches.arePartners(800L, id)).willReturn(true);
+		long report = reports.submit(800L, new ReportService.Submission(UUID.randomUUID(), id, MemberReport.Source.PROFILE, MemberReport.Category.ABUSE, "반복 위반", null));
+		reports.decide(report, 90L, new ReportService.Decision(ReportService.Action.SUSPEND, "검토 후 정지"));
+
+		assertThat(active(first.accessToken())).isFalse();
+		assertThat(active(second.accessToken())).isFalse();
+		assertThatThrownBy(() -> auth.reissue(second.refreshToken())).isInstanceOf(BusinessException.class);
+		assertThatThrownBy(() -> sessions.login(id, 1)).isInstanceOf(BusinessException.class);
+		reports.lift(report, 90L);
+		assertThat(active(sessions.login(id, 1).accessToken())).isTrue();
+		assertThat(active(first.accessToken())).isFalse();
 	}
 
 	@ParameterizedTest

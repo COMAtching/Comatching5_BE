@@ -122,6 +122,12 @@ public class MatchingHistoryServiceImpl implements MatchingHistoryService{
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean arePartners(long memberId, long partnerId) {
+		return historyRepository.existsByPairKey(MatchingHistory.pairKeyOf(memberId, partnerId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public MatchingHistoryReferenceResponse getHistoryReference(Long memberId, Long partnerId) {
 		return historyRepository.findByMemberIdAndPartnerId(memberId, partnerId)
 			.map(history -> new MatchingHistoryReferenceResponse(history.getId(), history.isFavorite()))

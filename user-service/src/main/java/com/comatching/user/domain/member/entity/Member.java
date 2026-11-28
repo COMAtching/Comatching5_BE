@@ -110,6 +110,15 @@ public class Member {
 		}
 	}
 
+	public void suspend() {
+		authVersion++;
+		status = MemberStatus.SUSPENDED;
+	}
+
+	public void liftSuspension() {
+		status = MemberStatus.ACTIVE;
+	}
+
 	public void changePassword(String newEncodedPassword) {
 		authVersion++;
 		this.password = newEncodedPassword;

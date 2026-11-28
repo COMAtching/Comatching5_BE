@@ -20,6 +20,8 @@ public interface MatchingHistoryService {
 
 	void changeFavorite(Long memberId, Long historyId, boolean favorite);
 
+	boolean arePartners(long memberId, long partnerId);
+
 	MatchingHistoryReferenceResponse getHistoryReference(Long memberId, Long partnerId);
 
 }

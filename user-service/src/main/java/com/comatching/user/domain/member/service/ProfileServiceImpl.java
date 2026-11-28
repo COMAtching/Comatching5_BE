@@ -207,11 +207,18 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.WITHDRAWN,
 				null, current.getDeletedAt());
 		}
-		if (current.getStatus() != MemberStatus.ACTIVE || current.getProfile() == null) {
+		if ((current.getStatus() != MemberStatus.ACTIVE && current.getStatus() != MemberStatus.SUSPENDED) || current.getProfile() == null) {
 			return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.NO_ACTIVE_PROFILE, null, null);
 		}
 		return new MatchingProfileSnapshot(memberId, MatchingProfileSnapshot.State.ACTIVE,
 			matchingProfile(current.getProfile()), null);
+	}
+
+	@Override
+	public void publishMatchingAvailability(Long memberId) {
+		var profile = profileRepository.findForUpdateByMemberId(memberId)
+			.orElseThrow(() -> new BusinessException(UserErrorCode.PROFILE_NOT_EXISTS));
+		publishMatchingEvent(profile);
 	}
 
 	private void publishMatchingEvent(Profile profile) {
@@ -230,7 +237,7 @@ public class ProfileServiceImpl implements ProfileCreateService, ProfileManageSe
 			.contactFrequency(profile.getContactFrequency())
 			.hobbyCategories(profile.getHobbyCategories())
 			.birthDate(profile.getBirthDate())
-			.isMatchable(profile.isMatchable())
+			.isMatchable(profile.isMatchable() && profile.getMember().getStatus() != MemberStatus.SUSPENDED)
 			.build();
 	}
 

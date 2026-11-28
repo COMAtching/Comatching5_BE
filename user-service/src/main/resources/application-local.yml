@@ -8,6 +8,12 @@ server:
 client:
   url: ${CLIENT_URL:http://localhost:3000}
 
+chat-service:
+  url: ${CHAT_SERVICE_URL:http://localhost:9003}
+
+matching-service:
+  url: ${MATCHING_SERVICE_URL:http://localhost:9001}
+
 item-service:
   url: ${ITEM_SERVICE_URL:http://localhost:9006}
 
