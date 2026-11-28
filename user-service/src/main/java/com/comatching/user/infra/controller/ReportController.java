@@ -23,6 +23,27 @@ public class ReportController {
         return ApiResponse.ok(service.submit(user.memberId(), input));
     }
 
+    @GetMapping("/api/members/me/inbox")
+    @RequireRole(MemberRole.ROLE_USER)
+    public ApiResponse<PagingResponse<ReportService.InboxItem>> inbox(@CurrentMember MemberInfo user,
+                                                        @RequestParam(defaultValue = "0") int page) {
+        return ApiResponse.ok(service.inbox(user.memberId(), page));
+    }
+
+    @GetMapping("/api/members/me/inbox/unread-count")
+    @RequireRole(MemberRole.ROLE_USER)
+    public ApiResponse<Long> unreadCount(@CurrentMember MemberInfo user) {
+        return ApiResponse.ok(service.unreadCount(user.memberId()));
+    }
+
+    @PostMapping("/api/members/me/inbox/{id}/read")
+    @RequireRole(MemberRole.ROLE_USER)
+    public ApiResponse<Void> readNotice(@CurrentMember MemberInfo user, @PathVariable long id,
+                                        @RequestParam ReportService.NoticeKind kind) {
+        service.readNotice(user.memberId(), id, kind);
+        return ApiResponse.ok();
+    }
+
     @GetMapping("/api/members/me/warnings")
     @RequireRole(MemberRole.ROLE_USER)
     public ApiResponse<List<ReportService.Warning>> warnings(@CurrentMember MemberInfo user) {

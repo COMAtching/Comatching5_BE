@@ -49,7 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=create-drop")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(statements = "DROP TABLE member_report", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "/20261128_01_member_report.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = {"/20261128_01_member_report.sql", "/20261128_02_report_inbox.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 @Tag("integration")
 @DirtiesContext
 @ContextConfiguration(classes = ReportWorkflowIT.Config.class)
@@ -180,6 +180,50 @@ class ReportWorkflowIT extends OutboxMySqlSupport {
         assertThat(members.findById(target).orElseThrow().getStatus()).isEqualTo(MemberStatus.ACTIVE);
         assertThat(reports.warnings(target)).isEmpty();
         verifyNoInteractions(sessions);
+    }
+
+    @Test void inboxIsPrivateAndAStaleReadCannotSwallowTheReviewResult() throws Exception {
+        long id = submit(UUID.randomUUID());
+        long other = 28001;
+        long before = reports.unreadCount(reporter);
+        reports.readNotice(other, id, ReportService.NoticeKind.IN_REVIEW);
+        assertThat(reports.unreadCount(reporter)).isEqualTo(before);
+        assertThat(reports.inbox(other, 0).content()).isEmpty();
+        reports.readNotice(reporter, id, ReportService.NoticeKind.IN_REVIEW);
+        assertThat(reports.unreadCount(reporter)).isEqualTo(before - 1);
+        reports.decide(id, admin, new ReportService.Decision(ReportService.Action.WARN, "회원에게만 보이는 경고"));
+        reports.readNotice(reporter, id, ReportService.NoticeKind.IN_REVIEW);
+        assertThat(reports.unreadCount(reporter)).isEqualTo(before);
+        var entry = reports.inbox(reporter, 0).content().stream().filter(i -> i.reportId() == id).findFirst().orElseThrow();
+        assertThat(entry.kind()).isEqualTo(ReportService.NoticeKind.ACTION_TAKEN);
+        assertThat(entry.warningMessage()).isNull();
+        assertThat(entry.unread()).isTrue();
+        mvc.perform(get("/api/members/me/inbox").header("X-Member-Id",reporter).header("X-Member-Role","ROLE_USER"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.content[0].decisionNote").doesNotExist())
+            .andExpect(jsonPath("$.data.content[0].targetId").doesNotExist());
+        assertThat(reports.inbox(target, 0).content().get(0).warningMessage()).isEqualTo("회원에게만 보이는 경고");
+        reports.readNotice(reporter, id, ReportService.NoticeKind.WARNING);
+        assertThat(reports.warnings(target)).hasSize(1);
+        reports.readNotice(target, id, ReportService.NoticeKind.WARNING);
+        assertThat(reports.unreadCount(target)).isZero();
+        assertThat(reports.warnings(target)).isEmpty();
+        assertThat(reports.inbox(target, 0).content()).hasSize(1);
+        reports.readNotice(reporter, id, ReportService.NoticeKind.ACTION_TAKEN);
+        assertThat(reports.unreadCount(reporter)).isEqualTo(before - 1);
+    }
+
+    @Test void suspensionAndDismissalKeepTheInternalNotePrivate() throws Exception {
+        long id = submit(UUID.randomUUID());
+        reports.decide(id, admin, new ReportService.Decision(ReportService.Action.DISMISS,"내부 종결 사유"));
+        var closed = reports.inbox(reporter,0).content().stream().filter(i -> i.reportId() == id).findFirst().orElseThrow();
+        assertThat(closed.kind()).isEqualTo(ReportService.NoticeKind.NO_ACTION);
+        assertThat(closed.warningMessage()).isNull();
+        long next = submit(UUID.randomUUID());
+        reports.decide(next, admin, new ReportService.Decision(ReportService.Action.SUSPEND,"내부 정지 사유"));
+        var handled = reports.inbox(reporter,0).content().stream().filter(i -> i.reportId() == next).findFirst().orElseThrow();
+        assertThat(handled.kind()).isEqualTo(ReportService.NoticeKind.ACTION_TAKEN);
+        assertThat(handled.warningMessage()).isNull();
+        assertThat(reports.inbox(target,0).content()).isEmpty();
     }
 
     @Test void unrelatedAndSelfReportsAreRejected() {

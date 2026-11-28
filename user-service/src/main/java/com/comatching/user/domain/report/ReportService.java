@@ -105,6 +105,42 @@ public class ReportService {
         r.lift(adminId);
     }
 
+    public enum NoticeKind { IN_REVIEW, ACTION_TAKEN, NO_ACTION, WARNING }
+    public record InboxItem(long reportId, NoticeKind kind, LocalDateTime at, boolean unread, String warningMessage) {}
+
+    public PagingResponse<InboxItem> inbox(long member, int page) {
+        if (page < 0) throw new BusinessException(GeneralErrorCode.BAD_REQUEST);
+        var rows = reports.inbox(member, MemberReport.Status.WARNED, PageRequest.of(page, 20));
+        return PagingResponse.from(rows.map(r -> {
+            if (r.getReporterId() != member) {
+                return new InboxItem(r.getId(), NoticeKind.WARNING, r.getReviewedAt(),
+                    r.getAcknowledgedAt() == null, r.getDecisionNote());
+            }
+            var kind = switch (r.getStatus()) {
+                case OPEN -> NoticeKind.IN_REVIEW;
+                case WARNED, SUSPENDED -> NoticeKind.ACTION_TAKEN;
+                case DISMISSED -> NoticeKind.NO_ACTION;
+            };
+            return new InboxItem(r.getId(), kind, r.getReviewedAt() == null ? r.getCreatedAt() : r.getReviewedAt(),
+                r.getReporterReadAt() == null, null);
+        }));
+    }
+
+    public long unreadCount(long member) {
+        return reports.unread(member, MemberReport.Status.WARNED);
+    }
+
+    @Transactional
+    public void readNotice(long member, long id, NoticeKind seen) {
+        // A delayed tap on a receipt must leave a newly arrived review result unread.
+        switch (seen) {
+            case WARNING -> reports.acknowledge(id, member, MemberReport.Status.WARNED);
+            case IN_REVIEW -> reports.readResult(member, id, List.of(MemberReport.Status.OPEN));
+            case ACTION_TAKEN -> reports.readResult(member, id, List.of(MemberReport.Status.WARNED, MemberReport.Status.SUSPENDED));
+            case NO_ACTION -> reports.readResult(member, id, List.of(MemberReport.Status.DISMISSED));
+        }
+    }
+
     public List<Warning> warnings(long target) {
         return reports.findTop20ByTargetIdAndStatusAndAcknowledgedAtIsNullOrderByIdAsc(target, MemberReport.Status.WARNED)
             .stream().map(r -> new Warning(r.getId(), r.getDecisionNote(), r.getReviewedAt())).toList();

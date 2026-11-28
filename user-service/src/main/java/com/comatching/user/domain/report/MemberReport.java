@@ -49,6 +49,7 @@ public class MemberReport {
     @Column(length = 500)
     private String decisionNote;
     private LocalDateTime acknowledgedAt;
+    private LocalDateTime reporterReadAt;
     private LocalDateTime liftedAt;
     private Long liftedBy;
 
@@ -73,6 +74,7 @@ public class MemberReport {
         reviewedBy = adminId;
         decisionNote = note.strip();
         reviewedAt = LocalDateTime.now();
+        reporterReadAt = null;
     }
 
     void lift(long adminId) {
